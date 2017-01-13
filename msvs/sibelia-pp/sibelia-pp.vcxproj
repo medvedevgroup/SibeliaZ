@@ -143,16 +143,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\dnachar.cpp" />
     <ClCompile Include="..\..\src\sibelia-pp.cpp" />
-    <ClCompile Include="..\..\src\streamfastaparser.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\blocksgenerator.h" />
-    <ClInclude Include="..\..\src\dnachar.h" />
     <ClInclude Include="..\..\src\junctionapi.h" />
-    <ClInclude Include="..\..\src\streamfastaparser.h" />
-    <ClInclude Include="..\..\src\traversal.h" />
+    <ClInclude Include="..\..\src\outputgenerator.h" />
+    <ClInclude Include="..\..\src\blocksfinder.h" />
     <ClInclude Include="..\..\src\vertexstorage.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

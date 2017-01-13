@@ -15,9 +15,27 @@ namespace Sibelia
 		{
 			int64_t id;
 			uint64_t pos;
+
+			Vertex(const TwoPaCo::JunctionPosition & junction) : id(junction.GetId()), pos(junction.GetPos())
+			{
+
+			}
+		};
+		
+		struct Coordinate
+		{
+			uint32_t chr;
+			uint32_t idx;
+
+			Coordinate() {}
+			Coordinate(uint32_t chr, uint32_t idx) : chr(chr), idx(idx)
+			{
+
+			}
 		};
 
 		typedef std::vector<Vertex> VertexVector;
+		typedef std::vector<Coordinate> CoordinateVector;
 
 	public:		
 
@@ -130,27 +148,44 @@ namespace Sibelia
 		void Positions(uint64_t vertexId, std::vector<StrandIterator> & pos) const
 		{
 			pos.clear();
-			for (auto coord : coordinate_)
+			for (auto coord : coordinate_[vertexId])
 			{				
 				pos.push_back(StrandIterator(coord.idx, &posChr_[coord.chr]));
 			}
 		}
 
-		void Init()
+		void Init(const std::string & inFileName)
 		{
+			TwoPaCo::JunctionPositionReader reader(inFileName);
+			for (TwoPaCo::JunctionPosition junction; reader.NextJunctionPosition(junction);)
+			{
+				if (junction.GetChr() >= posChr_.size())
+				{
+					posChr_.push_back(VertexVector());
+				}
 
+				posChr_[junction.GetChr()].push_back(Vertex(junction));
+				int64_t absId = abs(junction.GetId());
+
+				while (absId >= coordinate_.size())
+				{
+					coordinate_.push_back(CoordinateVector());
+				}
+
+				coordinate_[absId].push_back(Coordinate(junction.GetChr(), posChr_[junction.GetChr()].size() - 1));
+			}
+		}
+
+		VertexStorage() {}
+		VertexStorage(const std::string & fileName)
+		{
+			Init(fileName);
 		}
 
 	private:
-
-		struct Coordinate
-		{
-			uint32_t chr;
-			uint32_t idx;
-		};
-
+		
 		std::vector<VertexVector> posChr_;
-		std::vector<Coordinate> coordinate_;
+		std::vector<CoordinateVector> coordinate_;
 	};
 }
 

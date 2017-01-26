@@ -149,7 +149,7 @@
     <ClInclude Include="..\..\src\junctionapi.h" />
     <ClInclude Include="..\..\src\outputgenerator.h" />
     <ClInclude Include="..\..\src\blocksfinder.h" />
-    <ClInclude Include="..\..\src\vertexstorage.h" />
+    <ClInclude Include="..\..\src\edgestorage.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

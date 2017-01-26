@@ -23,13 +23,13 @@
     <ClInclude Include="..\..\src\junctionapi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\vertexstorage.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\outputgenerator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\blocksfinder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\edgestorage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

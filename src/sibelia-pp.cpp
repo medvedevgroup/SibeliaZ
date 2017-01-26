@@ -100,8 +100,9 @@ int main(int argc, char * argv[])
 
 		cmd.parse(argc, argv);
 
-		Sibelia::VertexStorage storage(inFileName.getValue());
-		Sibelia::BlocksFinder finder(storage, minBlockSize.getValue(), maxBranchSize.getValue());
+		Sibelia::EdgeStorage storage(inFileName.getValue());
+		Sibelia::BlocksFinder finder(storage);
+		finder.FindBlocks(minBlockSize.getValue(), maxBranchSize.getValue());
 	}
 	catch (TCLAP::ArgException & e)
 	{

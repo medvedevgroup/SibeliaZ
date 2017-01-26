@@ -1,5 +1,5 @@
-#ifndef _VERTEX_STORAGE_H_
-#define _VERTEX_STORAGE_H_
+#ifndef _EDGE_STORAGE_H_
+#define _EDGE_STORAGE_H_
 
 #include <vector>
 #include <cstdint>
@@ -8,7 +8,7 @@
 
 namespace Sibelia
 {
-	class VertexStorage
+	class EdgeStorage
 	{
 	private:
 		struct Vertex
@@ -20,7 +20,7 @@ namespace Sibelia
 			{
 
 			}
-		};
+		}; 
 		
 		struct Coordinate
 		{
@@ -39,10 +39,10 @@ namespace Sibelia
 
 	public:		
 
-		class StrandIterator
+		class EdgeIterator
 		{
 		public:
-			StrandIterator() : idx_(0), chr_(0)
+			EdgeIterator() : idx_(0), chr_(0)
 			{
 
 			}
@@ -52,25 +52,40 @@ namespace Sibelia
 				return (*chr_)[idx_].id > 0;
 			}
 
-			int64_t GetId() const
+			int64_t GetStartVertexId() const
 			{
 				return IsPositiveStrand() ? (*chr_)[idx_].id : -(*chr_)[idx_].id;
+			}
+
+			int64_t GetEndVertexId() const
+			{
+				return IsPositiveStrand() ? (*chr_)[idx_ + 1].id : -(*chr_)[idx_ - 1].id;
 			}
 
 			int64_t GetPosition() const
 			{
 				return (*chr_)[idx_].pos;
+			}
+
+			uint64_t GetIdx() const
+			{
+				return idx_;
+			}
+
+			uint64_t GetChrId() const
+			{
+				return chrId_;
 			}			
 
 			bool CanInc() const
 			{
 				if (IsPositiveStrand())
 				{
-					return idx_ < chr_->size();
+					return idx_ < chr_->size() - 1;
 				}
 				else
 				{
-					return idx_ > 0;
+					return idx_ > 1;
 				}
 			}
 
@@ -86,28 +101,28 @@ namespace Sibelia
 				}
 			}
 
-			StrandIterator& operator++ ()
+			EdgeIterator& operator++ ()
 			{
 				Inc();
 				return *this;
 			}
 			
-			StrandIterator operator++ (int)
+			EdgeIterator operator++ (int)
 			{
-				StrandIterator ret(*this);
+				EdgeIterator ret(*this);
 				Inc();
 				return ret;
 			}
 
-			StrandIterator& operator-- ()
+			EdgeIterator& operator-- ()
 			{
 				Dec();
 				return *this;
 			}
 
-			StrandIterator operator-- (int)
+			EdgeIterator operator-- (int)
 			{				
-				StrandIterator ret(*this);
+				EdgeIterator ret(*this);
 				Dec();
 				return ret;
 			}
@@ -130,28 +145,46 @@ namespace Sibelia
 				}
 			}
 
-			StrandIterator(int64_t idx, const VertexVector * chr) : idx_(idx),  chr_(chr)
+			EdgeIterator(int64_t idx, const VertexVector * chr, uint64_t chrId) : idx_(idx), chr_(chr), chrId_(chrId)
 			{
 
 			}
 
-			friend class VertexStorage;
-			int64_t idx_;
+			friend class EdgeStorage;
+			int64_t idx_;			
 			const VertexVector * chr_;
+			uint64_t chrId_;
 		};
 
-		uint64_t VerticesNumber() const
+		uint64_t GetChrNumber() const
+		{
+			return posChr_.size();
+		}
+
+		uint64_t GetChrEdgeCount(uint64_t chrId) const
+		{
+			return posChr_[chrId].size() - 1;
+		}
+
+		EdgeIterator GetIterator(uint64_t chrId, uint64_t idx) const
+		{
+			return EdgeIterator(idx, &posChr_[chrId], chrId);
+		}
+
+		uint64_t GetVerticesNumber() const
 		{
 			return coordinate_.size();
 		}
 
-		void Positions(uint64_t vertexId, std::vector<StrandIterator> & pos) const
+		uint64_t GetOutgoingEdgesCount(uint64_t vertexId) const
 		{
-			pos.clear();
-			for (auto coord : coordinate_[vertexId])
-			{				
-				pos.push_back(StrandIterator(coord.idx, &posChr_[coord.chr]));
-			}
+			return coordinate_[vertexId].size();
+		}
+
+		EdgeIterator GetOutgoingEdge(uint64_t vertexId, uint64_t idx) const
+		{
+			auto coord = coordinate_[vertexId][idx];
+			return EdgeIterator(coord.idx, &posChr_[coord.chr], coord.chr);
 		}
 
 		void Init(const std::string & inFileName)
@@ -176,8 +209,8 @@ namespace Sibelia
 			}
 		}
 
-		VertexStorage() {}
-		VertexStorage(const std::string & fileName)
+		EdgeStorage() {}
+		EdgeStorage(const std::string & fileName)
 		{
 			Init(fileName);
 		}

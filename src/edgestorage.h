@@ -62,6 +62,8 @@ namespace Sibelia
 				return IsPositiveStrand() ? (*chr_)[idx_ + 1].id : -(*chr_)[idx_ - 1].id;
 			}
 
+			char GetChar() const;
+
 			int64_t GetPosition() const
 			{
 				return (*chr_)[idx_].pos;

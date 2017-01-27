@@ -90,6 +90,14 @@ int main(int argc, char * argv[])
 			"file name",
 			cmd);
 
+		TCLAP::ValueArg<std::string> genomesFileName("",
+			"gfile",
+			"FASTA file with genomes",
+			true,
+			"",
+			"file name",
+			cmd);
+
 		TCLAP::ValueArg<std::string> outFileName("o",
 			"outfile",
 			"Output file name prefix",
@@ -100,7 +108,7 @@ int main(int argc, char * argv[])
 
 		cmd.parse(argc, argv);
 
-		Sibelia::EdgeStorage storage(inFileName.getValue());
+		Sibelia::EdgeStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue());
 		Sibelia::BlocksFinder finder(storage);
 		finder.FindBlocks(minBlockSize.getValue(), maxBranchSize.getValue());
 	}

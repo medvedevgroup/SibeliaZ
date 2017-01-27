@@ -1,10 +1,12 @@
 #ifndef _EDGE_STORAGE_H_
 #define _EDGE_STORAGE_H_
 
+#include <string>
 #include <vector>
 #include <cstdint>
 
 #include "junctionapi.h"
+#include "streamfastaparser.h"
 
 namespace Sibelia
 {
@@ -42,31 +44,39 @@ namespace Sibelia
 		class EdgeIterator
 		{
 		public:
-			EdgeIterator() : idx_(0), chr_(0)
+			EdgeIterator() : idx_(0), storage_(0)
 			{
 
 			}
 
 			bool IsPositiveStrand() const
 			{
-				return (*chr_)[idx_].id > 0;
+				return storage_->posChr_[chrId_][idx_].id > 0;
 			}
 
 			int64_t GetStartVertexId() const
 			{
-				return IsPositiveStrand() ? (*chr_)[idx_].id : -(*chr_)[idx_].id;
+				return IsPositiveStrand() ? storage_->posChr_[chrId_][idx_].id : -storage_->posChr_[chrId_][idx_].id;
 			}
 
 			int64_t GetEndVertexId() const
 			{
-				return IsPositiveStrand() ? (*chr_)[idx_ + 1].id : -(*chr_)[idx_ - 1].id;
+				return IsPositiveStrand() ? storage_->posChr_[chrId_][idx_ + 1].id : storage_->posChr_[chrId_][idx_ - 1].id;
 			}
 
-			char GetChar() const;
+			char GetChar() const
+			{
+				if (IsPositiveStrand())
+				{
+					return storage_->seq_[chrId_][idx_ + storage_->k_];
+				}
+
+				return TwoPaCo::DnaChar::ReverseChar(storage_->seq_[chrId_][idx_ - storage_->k_]);
+			}
 
 			int64_t GetPosition() const
 			{
-				return (*chr_)[idx_].pos;
+				return storage_->posChr_[chrId_][idx_].pos;
 			}
 
 			uint64_t GetIdx() const
@@ -83,7 +93,7 @@ namespace Sibelia
 			{
 				if (IsPositiveStrand())
 				{
-					return idx_ < chr_->size() - 1;
+					return idx_ < storage_->posChr_[chrId_].size() - 1;
 				}
 				else
 				{
@@ -99,7 +109,7 @@ namespace Sibelia
 				}
 				else
 				{
-					return idx_ < chr_->size();
+					return idx_ < storage_->posChr_[chrId_].size();
 				}
 			}
 
@@ -147,14 +157,14 @@ namespace Sibelia
 				}
 			}
 
-			EdgeIterator(int64_t idx, const VertexVector * chr, uint64_t chrId) : idx_(idx), chr_(chr), chrId_(chrId)
+			EdgeIterator(int64_t idx, const EdgeStorage * storage, uint64_t chrId) : idx_(idx), storage_(storage), chrId_(chrId)
 			{
 
 			}
 
 			friend class EdgeStorage;
 			int64_t idx_;			
-			const VertexVector * chr_;
+			const EdgeStorage * storage_;
 			uint64_t chrId_;
 		};
 
@@ -170,7 +180,7 @@ namespace Sibelia
 
 		EdgeIterator GetIterator(uint64_t chrId, uint64_t idx) const
 		{
-			return EdgeIterator(idx, &posChr_[chrId], chrId);
+			return EdgeIterator(idx, this, chrId);
 		}
 
 		uint64_t GetVerticesNumber() const
@@ -186,10 +196,10 @@ namespace Sibelia
 		EdgeIterator GetOutgoingEdge(uint64_t vertexId, uint64_t idx) const
 		{
 			auto coord = coordinate_[vertexId][idx];
-			return EdgeIterator(coord.idx, &posChr_[coord.chr], coord.chr);
+			return EdgeIterator(coord.idx, this, coord.chr);
 		}
 
-		void Init(const std::string & inFileName)
+		void Init(const std::string & inFileName, const std::string & genomesFileName)
 		{
 			TwoPaCo::JunctionPositionReader reader(inFileName);
 			for (TwoPaCo::JunctionPosition junction; reader.NextJunctionPosition(junction);)
@@ -209,16 +219,28 @@ namespace Sibelia
 
 				coordinate_[absId].push_back(Coordinate(junction.GetChr(), posChr_[junction.GetChr()].size() - 1));
 			}
+
+			size_t record = 0;
+			seq_.resize(posChr_.size());
+			for (TwoPaCo::StreamFastaParser parser(genomesFileName); parser.ReadRecord(); record++)
+			{
+				for (char ch; parser.GetChar(ch); )
+				{
+					seq_[record].push_back(ch);
+				}
+			}
 		}
 
 		EdgeStorage() {}
-		EdgeStorage(const std::string & fileName)
+		EdgeStorage(const std::string & fileName, const std::string & genomesFileName, uint64_t k) : k_(k)
 		{
-			Init(fileName);
+			Init(fileName, genomesFileName);
 		}
 
 	private:
 		
+		uint64_t k_;
+		std::vector<std::string> seq_;
 		std::vector<VertexVector> posChr_;
 		std::vector<CoordinateVector> coordinate_;
 	};

@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <fstream>
+#include <dnachar.h>
 #include <stdexcept>
 #include <algorithm>
 

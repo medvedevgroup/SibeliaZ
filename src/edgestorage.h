@@ -51,7 +51,7 @@ namespace Sibelia
 
 			bool IsPositiveStrand() const
 			{
-				return storage_->posChr_[chrId_][idx_].id > 0;
+				return positiveStrand_;
 			}
 
 			int64_t GetStartVertexId() const
@@ -157,14 +157,15 @@ namespace Sibelia
 				}
 			}
 
-			EdgeIterator(int64_t idx, const EdgeStorage * storage, uint64_t chrId) : idx_(idx), storage_(storage), chrId_(chrId)
+			EdgeIterator(const EdgeStorage * storage, int64_t idx, uint64_t chrId) : storage_(storage), idx_(idx), chrId_(chrId), positiveStrand_(storage->posChr_[chrId][idx].id > 0)
 			{
 
 			}
 
 			friend class EdgeStorage;
-			int64_t idx_;			
 			const EdgeStorage * storage_;
+			int64_t idx_;
+			bool positiveStrand_;			
 			uint64_t chrId_;
 		};
 
@@ -180,7 +181,7 @@ namespace Sibelia
 
 		EdgeIterator GetIterator(uint64_t chrId, uint64_t idx) const
 		{
-			return EdgeIterator(idx, this, chrId);
+			return EdgeIterator(this, idx, chrId);
 		}
 
 		uint64_t GetVerticesNumber() const
@@ -196,7 +197,7 @@ namespace Sibelia
 		EdgeIterator GetOutgoingEdge(uint64_t vertexId, uint64_t idx) const
 		{
 			auto coord = coordinate_[vertexId][idx];
-			return EdgeIterator(coord.idx, this, coord.chr);
+			return EdgeIterator(this, coord.idx, coord.chr);
 		}
 
 		void Init(const std::string & inFileName, const std::string & genomesFileName)

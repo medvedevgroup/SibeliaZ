@@ -41,6 +41,36 @@ namespace Sibelia
 
 	public:		
 
+		class Edge
+		{
+		public:
+			Edge() {}
+
+			Edge(int64_t startVertex, int64_t endVertex) : startVertex_(startVertex), endVertex_(endVertex)
+			{
+
+			}
+
+			int64_t GetStartVertex() const
+			{
+				return startVertex_;
+			}
+
+			int64_t GetEndVertex() const
+			{
+				return endVertex_;
+			}
+
+			bool operator < (const Edge & e) const
+			{
+				return std::make_pair(startVertex_, endVertex_) < std::make_pair(e.startVertex_, e.endVertex_);
+			}
+
+		private:
+			int64_t startVertex_;
+			int64_t endVertex_;
+		};
+
 		class EdgeIterator
 		{
 		public:
@@ -51,7 +81,17 @@ namespace Sibelia
 
 			bool IsPositiveStrand() const
 			{
-				return positiveStrand_;
+				return storage_->posChr_[chrId_][originalIdx_].id > 0;
+			}
+
+			Edge operator * () const
+			{
+				return Edge(GetStartVertexId(), GetEndVertexId());
+			}
+
+			Edge operator -> () const
+			{
+				return Edge(GetStartVertexId(), GetEndVertexId());
 			}
 
 			int64_t GetStartVertexId() const
@@ -72,7 +112,7 @@ namespace Sibelia
 				}
 
 				return TwoPaCo::DnaChar::ReverseChar(storage_->seq_[chrId_][idx_ - storage_->k_]);
-			}
+			}			
 
 			int64_t GetPosition() const
 			{
@@ -88,6 +128,12 @@ namespace Sibelia
 			{
 				return chrId_;
 			}			
+
+			uint64_t GetLength() const
+			{
+				EdgeIterator copy = *this;
+				return abs((++copy).GetPosition() - GetPosition());
+			}
 
 			bool CanInc() const
 			{
@@ -157,7 +203,7 @@ namespace Sibelia
 				}
 			}
 
-			EdgeIterator(const EdgeStorage * storage, int64_t idx, uint64_t chrId) : storage_(storage), idx_(idx), chrId_(chrId), positiveStrand_(storage->posChr_[chrId][idx].id > 0)
+			EdgeIterator(const EdgeStorage * storage, int64_t idx, uint64_t chrId) : storage_(storage), idx_(idx), chrId_(chrId), originalIdx_(idx)
 			{
 
 			}
@@ -165,7 +211,7 @@ namespace Sibelia
 			friend class EdgeStorage;
 			const EdgeStorage * storage_;
 			int64_t idx_;
-			bool positiveStrand_;			
+			int64_t originalIdx_;
 			uint64_t chrId_;
 		};
 
@@ -198,6 +244,11 @@ namespace Sibelia
 		{
 			auto coord = coordinate_[vertexId][idx];
 			return EdgeIterator(this, coord.idx, coord.chr);
+		}
+
+		void AdjacencyList(uint64_t vid, std::vector<uint64_t> & list) const
+		{
+
 		}
 
 		void Init(const std::string & inFileName, const std::string & genomesFileName)

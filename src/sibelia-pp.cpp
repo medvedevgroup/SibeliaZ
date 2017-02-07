@@ -10,6 +10,8 @@ size_t Atoi(const char * str)
 	return ret;
 }
 
+const int32_t Sibelia::BlocksFinder::UNKNOWN_BLOCK = INT32_MAX;
+
 class OddConstraint : public TCLAP::Constraint < unsigned int >
 {
 public:
@@ -109,7 +111,7 @@ int main(int argc, char * argv[])
 		cmd.parse(argc, argv);
 
 		Sibelia::EdgeStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue());
-		Sibelia::BlocksFinder finder(storage);
+		Sibelia::BlocksFinder finder(storage, kvalue.getValue());
 		finder.FindBlocks(minBlockSize.getValue(), maxBranchSize.getValue());
 	}
 	catch (TCLAP::ArgException & e)

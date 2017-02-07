@@ -143,6 +143,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\blocksfinder.cpp" />
     <ClCompile Include="..\..\src\dnachar.cpp" />
     <ClCompile Include="..\..\src\sibelia-pp.cpp" />
     <ClCompile Include="..\..\src\streamfastaparser.cpp" />

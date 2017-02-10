@@ -40,7 +40,7 @@ namespace Sibelia
 	{
 	public:
 
-		BlocksFinder(const EdgeStorage storage, size_t k) : storage_(storage), k_(k)
+		BlocksFinder(const EdgeStorage & storage, size_t k) : storage_(storage), k_(k)
 		{
 			
 		}
@@ -73,6 +73,8 @@ namespace Sibelia
 			{
 				ExtendSeedEdge(it->first, edgeLength);
 			}
+
+			edgeLength.clear();
 		}
 
 		void GenerateOutput(std::ostream & out) const
@@ -241,7 +243,7 @@ namespace Sibelia
 			BubbledBranches bulges;
 			std::map<size_t, BranchData> visit;
 			std::vector<EdgeStorage::EdgeIterator> outEdges;
-			for (size_t i = 0; i < storage_.GetOutgoingEdgesCount(i); i++)
+			for (size_t i = 0; i < storage_.GetOutgoingEdgesCount(vertexId); i++)
 			{				
 				EdgeStorage::EdgeIterator edge = storage_.GetOutgoingEdge(vertexId, i);
 				outEdges.push_back(edge);

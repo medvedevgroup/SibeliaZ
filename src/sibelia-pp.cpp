@@ -113,6 +113,7 @@ int main(int argc, char * argv[])
 		Sibelia::EdgeStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue());
 		Sibelia::BlocksFinder finder(storage, kvalue.getValue());
 		finder.FindBlocks(minBlockSize.getValue(), maxBranchSize.getValue());
+		finder.GenerateOutput(std::cout);
 	}
 	catch (TCLAP::ArgException & e)
 	{

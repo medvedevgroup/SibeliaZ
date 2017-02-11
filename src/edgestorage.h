@@ -81,7 +81,7 @@ namespace Sibelia
 
 			bool IsPositiveStrand() const
 			{
-				return storage_->posChr_[chrId_][originalIdx_].id > 0;
+				return isPositiveStrand_;
 			}
 
 			Edge operator * () const
@@ -203,16 +203,17 @@ namespace Sibelia
 				}
 			}
 
-			EdgeIterator(const EdgeStorage * storage, int64_t idx, uint64_t chrId) : storage_(storage), idx_(idx), chrId_(chrId), originalIdx_(idx)
+			EdgeIterator(const EdgeStorage * storage, uint64_t chrId, int64_t idx, bool isPositiveStrand) : storage_(storage), idx_(idx), chrId_(chrId), isPositiveStrand_(isPositiveStrand)
 			{
 
 			}
 
 			friend class EdgeStorage;
 			const EdgeStorage * storage_;
-			int64_t idx_;
-			int64_t originalIdx_;
 			uint64_t chrId_;
+			uint64_t idx_;
+			bool isPositiveStrand_;
+			
 		};
 
 		uint64_t GetChrNumber() const
@@ -225,9 +226,9 @@ namespace Sibelia
 			return posChr_[chrId].size() - 1;
 		}
 
-		EdgeIterator GetIterator(uint64_t chrId, uint64_t idx) const
+		EdgeIterator GetIterator(uint64_t chrId, uint64_t idx, bool isPositiveStrand = true) const
 		{
-			return EdgeIterator(this, idx, chrId);
+			return EdgeIterator(this, chrId, idx, isPositiveStrand);
 		}
 
 		uint64_t GetVerticesNumber() const
@@ -235,20 +236,50 @@ namespace Sibelia
 			return coordinate_.size();
 		}
 
-		uint64_t GetOutgoingEdgesCount(uint64_t vertexId) const
+		uint64_t GetOutgoingEdgesCount(int64_t vertexId) const
 		{
 			return coordinate_[vertexId].size();
 		}
 
-		EdgeIterator GetOutgoingEdge(uint64_t vertexId, uint64_t idx) const
+		EdgeIterator GetOutgoingEdge(int64_t vertexId, uint64_t idx) const
 		{
-			auto coord = coordinate_[vertexId][idx];
-			return EdgeIterator(this, coord.idx, coord.chr);
+			auto coord = coordinate_[abs(vertexId)][idx];			
+			return EdgeIterator(this, coord.idx, coord.chr, posChr_[coord.chr][idx].id == vertexId);
 		}
 
-		void AdjacencyList(uint64_t vid, std::vector<uint64_t> & list) const
+		bool EdgesOnlyOnNegativeStrand(int64_t vertexId) const
 		{
+			for (auto coord : coordinate_[abs(vertexId)])
+			{
+				if (posChr_[coord.chr][coord.idx].id == vertexId)
+				{
+					return false;
+				}
+			}
 
+			return true;
+		}
+
+		void AdjacencyList(int64_t vertexId, std::vector<int64_t> & list) const
+		{
+			list.clear();
+			for (auto coord : coordinate_[abs(vertexId)])
+			{
+				if (posChr_[coord.chr][coord.idx].id == vertexId)
+				{
+					if (coord.idx + 1 < posChr_[coord.chr].size())
+					{
+						list.push_back(posChr_[coord.chr][coord.idx + 1].id);
+					}
+				}
+				else
+				{
+					if (coord.idx > 0)
+					{
+						list.push_back(-posChr_[coord.chr][coord.idx - 1].id);
+					}
+				}
+			}
 		}
 
 		void Init(const std::string & inFileName, const std::string & genomesFileName)

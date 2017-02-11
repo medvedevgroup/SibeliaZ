@@ -55,9 +55,12 @@ namespace Sibelia
 			}
 			
 			std::map<EdgeStorage::Edge, uint32_t> bubbleCount;
-			for (size_t vid = 0; vid < storage_.GetVerticesNumber(); vid++)
+			for (uint64_t vid = -storage_.GetVerticesNumber() + 1; vid < storage_.GetVerticesNumber(); vid++)
 			{
-				CountBubbles(vid, bubbleCount);
+				if (!storage_.EdgesOnlyOnNegativeStrand(vid))
+				{
+					CountBubbles(vid, bubbleCount);
+				}
 			}
 
 			std::map<EdgeStorage::Edge, uint32_t> edgeLength;
@@ -160,7 +163,7 @@ namespace Sibelia
 			}
 
 			blocksFound_++;
-			ReScorePath(bestPath, seen);
+			RescorePath(bestPath, seen);
 			for (auto it : seen)
 			{
 				blockId_[it.first.first][it.first.second] = blocksFound_ ? it.second : -blocksFound_;
@@ -199,13 +202,13 @@ namespace Sibelia
 			return score;
 		}
 
-		void ReScorePath(Path & path, std::map<std::pair<uint64_t, uint64_t>, bool> & seen)
+		void RescorePath(Path & path, std::map<std::pair<uint64_t, uint64_t>, bool> & seen)
 		{
 			seen.clear();
 			path.score = 0;
-			for (uint64_t i = 0; i < path.vertex.size(); i++)
+			for (size_t i = 0; i < path.vertex.size(); i++)
 			{
-				uint64_t v = path.vertex[i];
+				int64_t v = path.vertex[i];
 				for (size_t e = 0; e < storage_.GetOutgoingEdgesCount(path.vertex[i]); e++)
 				{
 					path.score += TraceForward(path, i, storage_.GetOutgoingEdge(v, e), seen);
@@ -216,7 +219,7 @@ namespace Sibelia
 		void ExtendPath(Path & currentPath, Path & bestPath, std::map<EdgeStorage::Edge, uint32_t> & edgeLength, int maxDepth, std::map<std::pair<uint64_t, uint64_t>, bool> & seen)
 		{
 			seen.clear();
-			ReScorePath(currentPath, seen);
+			RescorePath(currentPath, seen);
 			if (currentPath.score > bestPath.score)
 			{
 				bestPath = currentPath;
@@ -224,7 +227,7 @@ namespace Sibelia
 
 			if (maxDepth > 0)
 			{
-				std::vector<uint64_t> adjList;
+				std::vector<int64_t> adjList;
 				storage_.AdjacencyList(currentPath.vertex.back(), adjList);
 				for (auto nextVertex : adjList)
 				{
@@ -238,7 +241,7 @@ namespace Sibelia
 			}			
 		}
 
-		void CountBubbles(uint64_t vertexId, std::map<EdgeStorage::Edge, uint32_t> & bubbleCount)
+		void CountBubbles(int64_t vertexId, std::map<EdgeStorage::Edge, uint32_t> & bubbleCount)
 		{			
 			BubbledBranches bulges;
 			std::map<size_t, BranchData> visit;
@@ -247,10 +250,10 @@ namespace Sibelia
 			{				
 				EdgeStorage::EdgeIterator edge = storage_.GetOutgoingEdge(vertexId, i);
 				outEdges.push_back(edge);
-				size_t startVertex = edge.GetStartVertexId();				
+				int64_t startVertex = edge.GetStartVertexId();			
 				for (size_t step = 1; step < maxBranchSize_ && edge.CanInc(); ++edge)
 				{
-					size_t nowVertexId = edge.GetEndVertexId();
+					int64_t nowVertexId = edge.GetEndVertexId();
 					if (nowVertexId == startVertex)
 					{
 						break;
@@ -275,7 +278,7 @@ namespace Sibelia
 			{
 				if (point->second.branchId.size() > 1)
 				{
-					uint64_t n = point->second.branchId.size();
+					size_t n = point->second.branchId.size();
 					for (size_t i = 0; i < point->second.branchId.size(); ++i)
 					{
 						auto & edgeIt = outEdges[point->second.branchId[i]];

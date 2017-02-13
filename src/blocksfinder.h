@@ -5,6 +5,7 @@
 
 #include <set>
 #include <map>
+#include <iostream>
 
 namespace Sibelia
 {
@@ -48,6 +49,8 @@ namespace Sibelia
 		void FindBlocks(size_t minBlockSize, size_t maxBranchSize)
 		{
 			blocksFound_ = 0;
+			minBlockSize_ = minBlockSize;
+			maxBranchSize_ = maxBranchSize_;
 			blockId_.resize(storage_.GetChrNumber());
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
@@ -55,7 +58,7 @@ namespace Sibelia
 			}
 			
 			std::map<EdgeStorage::Edge, uint32_t> bubbleCount;
-			for (uint64_t vid = -storage_.GetVerticesNumber() + 1; vid < storage_.GetVerticesNumber(); vid++)
+			for (int64_t vid = -storage_.GetVerticesNumber() + 1; vid < storage_.GetVerticesNumber(); vid++)
 			{
 				if (!storage_.EdgesOnlyOnNegativeStrand(vid))
 				{
@@ -85,7 +88,7 @@ namespace Sibelia
 			std::vector<BlockInstance> instance;
 			for (size_t chr = 0; chr < blockId_.size(); chr++)
 			{
-				for (size_t i = 0; i < blockId_[i].size(); )
+				for (size_t i = 0; i < blockId_[chr].size(); )
 				{
 					if (blockId_[chr][i] != UNKNOWN_BLOCK)
 					{
@@ -140,7 +143,7 @@ namespace Sibelia
 		{
 			Path() : score(0) {}
 			int score;
-			std::vector<uint32_t> vertex;
+			std::vector<int64_t> vertex;
 			std::vector<uint32_t> distance;
 		};
 
@@ -149,6 +152,7 @@ namespace Sibelia
 			Path bestPath;			
 			bestPath.vertex.push_back(edge.GetStartVertex());
 			bestPath.vertex.push_back(edge.GetEndVertex());
+			bestPath.distance.push_back(0);
 			bestPath.distance.push_back(edgeLength[edge]);
 			std::map<std::pair<uint64_t, uint64_t>, bool> seen;
 			while (true)
@@ -244,17 +248,17 @@ namespace Sibelia
 		void CountBubbles(int64_t vertexId, std::map<EdgeStorage::Edge, uint32_t> & bubbleCount)
 		{			
 			BubbledBranches bulges;
-			std::map<size_t, BranchData> visit;
+			std::map<int64_t, BranchData> visit;
 			std::vector<EdgeStorage::EdgeIterator> outEdges;
 			for (size_t i = 0; i < storage_.GetOutgoingEdgesCount(vertexId); i++)
 			{				
 				EdgeStorage::EdgeIterator edge = storage_.GetOutgoingEdge(vertexId, i);
 				outEdges.push_back(edge);
-				int64_t startVertex = edge.GetStartVertexId();			
-				for (size_t step = 1; step < maxBranchSize_ && edge.CanInc(); ++edge)
+				for (size_t startPosition = edge.GetPosition(); abs(long long(startPosition - edge.GetPosition())) < maxBranchSize_ && edge.CanInc(); ++edge)
 				{
+					long long ll = abs(long long(startPosition - edge.GetPosition()));
 					int64_t nowVertexId = edge.GetEndVertexId();
-					if (nowVertexId == startVertex)
+					if (nowVertexId == vertexId)
 					{
 						break;
 					}
@@ -292,7 +296,7 @@ namespace Sibelia
 		}
 		
 		size_t k_;
-		size_t blocksFound_;
+		int64_t blocksFound_;
 		size_t minBlockSize_;
 		size_t maxBranchSize_;		
 		const EdgeStorage & storage_;

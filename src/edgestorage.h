@@ -231,20 +231,20 @@ namespace Sibelia
 			return EdgeIterator(this, chrId, idx, isPositiveStrand);
 		}
 
-		uint64_t GetVerticesNumber() const
+		int64_t GetVerticesNumber() const
 		{
 			return coordinate_.size();
 		}
 
 		uint64_t GetOutgoingEdgesCount(int64_t vertexId) const
 		{
-			return coordinate_[vertexId].size();
+			return coordinate_[abs(vertexId)].size();
 		}
 
-		EdgeIterator GetOutgoingEdge(int64_t vertexId, uint64_t idx) const
+		EdgeIterator GetOutgoingEdge(int64_t vertexId, uint64_t n) const
 		{
-			auto coord = coordinate_[abs(vertexId)][idx];			
-			return EdgeIterator(this, coord.idx, coord.chr, posChr_[coord.chr][idx].id == vertexId);
+			auto coord = coordinate_[abs(vertexId)][n];			
+			return EdgeIterator(this, coord.chr, coord.idx, posChr_[coord.chr][coord.idx].id == vertexId);
 		}
 
 		bool EdgesOnlyOnNegativeStrand(int64_t vertexId) const

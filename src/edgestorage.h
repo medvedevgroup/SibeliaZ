@@ -114,9 +114,14 @@ namespace Sibelia
 				return TwoPaCo::DnaChar::ReverseChar(storage_->seq_[chrId_][idx_ - storage_->k_]);
 			}			
 
-			int64_t GetPosition() const
+			int64_t GetStartPosition() const
 			{
 				return storage_->posChr_[chrId_][idx_].pos;
+			}
+
+			int64_t GetEndPosition() const
+			{
+				return (++EdgeIterator(*this)).GetStartPosition();
 			}
 
 			uint64_t GetIdx() const
@@ -131,8 +136,7 @@ namespace Sibelia
 
 			uint64_t GetLength() const
 			{
-				EdgeIterator copy = *this;
-				return abs((++copy).GetPosition() - GetPosition());
+				return abs(GetEndPosition() - GetStartPosition());
 			}
 
 			bool CanInc() const
@@ -260,7 +264,32 @@ namespace Sibelia
 			return true;
 		}
 
-		void AdjacencyList(int64_t vertexId, std::vector<int64_t> & list) const
+		void PredecessorsList(int64_t vertexId, std::vector<int64_t> & list) const
+		{
+			list.clear();
+			for (auto coord : coordinate_[abs(vertexId)])
+			{
+				if (posChr_[coord.chr][coord.idx].id == vertexId)
+				{
+					if (coord.idx > 0)
+					{
+						list.push_back(posChr_[coord.chr][coord.idx - 1].id);
+					}
+				}
+				else
+				{
+					if (coord.idx + 1 < posChr_[coord.chr].size())
+					{
+						list.push_back(-posChr_[coord.chr][coord.idx + 1].id);
+					}					
+				}
+			}
+
+			std::sort(list.begin(), list.end());
+			list.erase(std::unique(list.begin(), list.end()), list.end());
+		}
+
+		void SuccessorsList(int64_t vertexId, std::vector<int64_t> & list) const
 		{
 			list.clear();
 			for (auto coord : coordinate_[abs(vertexId)])
@@ -280,6 +309,9 @@ namespace Sibelia
 					}
 				}
 			}
+
+			std::sort(list.begin(), list.end());
+			list.erase(std::unique(list.begin(), list.end()), list.end());
 		}
 
 		void Init(const std::string & inFileName, const std::string & genomesFileName)

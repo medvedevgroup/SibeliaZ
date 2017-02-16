@@ -98,6 +98,6 @@ namespace Sibelia
 
 	bool BlockInstance::operator < (const BlockInstance & toCompare) const
 	{
-		return std::make_pair(GetChrId(), GetStart()) < std::make_pair(GetChrId(), toCompare.GetStart());
+		return std::make_pair(GetBlockId(), std::make_pair(GetChrId(), GetStart())) < std::make_pair(toCompare.GetBlockId(), std::make_pair(toCompare.GetChrId(), toCompare.GetStart()));
 	}
 }

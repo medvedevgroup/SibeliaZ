@@ -325,7 +325,7 @@ namespace Sibelia
 				}
 
 				posChr_[junction.GetChr()].push_back(Vertex(junction));
-				int64_t absId = abs(junction.GetId());
+				size_t absId = abs(junction.GetId());
 
 				while (absId >= coordinate_.size())
 				{

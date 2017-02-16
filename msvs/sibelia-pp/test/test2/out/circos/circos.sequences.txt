@@ -1,7 +1,0 @@
-chr - seq1 S0 0 1464 green_a4
-chr - seq2 S1 0 1482 green_a4
-chr - seq3 S2 0 1476 green_a4
-chr - seq4 S3 0 1467 green_a4
-chr - seq5 S4 0 1464 green_a4
-chr - seq6 S5 0 1518 green_a4
-chr - seq7 S6 0 1494 green_a4

@@ -108,12 +108,22 @@ int main(int argc, char * argv[])
 			"file name",
 			cmd);
 
-		cmd.parse(argc, argv);
+		TCLAP::ValueArg<std::string> dumpFileName("d",
+			"dumpfile",
+			"Dump file name",
+			false,
+			"dump.dot",
+			"file name",
+			cmd);
 
+		cmd.parse(argc, argv);
+	
 		Sibelia::EdgeStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue());
-		Sibelia::BlocksFinder finder(storage, kvalue.getValue());
+		Sibelia::BlocksFinder finder(storage, kvalue.getValue());		
 		finder.FindBlocks(minBlockSize.getValue(), maxBranchSize.getValue());
 		finder.GenerateOutput(std::cout);
+		std::ofstream dumpStream(dumpFileName.getValue());
+		finder.Dump(dumpStream);
 	}
 	catch (TCLAP::ArgException & e)
 	{

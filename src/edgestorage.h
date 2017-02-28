@@ -66,6 +66,11 @@ namespace Sibelia
 				return std::make_pair(startVertex_, endVertex_) < std::make_pair(e.startVertex_, e.endVertex_);
 			}
 
+			Edge Reverse() const
+			{
+				return Edge(-endVertex_, -startVertex_);
+			}
+
 		private:
 			int64_t startVertex_;
 			int64_t endVertex_;
@@ -101,7 +106,7 @@ namespace Sibelia
 
 			int64_t GetEndVertexId() const
 			{
-				return IsPositiveStrand() ? storage_->posChr_[chrId_][idx_ + 1].id : storage_->posChr_[chrId_][idx_ - 1].id;
+				return IsPositiveStrand() ? storage_->posChr_[chrId_][idx_ + 1].id : -storage_->posChr_[chrId_][idx_ - 1].id;
 			}
 
 			char GetChar() const
@@ -116,7 +121,12 @@ namespace Sibelia
 
 			int64_t GetStartPosition() const
 			{
-				return storage_->posChr_[chrId_][idx_].pos;
+				if (IsPositiveStrand())
+				{
+					return storage_->posChr_[chrId_][idx_].pos;
+				}
+
+				return storage_->posChr_[chrId_][idx_].pos + storage_->k_;
 			}
 
 			int64_t GetEndPosition() const
@@ -138,7 +148,7 @@ namespace Sibelia
 			{
 				return abs(GetEndPosition() - GetStartPosition());
 			}
-
+			/*
 			bool CanInc() const
 			{
 				if (IsPositiveStrand())
@@ -160,6 +170,18 @@ namespace Sibelia
 				else
 				{
 					return idx_ < storage_->posChr_[chrId_].size();
+				}
+			}*/
+
+			bool Valid() const
+			{
+				if (IsPositiveStrand())
+				{
+					return idx_ >= 0 && idx_ < storage_->posChr_[chrId_].size() - 1;
+				}
+				else
+				{
+					return idx_ >= 1 && idx_ < storage_->posChr_[chrId_].size();
 				}
 			}
 
@@ -193,7 +215,7 @@ namespace Sibelia
 
 			void Inc()
 			{
-				if (CanInc())
+				if (Valid())
 				{
 					idx_ += IsPositiveStrand() ? +1 : -1;
 				}
@@ -201,7 +223,7 @@ namespace Sibelia
 
 			void Dec()
 			{
-				if (CanDec())
+				if (Valid())
 				{
 					idx_ += IsPositiveStrand() ? -1 : +1;
 				}
@@ -215,7 +237,7 @@ namespace Sibelia
 			friend class EdgeStorage;
 			const EdgeStorage * storage_;
 			uint64_t chrId_;
-			uint64_t idx_;
+			int64_t idx_;
 			bool isPositiveStrand_;
 			
 		};
@@ -225,9 +247,9 @@ namespace Sibelia
 			return posChr_.size();
 		}
 
-		uint64_t GetChrEdgeCount(uint64_t chrId) const
+		uint64_t GetChrVerticesCount(uint64_t chrId) const
 		{
-			return posChr_[chrId].size() - 1;
+			return posChr_[chrId].size();
 		}
 
 		EdgeIterator GetIterator(uint64_t chrId, uint64_t idx, bool isPositiveStrand = true) const

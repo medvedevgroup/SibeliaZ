@@ -57,7 +57,7 @@ namespace Sibelia
 			blockId_.resize(storage_.GetChrNumber());
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
-				blockId_[i].assign(storage_.GetChrEdgeCount(i), UNKNOWN_BLOCK);
+				blockId_[i].assign(storage_.GetChrVerticesCount(i), UNKNOWN_BLOCK);
 			}
 			
 			std::map<EdgeStorage::Edge, uint32_t> bubbleCount;
@@ -69,10 +69,10 @@ namespace Sibelia
 				}
 			}
 
-			std::map<EdgeStorage::Edge, uint64_t> edgeLength;			
+			std::map<EdgeStorage::Edge, int64_t> edgeLength;			
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
-				for (auto it = storage_.GetIterator(i, 0); it.CanInc(); ++it)
+				for (auto it = storage_.GetIterator(i, 0); it.Valid(); ++it)
 				{
 					edgeLength[*it] = it.GetLength();
 				}
@@ -86,7 +86,7 @@ namespace Sibelia
 			std::sort(bubbleCountVector.begin(), bubbleCountVector.end());
 			for (auto it = bubbleCountVector.rbegin(); it != bubbleCountVector.rend(); ++it)
 			{
-				if (forbidden_.count(it->second) == 0)
+				if (forbidden_.count(it->second) == 0 && forbidden_.count(it->second.Reverse()) == 0)
 				{
 					ExtendSeedEdge(it->second, edgeLength);
 				}				
@@ -100,9 +100,10 @@ namespace Sibelia
 			out << "digraph G\n{\nrankdir = LR" << std::endl;
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
-				for (EdgeStorage::EdgeIterator it = storage_.GetIterator(i, 0); it.CanInc(); ++it)
+				for (EdgeStorage::EdgeIterator it = storage_.GetIterator(i, 0); it.Valid(); ++it)
 				{
 					out << it.GetStartVertexId() << " -> " << it.GetEndVertexId() << "[label=\"" << it.GetChrId() << ", " << it.GetStartPosition() << "\" color=blue]" << std::endl;
+					out << -it.GetEndVertexId() << " -> " << -it.GetStartVertexId() << "[label=\"" << it.GetChrId() << ", " << it.GetStartPosition() << "\" color=red]" << std::endl;
 				}
 			}
 
@@ -110,7 +111,8 @@ namespace Sibelia
 			{
 				for (size_t j = 0; j < syntenyPath_[i].size() - 1; j++)
 				{
-					out << syntenyPath_[i][j] << " -> " << syntenyPath_[i][j + 1] << "[label=\"" << i << "\" color=red]" << std::endl;
+					out << syntenyPath_[i][j] << " -> " << syntenyPath_[i][j + 1] << "[label=\"" << i + 1 << "\" color=green]" << std::endl;
+					out << -syntenyPath_[i][j + 1] << " -> " << -syntenyPath_[i][j] << "[label=\"" << -int64_t(i + 1) << "\" color=green]" << std::endl;
 				}
 			}
 
@@ -126,21 +128,14 @@ namespace Sibelia
 				{
 					if (blockId_[chr][i] != UNKNOWN_BLOCK)
 					{
+						int64_t bid = blockId_[chr][i];
 						size_t j = i;
 						for (; j < blockId_[chr].size() && blockId_[chr][i] == blockId_[chr][j]; j++);
-						uint64_t start = storage_.GetIterator(chr, i).GetStartPosition();
-						uint64_t end = storage_.GetIterator(chr, j).GetStartPosition();
-						if (blockId_[chr][i] > 0)
-						{
-							end += k_;
-						}
-						else
-						{
-							start -= k_;
-						}
-
-						instance.push_back(BlockInstance(blockId_[chr][i], chr, start, end));
-						i = j;
+						j--;
+						int64_t start = storage_.GetIterator(chr, i, bid > 0).GetStartPosition();
+						int64_t end = storage_.GetIterator(chr, j, bid > 0).GetEndPosition();
+						instance.push_back(BlockInstance(blockId_[chr][i], chr, std::min(start, end), std::max(start, end)));
+						i = j + 1;
 					}
 					else
 					{
@@ -149,13 +144,14 @@ namespace Sibelia
 				}
 			}
 
+			std::cout << "B_Id\tChr_Id\tStart\tEnd\tLength" << std::endl;
 			std::sort(instance.begin(), instance.end());
 			for (size_t i = 0; i < instance.size(); )
 			{
 				size_t j = i;
 				for (; j < instance.size() && instance[i].GetBlockId() == instance[j].GetBlockId(); ++j)
 				{
-					out << instance[j].GetSignedBlockId() << '\t' << instance[j].GetChrId() << '\t' << instance[j].GetStart() << '\t' << instance[j].GetEnd() << std::endl;
+					out << instance[j].GetSignedBlockId() << '\t' << instance[j].GetChrId() << '\t' << instance[j].GetStart() << '\t' << instance[j].GetEnd() << '\t' << instance[j].GetEnd() - instance[j].GetStart() << std::endl;
 				}
 
 				i = j;
@@ -181,26 +177,21 @@ namespace Sibelia
 			std::deque<int64_t> distance;
 		};
 
-		void ExtendSeedEdge(EdgeStorage::Edge edge, std::map<EdgeStorage::Edge, uint64_t> & edgeLength)
+		void ExtendSeedEdge(EdgeStorage::Edge edge, std::map<EdgeStorage::Edge, int64_t> & edgeLength)
 		{			
 			Path bestPath;
 			bestPath.vertex.push_back(edge.GetStartVertex());
 			bestPath.vertex.push_back(edge.GetEndVertex());
 			bestPath.distance.push_back(0);
-			for (size_t i = 0; i < bestPath.vertex.size() - 1; i++)
-			{
-				bestPath.distance.push_back(edgeLength[Sibelia::EdgeStorage::Edge(bestPath.vertex[i], bestPath.vertex[i + 1])]);
-			}
-
-			std::map<std::pair<uint64_t, uint64_t>, bool> seen;
-			bool x = edge.GetStartVertex() == 28;
+			bestPath.distance.push_back(edgeLength[EdgeStorage::Edge(bestPath.vertex[0], bestPath.vertex[1])]);
+ 			std::map<std::pair<uint64_t, uint64_t>, bool> seen;
 			while (true)
 			{
 				Path currentPath = bestPath;
 				int64_t prevBestScore = bestPath.score;			
-				ExtendPathBackward(currentPath, bestPath, edgeLength, 12, seen);
+				ExtendPathBackward(currentPath, bestPath, edgeLength, 8, seen);
 				currentPath = bestPath;				
-				ExtendPathForward(currentPath, bestPath, edgeLength, 12, seen);
+				ExtendPathForward(currentPath, bestPath, edgeLength, 8, seen);
 				if (bestPath.score <= prevBestScore)
 				{
 					break;
@@ -234,29 +225,28 @@ namespace Sibelia
 				for (size_t e = 0; e < storage_.GetOutgoingEdgesCount(startVertex); e++)
 				{
 					bool anyHit = false;
+					int64_t localScore = 0;
 					size_t lastHitVertexIdx = startVertexIdx;
 					EdgeStorage::EdgeIterator edge = storage_.GetOutgoingEdge(startVertex, e);					
 					int64_t lastHitPosition = edge.GetStartPosition();					
-					for (; edge.CanInc() && abs(edge.GetEndPosition() - lastHitPosition) < maxBranchSize_; ++edge)
+					for (; edge.Valid() && abs(edge.GetEndPosition() - lastHitPosition) < maxBranchSize_; ++edge)
 					{
-						auto place = std::make_pair(edge.GetChrId(), edge.GetIdx());
+						auto place = std::make_pair(edge.GetChrId(), edge.GetIdx());						
 						if (seen.count(place) > 0 || blockId_[edge.GetChrId()][edge.GetIdx()] != UNKNOWN_BLOCK)
 						{
 							break;
 						}
 
 						seen[place] = edge.IsPositiveStrand();
-						size_t it = std::find(path.vertex.begin() + lastHitVertexIdx, path.vertex.end(), edge.GetEndVertexId()) - path.vertex.begin();
+						int64_t endVertex = edge.GetEndVertexId();
+						size_t it = std::find(path.vertex.begin() + lastHitVertexIdx + 1, path.vertex.end(), endVertex) - path.vertex.begin();
 						if (it != path.vertex.size())
 						{
-							if (path.distance[it] <= maxBranchSize_)
-							{								
-								for (size_t j = lastHitVertexIdx + 1; j <= it; ++j)
-								{
-									path.score += path.distance[j];
-									anyHit = true;
-								}
-
+							int64_t distance = path.distance[it] - path.distance[lastHitVertexIdx];
+							if (distance <= maxBranchSize_)
+							{						
+								anyHit = true;
+								localScore += distance;
 								lastHitVertexIdx = it;
 								lastHitPosition = edge.GetEndPosition();								
 							}
@@ -266,25 +256,19 @@ namespace Sibelia
 							}
 						}
 					}
-
-					if (anyHit)
+					
+					localScore -= path.distance[startVertexIdx] - path.distance.front();
+					localScore -= path.distance.back() - path.distance[lastHitVertexIdx];
+					if (anyHit && localScore > 0)
 					{
-						for (size_t i = 0; i <= startVertexIdx; i++)
-						{
-							path.score -= path.distance[i];
-						}
-
-						for (size_t i = lastHitVertexIdx + 1; i < path.distance.size(); i++)
-						{
-							path.score -= path.distance[i];
-						}
+						path.score += localScore;
 					}				
 				}
 			}
 			
 		}
 
-		void ExtendPathBackward(Path & currentPath, Path & bestPath, std::map<EdgeStorage::Edge, uint64_t> & edgeLength, int maxDepth, std::map<std::pair<uint64_t, uint64_t>, bool> & seen)
+		void ExtendPathBackward(Path & currentPath, Path & bestPath, std::map<EdgeStorage::Edge, int64_t> & edgeLength, int maxDepth, std::map<std::pair<uint64_t, uint64_t>, bool> & seen)
 		{
 			seen.clear();
 			RescorePath(currentPath, seen);
@@ -301,15 +285,9 @@ namespace Sibelia
 				{
 					if (std::find(currentPath.vertex.begin(), currentPath.vertex.end(), nextVertex) == currentPath.vertex.end() &&
 						forbidden_.count(EdgeStorage::Edge(nextVertex, currentPath.vertex.front())) == 0)
-					{						
-						currentPath.vertex.push_front(nextVertex);
-						currentPath.distance.clear();
-						currentPath.distance.push_back(0);
-						for (size_t i = 0; i < currentPath.vertex.size() - 1; i++)
-						{
-							currentPath.distance.push_back(edgeLength[Sibelia::EdgeStorage::Edge(currentPath.vertex[i], currentPath.vertex[i + 1])]);
-						}						
-
+					{	
+						currentPath.distance.push_front(currentPath.distance.front() - edgeLength[Sibelia::EdgeStorage::Edge(nextVertex, currentPath.vertex.front())]);
+						currentPath.vertex.push_front(nextVertex);						
 						ExtendPathBackward(currentPath, bestPath, edgeLength, maxDepth - 1, seen);
 						currentPath.distance.pop_front();
 						currentPath.vertex.pop_front();
@@ -318,7 +296,7 @@ namespace Sibelia
 			}
 		}
 
-		void ExtendPathForward(Path & currentPath, Path & bestPath, std::map<EdgeStorage::Edge, uint64_t> & edgeLength, int maxDepth, std::map<std::pair<uint64_t, uint64_t>, bool> & seen)
+		void ExtendPathForward(Path & currentPath, Path & bestPath, std::map<EdgeStorage::Edge, int64_t> & edgeLength, int maxDepth, std::map<std::pair<uint64_t, uint64_t>, bool> & seen)
 		{
 			seen.clear();
 			RescorePath(currentPath, seen);
@@ -336,14 +314,8 @@ namespace Sibelia
 					if (std::find(currentPath.vertex.begin(), currentPath.vertex.end(), nextVertex) == currentPath.vertex.end() &&
 						forbidden_.count(EdgeStorage::Edge(currentPath.vertex.back(), nextVertex)) == 0)
 					{
-						currentPath.vertex.push_back(nextVertex);
-						currentPath.distance.clear();
-						currentPath.distance.push_back(0);
-						for (size_t i = 0; i < currentPath.vertex.size() - 1; i++)
-						{
-							currentPath.distance.push_back(edgeLength[EdgeStorage::Edge(currentPath.vertex[i], currentPath.vertex[i + 1])]);
-						}
-
+						currentPath.distance.push_back(currentPath.distance.back() + edgeLength[EdgeStorage::Edge(currentPath.vertex.back(), nextVertex)]);
+						currentPath.vertex.push_back(nextVertex);						
 						ExtendPathForward(currentPath, bestPath, edgeLength, maxDepth - 1, seen);
 						currentPath.distance.pop_back();
 						currentPath.vertex.pop_back();
@@ -353,7 +325,8 @@ namespace Sibelia
 		}
 
 		void CountBubbles(int64_t vertexId, std::map<EdgeStorage::Edge, uint32_t> & bubbleCount)
-		{			
+		{
+			//THERE IS A BUG HERE: NOT ACCOUNTING FOR BUBBLE'S MINIMALITY
 			BubbledBranches bulges;
 			std::map<int64_t, BranchData> visit;
 			std::vector<EdgeStorage::EdgeIterator> outEdges;
@@ -361,7 +334,7 @@ namespace Sibelia
 			{				
 				EdgeStorage::EdgeIterator edge = storage_.GetOutgoingEdge(vertexId, i);
 				outEdges.push_back(edge);
-				for (int64_t startPosition = edge.GetStartPosition(); abs(startPosition - edge.GetEndPosition()) < maxBranchSize_ && edge.CanInc(); ++edge)
+				for (int64_t startPosition = edge.GetStartPosition(); abs(startPosition - edge.GetEndPosition()) < maxBranchSize_ && edge.Valid(); ++edge)
 				{					
 					int64_t nowVertexId = edge.GetEndVertexId();
 					if (nowVertexId == vertexId)

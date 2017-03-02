@@ -259,7 +259,7 @@ namespace Sibelia
 					
 					localScore -= path.distance[startVertexIdx] - path.distance.front();
 					localScore -= path.distance.back() - path.distance[lastHitVertexIdx];
-					if (anyHit && localScore > 0)
+					if (anyHit)
 					{
 						path.score += localScore;
 					}				

@@ -148,30 +148,6 @@ namespace Sibelia
 			{
 				return abs(GetEndPosition() - GetStartPosition());
 			}
-			/*
-			bool CanInc() const
-			{
-				if (IsPositiveStrand())
-				{
-					return idx_ < storage_->posChr_[chrId_].size() - 1;
-				}
-				else
-				{
-					return idx_ > 1;
-				}
-			}
-
-			bool CanDec() const
-			{
-				if (IsPositiveStrand())
-				{
-					return idx_ > 0;
-				}
-				else
-				{
-					return idx_ < storage_->posChr_[chrId_].size();
-				}
-			}*/
 
 			bool Valid() const
 			{

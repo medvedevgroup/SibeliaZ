@@ -47,11 +47,12 @@ namespace Sibelia
 			
 		}
 
-		void FindBlocks(size_t minBlockSize, size_t maxBranchSize)
+		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t flankingThreshold)
 		{
 			blocksFound_ = 0;
 			minBlockSize_ = minBlockSize;
 			maxBranchSize_ = maxBranchSize;
+			flankingThreshold_ = flankingThreshold;
 			std::vector<std::pair<uint32_t, EdgeStorage::Edge> > bubbleCountVector;
 
 			blockId_.resize(storage_.GetChrNumber());
@@ -171,10 +172,16 @@ namespace Sibelia
 
 		struct Path
 		{
-			Path() : score(0) {}
+			Path() : score(0), instances(0) {}
 			int64_t score;
+			int64_t instances;
 			std::deque<int64_t> vertex;
 			std::deque<int64_t> distance;
+
+			int64_t Length() const
+			{
+				return distance.back() - distance.front();
+			}
 		};
 
 		void ExtendSeedEdge(EdgeStorage::Edge edge, std::map<EdgeStorage::Edge, int64_t> & edgeLength)
@@ -184,6 +191,7 @@ namespace Sibelia
 			bestPath.vertex.push_back(edge.GetEndVertex());
 			bestPath.distance.push_back(0);
 			bestPath.distance.push_back(edgeLength[EdgeStorage::Edge(bestPath.vertex[0], bestPath.vertex[1])]);
+
  			std::map<std::pair<uint64_t, uint64_t>, bool> seen;
 			while (true)
 			{
@@ -198,7 +206,7 @@ namespace Sibelia
 				}
 			}
 
-			if (bestPath.score > 0)
+			if (bestPath.score > 0 && bestPath.Length() >= minBlockSize_ && bestPath.instances > 1)
 			{
 				blocksFound_++;
 				RescorePath(bestPath, seen);
@@ -215,10 +223,12 @@ namespace Sibelia
 			}			
 		}
 
-		void RescorePath(Path & path, std::map<std::pair<uint64_t, uint64_t>, bool> & seen)
+		void RescorePath(Path & path, std::map<std::pair<uint64_t, uint64_t>, bool> & assignment, bool finalScoring = true)
 		{
-			seen.clear();
 			path.score = 0;
+			path.instances = 0;
+			assignment.clear();
+			std::set<std::pair<uint64_t, uint64_t> >  seen;
 			for (size_t startVertexIdx = 0; startVertexIdx < path.vertex.size(); startVertexIdx++)
 			{				
 				int64_t startVertex = path.vertex[startVertexIdx];
@@ -228,7 +238,8 @@ namespace Sibelia
 					int64_t localScore = 0;
 					size_t lastHitVertexIdx = startVertexIdx;
 					EdgeStorage::EdgeIterator edge = storage_.GetOutgoingEdge(startVertex, e);					
-					int64_t lastHitPosition = edge.GetStartPosition();					
+					int64_t lastHitPosition = edge.GetStartPosition();
+					std::vector<std::pair<uint64_t, uint64_t> > history;
 					for (; edge.Valid() && abs(edge.GetEndPosition() - lastHitPosition) < maxBranchSize_; ++edge)
 					{
 						auto place = std::make_pair(edge.GetChrId(), edge.GetIdx());						
@@ -237,7 +248,8 @@ namespace Sibelia
 							break;
 						}
 
-						seen[place] = edge.IsPositiveStrand();
+						seen.insert(place);
+						history.push_back(place);
 						int64_t endVertex = edge.GetEndVertexId();
 						size_t it = std::find(path.vertex.begin() + lastHitVertexIdx + 1, path.vertex.end(), endVertex) - path.vertex.begin();
 						if (it != path.vertex.size())
@@ -256,13 +268,30 @@ namespace Sibelia
 							}
 						}
 					}
-					
-					localScore -= path.distance[startVertexIdx] - path.distance.front();
-					localScore -= path.distance.back() - path.distance[lastHitVertexIdx];
+						
 					if (anyHit)
 					{
-						path.score += localScore;
-					}				
+						int64_t leftFlank = path.distance[startVertexIdx] - path.distance.front();
+						int64_t chainLength = path.distance[lastHitVertexIdx] - path.distance[startVertexIdx];
+						int64_t rightFlank = path.distance.back() - path.distance[lastHitVertexIdx];
+						if (leftFlank > flankingThreshold_ || rightFlank > flankingThreshold_)
+						{
+							if (chainLength >= minBlockSize_ - flankingThreshold_ * 2)
+							{
+								path.score = -INT_MAX;
+								return;
+							}
+						}
+						else
+						{
+							path.instances++;
+							path.score += localScore - leftFlank - rightFlank;							
+							for (auto place : history)
+							{
+								assignment[place] = edge.IsPositiveStrand();
+							}
+						}
+					}								
 				}
 			}
 			
@@ -272,7 +301,7 @@ namespace Sibelia
 		{
 			seen.clear();
 			RescorePath(currentPath, seen);
-			if (currentPath.score > bestPath.score)
+			if (currentPath.score > bestPath.score && currentPath.instances > 1)
 			{
 				bestPath = currentPath;
 			}
@@ -376,8 +405,9 @@ namespace Sibelia
 		
 		size_t k_;
 		int64_t blocksFound_;
-		size_t minBlockSize_;
-		size_t maxBranchSize_;		
+		int64_t minBlockSize_;
+		int64_t maxBranchSize_;
+		int64_t flankingThreshold_;
 		const EdgeStorage & storage_;
 		std::set<EdgeStorage::Edge> forbidden_;
 		std::vector<std::vector<int64_t> > blockId_;

@@ -56,7 +56,15 @@ int main(int argc, char * argv[])
 			"branchsize",
 			"Maximum branch size",
 			false,
-			150,
+			125,
+			"integer",
+			cmd);
+
+		TCLAP::ValueArg<unsigned int> maxFlankingSize("f",
+			"flanksize",
+			"Maximum flank size",
+			false,
+			50,
 			"integer",
 			cmd);
 
@@ -64,7 +72,7 @@ int main(int argc, char * argv[])
 			"blocksize",
 			"Minimum block size",
 			false,
-			500,
+			300,
 			"integer",
 			cmd);
 
@@ -120,7 +128,7 @@ int main(int argc, char * argv[])
 	
 		Sibelia::EdgeStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue());
 		Sibelia::BlocksFinder finder(storage, kvalue.getValue());		
-		finder.FindBlocks(minBlockSize.getValue(), maxBranchSize.getValue());
+		finder.FindBlocks(minBlockSize.getValue(), maxBranchSize.getValue(), maxFlankingSize.getValue());
 		finder.GenerateOutput(std::cout);
 		std::ofstream dumpStream(dumpFileName.getValue());
 		finder.Dump(dumpStream);

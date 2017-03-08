@@ -113,10 +113,10 @@ namespace Sibelia
 			{
 				if (IsPositiveStrand())
 				{
-					return storage_->seq_[chrId_][idx_ + storage_->k_];
+					return storage_->sequence_[chrId_][idx_ + storage_->k_];
 				}
 
-				return TwoPaCo::DnaChar::ReverseChar(storage_->seq_[chrId_][idx_ - storage_->k_]);
+				return TwoPaCo::DnaChar::ReverseChar(storage_->sequence_[chrId_][idx_ - storage_->k_]);
 			}			
 
 			int64_t GetStartPosition() const
@@ -221,6 +221,16 @@ namespace Sibelia
 		uint64_t GetChrNumber() const
 		{
 			return posChr_.size();
+		}
+
+		const std::string& GetChrSequence(uint64_t idx) const
+		{
+			return sequence_[idx];
+		}
+
+		const std::string& GetChrDescription(uint64_t idx) const
+		{
+			return sequenceDescription_[idx];
 		}
 
 		uint64_t GetChrVerticesCount(uint64_t chrId) const
@@ -334,12 +344,13 @@ namespace Sibelia
 			}
 
 			size_t record = 0;
-			seq_.resize(posChr_.size());
+			sequence_.resize(posChr_.size());
 			for (TwoPaCo::StreamFastaParser parser(genomesFileName); parser.ReadRecord(); record++)
 			{
+				sequenceDescription_.push_back(parser.GetCurrentHeader());
 				for (char ch; parser.GetChar(ch); )
 				{
-					seq_[record].push_back(ch);
+					sequence_[record].push_back(ch);
 				}
 			}
 		}
@@ -353,7 +364,8 @@ namespace Sibelia
 	private:
 		
 		uint64_t k_;
-		std::vector<std::string> seq_;
+		std::vector<std::string> sequence_;
+		std::vector<std::string> sequenceDescription_;
 		std::vector<VertexVector> posChr_;
 		std::vector<CoordinateVector> coordinate_;
 	};

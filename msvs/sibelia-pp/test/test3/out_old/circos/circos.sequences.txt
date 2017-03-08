@@ -1,0 +1,2 @@
+chr - seq1 gi|385215269|ref|NC_017366.1| 0 1578824 green_a4
+chr - seq2 gi|385218266|ref|NC_017371.1| 0 1709911 green_a4

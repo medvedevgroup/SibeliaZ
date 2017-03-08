@@ -6,10 +6,13 @@
 #include <set>
 #include <map>
 #include <deque>
+#include <sstream>
 #include <iostream>
 
 namespace Sibelia
 {
+	
+	extern const std::string DELIMITER;
 
 	class BlockInstance
 	{
@@ -37,6 +40,131 @@ namespace Sibelia
 		size_t end_;
 		size_t chr_;
 	};
+
+	namespace
+	{
+		const char COVERED = 1;
+		typedef std::vector<BlockInstance> BlockList;
+		typedef std::pair<size_t, std::vector<BlockInstance> > GroupedBlock;
+		typedef std::vector<GroupedBlock> GroupedBlockList;
+		bool ByFirstElement(const GroupedBlock & a, const GroupedBlock & b)
+		{
+			return a.first < b.first;
+		}
+
+		std::string IntToStr(size_t x)
+		{
+			std::stringstream ss;
+			ss << x;
+			return ss.str();
+		}
+
+		template<class Iterator1, class Iterator2>
+		void CopyN(Iterator1 it, size_t count, Iterator2 out)
+		{
+			for (size_t i = 0; i < count; i++)
+			{
+				*out++ = *it++;
+			}
+		}
+
+		template<class Iterator>
+		Iterator AdvanceForward(Iterator it, size_t step)
+		{
+			std::advance(it, step);
+			return it;
+		}
+
+		template<class Iterator>
+		Iterator AdvanceBackward(Iterator it, size_t step)
+		{
+			for (size_t i = 0; i < step; i++)
+			{
+				--it;
+			}
+
+			return it;
+		}
+
+
+		typedef std::pair<size_t, size_t> IndexPair;
+		template<class T, class F, class It>
+		void GroupBy(std::vector<T> & store, F pred, It out)
+		{
+			sort(store.begin(), store.end(), pred);
+			for (size_t now = 0; now < store.size();)
+			{
+				size_t prev = now;
+				for (; now < store.size() && !pred(store[prev], store[now]); now++);
+				*out++ = std::make_pair(prev, now);
+			}
+		}
+
+		template<class F>
+		bool CompareBlocks(const BlockInstance & a, const BlockInstance & b, F f)
+		{
+			return (a.*f)() < (b.*f)();
+		}
+
+		template<class F>
+		bool EqualBlocks(const BlockInstance & a, const BlockInstance & b, F f)
+		{
+			return f(a) == f(b);
+		}
+
+		template<class Iterator, class F, class ReturnType>
+		struct FancyIterator : public std::iterator<std::forward_iterator_tag, ReturnType>
+		{
+		public:
+			FancyIterator& operator++()
+			{
+				++it;
+				return *this;
+			}
+
+			FancyIterator operator++(int)
+			{
+				FancyIterator ret(*this);
+				++(*this);
+				return ret;
+			}
+
+			bool operator == (FancyIterator toCompare) const
+			{
+				return it == toCompare.it;
+			}
+
+			bool operator != (FancyIterator toCompare) const
+			{
+				return !(*this == toCompare);
+			}
+
+			ReturnType operator * ()
+			{
+				return f(*it);
+			}
+
+			FancyIterator() {}
+			FancyIterator(Iterator it, F f) : it(it), f(f) {}
+
+		private:
+			F f;
+			Iterator it;
+		};
+
+		template<class Iterator, class F, class ReturnType>
+		FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnType)
+		{
+			return FancyIterator<Iterator, F, ReturnType>(it, f);
+		}
+
+	}
+
+	bool compareById(const BlockInstance & a, const BlockInstance & b);
+	bool compareByChrId(const BlockInstance & a, const BlockInstance & b);
+	bool compareByStart(const BlockInstance & a, const BlockInstance & b);
+	
+	void CreateOutDirectory(const std::string & path);
 
 	class BlocksFinder
 	{
@@ -85,8 +213,14 @@ namespace Sibelia
 			}
 
 			std::sort(bubbleCountVector.begin(), bubbleCountVector.end());
+			int count = 0;
 			for (auto it = bubbleCountVector.rbegin(); it != bubbleCountVector.rend(); ++it)
 			{
+				if (count++ % 1000 == 0)
+				{
+					std::cerr << count << '\t' << bubbleCountVector.size() << std::endl;
+				}
+
 				if (forbidden_.count(it->second) == 0 && forbidden_.count(it->second.Reverse()) == 0)
 				{
 					ExtendSeedEdge(it->second, edgeLength);
@@ -120,12 +254,46 @@ namespace Sibelia
 			out << "}" << std::endl;
 		}
 
-		void GenerateOutput(std::ostream & out) const
+		void ListBlocksSequences(const BlockList & block, const std::string & fileName) const
 		{
-			std::vector<BlockInstance> instance;
+			std::ofstream out;
+			TryOpenFile(fileName, out);
+			std::vector<IndexPair> group;
+			BlockList blockList = block;
+			GroupBy(blockList, compareById, std::back_inserter(group));
+			for (std::vector<IndexPair>::iterator it = group.begin(); it != group.end(); ++it)
+			{
+				for (size_t block = it->first; block < it->second; block++)
+				{
+					size_t length = blockList[block].GetLength();
+					char strand = blockList[block].GetSignedBlockId() > 0 ? '+' : '-';
+					size_t chr = blockList[block].GetChrId();
+					out << ">Seq=\"" << storage_.GetChrDescription(chr) << "\",Strand='" << strand << "',";
+					out << "Block_id=" << blockList[block].GetBlockId() << ",Start=";
+					out << blockList[block].GetConventionalStart() << ",End=" << blockList[block].GetConventionalEnd() << std::endl;
+
+					if (blockList[block].GetSignedBlockId() > 0)
+					{
+						OutputLines(storage_.GetChrSequence(chr).begin() + blockList[block].GetStart(), length, out);
+					}
+					else
+					{
+						std::string::const_reverse_iterator it(storage_.GetChrSequence(chr).begin() + blockList[block].GetEnd());
+						OutputLines(CFancyIterator(it, TwoPaCo::DnaChar::ReverseChar, ' '), length, out);
+					}
+
+					out << std::endl;
+				}
+			}
+		}
+
+
+		void GenerateLegacyOutput(const std::string & outDir) const
+		{
+			BlockList instance;
 			for (size_t chr = 0; chr < blockId_.size(); chr++)
 			{
-				for (size_t i = 0; i < blockId_[chr].size(); )
+				for (size_t i = 0; i < blockId_[chr].size();)
 				{
 					if (blockId_[chr][i] != UNKNOWN_BLOCK)
 					{
@@ -144,23 +312,187 @@ namespace Sibelia
 					}
 				}
 			}
+			
+			CreateOutDirectory(outDir);
+			GenerateReport(instance, outDir + "/" + "coverage_report.txt");
+			ListBlocksIndices(instance, outDir + "/" + "blocks_coords.txt");
+			ListBlocksSequences(instance, outDir + "/" + "blocks_sequences.fasta");
+		}
 
-			std::cout << "B_Id\tChr_Id\tStart\tEnd\tLength" << std::endl;
-			std::sort(instance.begin(), instance.end());
-			for (size_t i = 0; i < instance.size(); )
+
+	private:
+
+		template<class Iterator>
+		void OutputLines(Iterator start, size_t length, std::ostream & out) const
+		{
+			for (size_t i = 1; i <= length; i++, ++start)
 			{
-				size_t j = i;
-				for (; j < instance.size() && instance[i].GetBlockId() == instance[j].GetBlockId(); ++j)
+				out << *start;
+				if (i % 80 == 0 && i != length)
 				{
-					out << instance[j].GetSignedBlockId() << '\t' << instance[j].GetChrId() << '\t' << instance[j].GetStart() << '\t' << instance[j].GetEnd() << '\t' << instance[j].GetEnd() - instance[j].GetStart() << std::endl;
+					out << std::endl;
 				}
-
-				i = j;
-				out << std::endl;
 			}
 		}
 
-	private:
+		void GenerateReport(const BlockList & block, const std::string & fileName) const
+		{
+			std::ofstream out;
+			TryOpenFile(fileName, out);
+			GroupedBlockList sepBlock;
+			std::vector<IndexPair> group;
+			BlockList blockList = block;
+			GroupBy(blockList, compareById, std::back_inserter(group));
+			for (std::vector<IndexPair>::iterator it = group.begin(); it != group.end(); ++it)
+			{
+				sepBlock.push_back(std::make_pair(it->second - it->first, std::vector<BlockInstance>(blockList.begin() + it->first, blockList.begin() + it->second)));
+			}
+
+			ListChrs(out);
+			out << "Degree\tCount\tTotal";
+			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
+			{
+				out << "\tSeq " << i + 1;
+			}
+
+			out << std::endl;
+			group.clear();
+			GroupBy(sepBlock, ByFirstElement, std::back_inserter(group));
+			group.push_back(IndexPair(0, sepBlock.size()));
+			for (std::vector<IndexPair>::iterator it = group.begin(); it != group.end(); ++it)
+			{
+				if (it != group.end() - 1)
+				{
+					out << sepBlock[it->first].first << '\t' << it->second - it->first << '\t';
+				}
+				else
+				{
+					out << "All\t" << it->second - it->first << "\t";
+				}
+
+				out.precision(2);
+				out.setf(std::ostream::fixed);
+				std::vector<double> coverage = CalculateCoverage(sepBlock.begin() + it->first, sepBlock.begin() + it->second);
+				std::copy(coverage.begin(), coverage.end(), std::ostream_iterator<double>(out, "%\t"));
+				out << std::endl;
+			}
+
+			out << DELIMITER << std::endl;
+		}
+
+		std::vector<double> CalculateCoverage(GroupedBlockList::const_iterator start, GroupedBlockList::const_iterator end) const
+		{
+			std::vector<double> ret;
+			std::vector<char> cover;
+			double totalBp = 0;
+			double totalCoveredBp = 0;
+			for (size_t chr = 0; chr < storage_.GetChrNumber(); chr++)
+			{
+				totalBp += storage_.GetChrSequence(chr).size();
+				cover.assign(storage_.GetChrSequence(chr).size(), 0);
+				for (GroupedBlockList::const_iterator it = start; it != end; ++it)
+				{
+					for (size_t i = 0; i < it->second.size(); i++)
+					{
+						if (it->second[i].GetChrId() == chr)
+						{
+							std::fill(cover.begin() + it->second[i].GetStart(), cover.begin() + it->second[i].GetEnd(), COVERED);
+						}
+					}
+				}
+
+				double nowCoveredBp = static_cast<double>(std::count(cover.begin(), cover.end(), COVERED));
+				ret.push_back(nowCoveredBp / cover.size() * 100);
+				totalCoveredBp += nowCoveredBp;
+			}
+
+			ret.insert(ret.begin(), totalCoveredBp / totalBp * 100);
+			return ret;
+		}
+
+
+		std::string OutputIndex(const BlockInstance & block) const
+		{
+			std::stringstream out;
+			out << block.GetChrId() + 1 << '\t' << (block.GetSignedBlockId() < 0 ? '-' : '+') << '\t';
+			out << block.GetConventionalStart() << '\t' << block.GetConventionalEnd() << '\t' << block.GetEnd() - block.GetStart();
+			return out.str();
+		}
+
+
+		void OutputBlocks(const std::vector<BlockInstance>& block, std::ofstream& out) const
+		{
+			std::vector<IndexPair> group;
+			std::vector<BlockInstance> blockList = block;
+			GroupBy(blockList, compareById, std::back_inserter(group));
+			for (std::vector<IndexPair>::iterator it = group.begin(); it != group.end(); ++it)
+			{
+				size_t length = it->second - it->first;
+				std::sort(blockList.begin() + it->first, blockList.begin() + it->second, compareByChrId);
+				out << "Block #" << blockList[it->first].GetBlockId() << std::endl;
+				out << "Seq_id\tStrand\tStart\tEnd\tLength" << std::endl;
+				for (auto jt = blockList.begin() + it->first; jt < blockList.begin() + it->first + length; ++jt)
+				{
+					out << OutputIndex(*jt) << std::endl;
+				}
+
+				out << DELIMITER << std::endl;
+			}
+		}
+
+
+		void ListBlocksIndices(const BlockList & block, const std::string & fileName) const
+		{
+			std::ofstream out;
+			TryOpenFile(fileName, out);
+			ListChrs(out);
+			OutputBlocks(block, out);
+		}
+
+		void ListChromosomesAsPermutations(const BlockList & block, const std::string & fileName) const
+		{
+			std::ofstream out;
+			TryOpenFile(fileName, out);
+			std::vector<IndexPair> group;
+			BlockList blockList = block;
+			GroupBy(blockList, compareByChrId, std::back_inserter(group));
+			for (std::vector<IndexPair>::iterator it = group.begin(); it != group.end(); ++it)
+			{
+				out.setf(std::ios_base::showpos);
+				size_t length = it->second - it->first;
+				size_t chr = blockList[it->first].GetChrId();
+				out << '>' << storage_.GetChrDescription(chr) << std::endl;
+				std::sort(blockList.begin() + it->first, blockList.begin() + it->second);
+				for (auto jt = blockList.begin() + it->first; jt < blockList.begin() + it->first + length; ++jt)
+				{
+					out << jt->GetSignedBlockId() << " ";
+				}
+
+				out << "$" << std::endl;
+			}
+		}
+
+
+		void TryOpenFile(const std::string & fileName, std::ofstream & stream) const
+		{
+			stream.open(fileName.c_str());
+			if (!stream)
+			{
+				throw std::runtime_error(("Cannot open file " + fileName).c_str());
+			}
+		}
+
+
+		void ListChrs(std::ostream & out) const
+		{
+			out << "Seq_id\tSize\tDescription" << std::endl;
+			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
+			{
+				out << i + 1 << '\t' << storage_.GetChrSequence(i).size() << '\t' << storage_.GetChrDescription(i) << std::endl;
+			}
+
+			out << DELIMITER << std::endl;
+		}
 
 		struct BranchData
 		{

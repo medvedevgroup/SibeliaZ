@@ -1,7 +1,48 @@
 #include "blocksfinder.h"
 
+
 namespace Sibelia
-{
+{ 
+	#include <errno.h>
+	#include <sys/types.h>
+	#include <sys/stat.h>
+
+	#ifdef _WIN32
+		#include <direct.h>
+	#endif
+
+	void CreateOutDirectory(const std::string & path)
+	{
+		int result = 0;
+#ifdef _WIN32
+		result = _mkdir(path.c_str());
+#else
+		result = mkdir(path.c_str(), 0755);
+#endif
+		if (result != 0 && errno != EEXIST)
+		{
+			throw std::runtime_error(("Cannot create dir " + path).c_str());
+		}
+	}
+
+
+	bool compareById(const BlockInstance & a, const BlockInstance & b)
+	{
+		return CompareBlocks(a, b, &BlockInstance::GetBlockId);
+	}
+
+	bool compareByChrId(const BlockInstance & a, const BlockInstance & b)
+	{
+		return CompareBlocks(a, b, &BlockInstance::GetChrId);
+	}
+
+	bool compareByStart(const BlockInstance & a, const BlockInstance & b)
+	{
+		return CompareBlocks(a, b, &BlockInstance::GetChrId);
+	}
+	
+	const std::string DELIMITER(80, '-');
+
 	int BlockInstance::GetSignedBlockId() const
 	{
 		return id_;

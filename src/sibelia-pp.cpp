@@ -108,11 +108,11 @@ int main(int argc, char * argv[])
 			"file name",
 			cmd);
 
-		TCLAP::ValueArg<std::string> outFileName("o",
-			"outfile",
-			"Output file name prefix",
+		TCLAP::ValueArg<std::string> outDirName("o",
+			"outdir",
+			"Output dir name prefix",
 			false,
-			"de_bruijn.bin",
+			"out",
 			"file name",
 			cmd);
 
@@ -129,8 +129,8 @@ int main(int argc, char * argv[])
 		Sibelia::EdgeStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue());
 		Sibelia::BlocksFinder finder(storage, kvalue.getValue());		
 		finder.FindBlocks(minBlockSize.getValue(), maxBranchSize.getValue(), maxFlankingSize.getValue());
-		finder.GenerateOutput(std::cout);
-		std::ofstream dumpStream(dumpFileName.getValue());
+		finder.GenerateLegacyOutput(outDirName.getValue());
+		std::ofstream dumpStream(outDirName.getValue() + "/graph.dot");
 		finder.Dump(dumpStream);
 	}
 	catch (TCLAP::ArgException & e)

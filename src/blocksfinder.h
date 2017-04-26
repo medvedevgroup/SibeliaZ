@@ -6,6 +6,7 @@
 #include <set>
 #include <map>
 #include <deque>
+#include <numeric>
 #include <sstream>
 #include <iostream>
 
@@ -655,6 +656,102 @@ namespace Sibelia
 					}
 				}
 			}
+		}
+
+		int EdgeWeigth(const std::map<EdgeStorage::Edge, uint32_t> & bubbleCount, EdgeStorage::Edge e) const
+		{
+			if (bubbleCount.count(e) > 0)
+			{
+				return bubbleCount.find(e)->second;
+			}
+
+			return bubbleCount.find(e.Reverse())->second;
+		}
+
+		bool RandomChoice(Path & currentPath, std::map<EdgeStorage::Edge, int64_t> & edgeLength, const std::map<EdgeStorage::Edge, uint32_t> & bubbleCount)
+		{
+			std::vector<bool> isForward;
+			std::vector<double> probability;
+			std::vector<int64_t> weight;
+			std::vector<int64_t> nextVertex;
+			std::vector<int64_t> adjForwardList;
+			std::vector<int64_t> adjBackwardList;
+			storage_.SuccessorsList(currentPath.vertex.back(), adjForwardList);
+			storage_.PredecessorsList(currentPath.vertex.front(), adjBackwardList);
+			for (int64_t v : adjForwardList)
+			{
+				EdgeStorage::Edge e(currentPath.vertex.back(), v);
+				if (!forbidden_.count(e) && !forbidden_.count(e.Reverse()) && 
+					std::find(currentPath.vertex.begin(), currentPath.vertex.end(), v) == currentPath.vertex.end())
+				{
+					nextVertex.push_back(v);
+					isForward.push_back(true);
+					weight.push_back(EdgeWeigth(bubbleCount, e));
+				}
+			}
+
+			for (int64_t v : adjBackwardList)
+			{
+				EdgeStorage::Edge e(currentPath.vertex.back(), v);
+				if (!forbidden_.count(e) && !forbidden_.count(e.Reverse()) && 
+					std::find(currentPath.vertex.begin(), currentPath.vertex.end(), v) == currentPath.vertex.end())
+				{
+					nextVertex.push_back(v);
+					isForward.push_back(false);
+					weight.push_back(EdgeWeigth(bubbleCount, e));
+				}
+			}
+
+			if (weight.size() > 0)
+			{
+				double total = std::accumulate(weight.begin(), weight.end(), 0.0);
+				for (size_t i = 0; i < weight.size(); i++)
+				{
+					probability.push_back(weight[i] / total + i > 0 ? probability[i - 1] : 0);
+				}
+
+				double coin = double(rand()) / RAND_MAX;
+				size_t it = std::lower_bound(probability.begin(), probability.end(), coin) - probability.begin();
+				if (isForward[it])
+				{
+					currentPath.distance.push_back(edgeLength[EdgeStorage::Edge(currentPath.vertex.back(), nextVertex[it])]);
+					currentPath.vertex.push_back(nextVertex[it]);
+				}
+				else
+				{
+					currentPath.distance.push_front(edgeLength[EdgeStorage::Edge(currentPath.vertex.front(), nextVertex[it])]);					
+					currentPath.vertex.push_front(nextVertex[it]);
+				}
+
+				return true;
+			}			
+
+			return false;
+		}
+
+		void ExtendPathRandom(Path & startPath, Path & bestPath, std::map<EdgeStorage::Edge, int64_t> & edgeLength, int sampleSize, int maxDepth, const std::map<EdgeStorage::Edge, uint32_t> & bubbleCount)		
+		{
+			std::map<std::pair<uint64_t, uint64_t>, bool> seen;
+			for (size_t it = 0; it < sampleSize; it++)
+			{
+				Path currentPath = startPath;
+				for (size_t i = 0; i < maxDepth; i++)
+				{
+					if (RandomChoice(currentPath, edgeLength, bubbleCount))
+					{
+						seen.clear();
+						RescorePath(currentPath, seen);
+						if (currentPath.score > bestPath.score)
+						{
+							bestPath = currentPath;
+						}
+					}
+					else
+					{
+						break;
+					}
+				}
+			}						
 		}
 
 		void ExtendPathForward(Path & currentPath, Path & bestPath, std::map<EdgeStorage::Edge, int64_t> & edgeLength, int maxDepth, std::map<std::pair<uint64_t, uint64_t>, bool> & seen)

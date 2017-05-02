@@ -126,7 +126,7 @@ int main(int argc, char * argv[])
 
 		cmd.parse(argc, argv);
 	
-		Sibelia::EdgeStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue());
+		Sibelia::JunctionStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue());
 		Sibelia::BlocksFinder finder(storage, kvalue.getValue());		
 		finder.FindBlocks(minBlockSize.getValue(), maxBranchSize.getValue(), maxFlankingSize.getValue());
 		finder.GenerateLegacyOutput(outDirName.getValue());

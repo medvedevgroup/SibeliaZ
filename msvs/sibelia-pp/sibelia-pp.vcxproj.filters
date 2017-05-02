@@ -38,13 +38,13 @@
     <ClInclude Include="..\..\src\blocksfinder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\edgestorage.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\streamfastaparser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\dnachar.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\junctionstorage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

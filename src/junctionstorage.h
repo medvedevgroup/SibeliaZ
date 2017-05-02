@@ -1,5 +1,5 @@
-#ifndef _EDGE_STORAGE_H_
-#define _EDGE_STORAGE_H_
+#ifndef _JUNCTION_STORAGE_H_
+#define _JUNCTION_STORAGE_H_
 
 #include <string>
 #include <vector>
@@ -10,7 +10,42 @@
 
 namespace Sibelia
 {
-	class EdgeStorage
+	class Edge
+	{
+	public:
+		Edge() {}
+
+		Edge(int64_t startVertex, int64_t endVertex) : startVertex_(startVertex), endVertex_(endVertex)
+		{
+
+		}
+
+		int64_t GetStartVertex() const
+		{
+			return startVertex_;
+		}
+
+		int64_t GetEndVertex() const
+		{
+			return endVertex_;
+		}
+
+		bool operator < (const Edge & e) const
+		{
+			return std::make_pair(startVertex_, endVertex_) < std::make_pair(e.startVertex_, e.endVertex_);
+		}
+
+		Edge Reverse() const
+		{
+			return Edge(-endVertex_, -startVertex_);
+		}
+
+	private:
+		int64_t startVertex_;
+		int64_t endVertex_;
+	};
+
+	class JunctionStorage
 	{
 	private:
 		struct Vertex
@@ -41,45 +76,10 @@ namespace Sibelia
 
 	public:		
 
-		class Edge
+		class JunctionIterator
 		{
 		public:
-			Edge() {}
-
-			Edge(int64_t startVertex, int64_t endVertex) : startVertex_(startVertex), endVertex_(endVertex)
-			{
-
-			}
-
-			int64_t GetStartVertex() const
-			{
-				return startVertex_;
-			}
-
-			int64_t GetEndVertex() const
-			{
-				return endVertex_;
-			}
-
-			bool operator < (const Edge & e) const
-			{
-				return std::make_pair(startVertex_, endVertex_) < std::make_pair(e.startVertex_, e.endVertex_);
-			}
-
-			Edge Reverse() const
-			{
-				return Edge(-endVertex_, -startVertex_);
-			}
-
-		private:
-			int64_t startVertex_;
-			int64_t endVertex_;
-		};
-
-		class EdgeIterator
-		{
-		public:
-			EdgeIterator() : idx_(0), storage_(0)
+			JunctionIterator() : idx_(0), storage_(0)
 			{
 
 			}
@@ -88,20 +88,16 @@ namespace Sibelia
 			{
 				return isPositiveStrand_;
 			}
-
-			Edge operator * () const
+			
+			int64_t operator * () const
 			{
-				return Edge(GetStartVertexId(), GetEndVertexId());
+				return GetVertexId();
 			}
 
+			/*
 			Edge operator -> () const
 			{
 				return Edge(GetStartVertexId(), GetEndVertexId());
-			}
-
-			int64_t GetStartVertexId() const
-			{
-				return IsPositiveStrand() ? storage_->posChr_[chrId_][idx_].id : -storage_->posChr_[chrId_][idx_].id;
 			}
 
 			int64_t GetEndVertexId() const
@@ -118,8 +114,19 @@ namespace Sibelia
 
 				return TwoPaCo::DnaChar::ReverseChar(storage_->sequence_[chrId_][idx_ - storage_->k_]);
 			}			
+		
+			int64_t GetEndPosition() const
+			{
+				return (++EdgeIterator(*this)).GetStartPosition();
+			}*/
 
-			int64_t GetStartPosition() const
+
+			int64_t GetVertexId() const
+			{
+				return IsPositiveStrand() ? storage_->posChr_[chrId_][idx_].id : -storage_->posChr_[chrId_][idx_].id;
+			}
+
+			int64_t GetPosition() const
 			{
 				if (IsPositiveStrand())
 				{
@@ -129,12 +136,7 @@ namespace Sibelia
 				return storage_->posChr_[chrId_][idx_].pos + storage_->k_;
 			}
 
-			int64_t GetEndPosition() const
-			{
-				return (++EdgeIterator(*this)).GetStartPosition();
-			}
-
-			uint64_t GetIdx() const
+			uint64_t GetIndex() const
 			{
 				return idx_;
 			}
@@ -142,76 +144,88 @@ namespace Sibelia
 			uint64_t GetChrId() const
 			{
 				return chrId_;
-			}			
-
-			uint64_t GetLength() const
-			{
-				return abs(GetEndPosition() - GetStartPosition());
-			}
+			}						
 
 			bool Valid() const
 			{
-				if (IsPositiveStrand())
-				{
-					return idx_ >= 0 && idx_ < storage_->posChr_[chrId_].size() - 1;
-				}
-				else
-				{
-					return idx_ >= 1 && idx_ < storage_->posChr_[chrId_].size();
-				}
+				return idx_ >= 0 && idx_ < storage_->posChr_[chrId_].size();
 			}
 
-			EdgeIterator& operator++ ()
+			JunctionIterator& operator++ ()
 			{
 				Inc();
 				return *this;
 			}
 			
-			EdgeIterator operator++ (int)
+			JunctionIterator operator++ (int)
 			{
-				EdgeIterator ret(*this);
+				JunctionIterator ret(*this);
 				Inc();
 				return ret;
 			}
 
-			EdgeIterator& operator-- ()
+			JunctionIterator operator + (size_t step) const
+			{
+				JunctionIterator ret(*this);
+				ret.Inc(step);
+				return ret;
+			}
+
+			JunctionIterator operator - (size_t step) const
+			{
+				JunctionIterator ret(*this);
+				ret.Dec(step);
+				return ret;
+			}
+
+			JunctionIterator& operator-- ()
 			{
 				Dec();
 				return *this;
 			}
 
-			EdgeIterator operator-- (int)
+			JunctionIterator operator-- (int)
 			{				
-				EdgeIterator ret(*this);
+				JunctionIterator ret(*this);
 				Dec();
 				return ret;
 			}
 
+			bool operator == (const JunctionIterator & arg) const
+			{
+				return this->chrId_ == arg.chrId_ && this->idx_ == arg.idx_;
+			}
+
+			bool operator != (const JunctionIterator & arg) const
+			{
+				return !(*this == arg);
+			}
+
 		private:
 
-			void Inc()
+			void Inc(int64_t step = 1)
 			{
 				if (Valid())
 				{
-					idx_ += IsPositiveStrand() ? +1 : -1;
+					idx_ += IsPositiveStrand() ? +step : -step;
 				}
 			}
 
-			void Dec()
+			void Dec(int64_t step = 1)
 			{
 				if (Valid())
 				{
-					idx_ += IsPositiveStrand() ? -1 : +1;
+					idx_ += IsPositiveStrand() ? -step : +step;
 				}
 			}
 
-			EdgeIterator(const EdgeStorage * storage, uint64_t chrId, int64_t idx, bool isPositiveStrand) : storage_(storage), idx_(idx), chrId_(chrId), isPositiveStrand_(isPositiveStrand)
+			JunctionIterator(const JunctionStorage * storage, uint64_t chrId, int64_t idx, bool isPositiveStrand) : storage_(storage), idx_(idx), chrId_(chrId), isPositiveStrand_(isPositiveStrand)
 			{
 
 			}
 
-			friend class EdgeStorage;
-			const EdgeStorage * storage_;
+			friend class JunctionStorage;
+			const JunctionStorage * storage_;
 			uint64_t chrId_;
 			int64_t idx_;
 			bool isPositiveStrand_;
@@ -238,38 +252,40 @@ namespace Sibelia
 			return posChr_[chrId].size();
 		}
 
-		EdgeIterator GetIterator(uint64_t chrId, uint64_t idx, bool isPositiveStrand = true) const
+		JunctionIterator GetIterator(uint64_t chrId, uint64_t idx, bool isPositiveStrand = true) const
 		{
-			return EdgeIterator(this, chrId, idx, isPositiveStrand);
+			if (isPositiveStrand)
+			{
+				return JunctionIterator(this, chrId, idx, isPositiveStrand);
+			}
+
+			return JunctionIterator(this, chrId, posChr_[chrId].size() - idx - 1, isPositiveStrand);
+		}
+
+		JunctionIterator Begin(uint64_t chrId, bool isPositiveStrand = true) const
+		{
+			return JunctionIterator(this, chrId, 0, isPositiveStrand);
+		}
+
+		JunctionIterator End(uint64_t chrId, bool isPositiveStrand = true) const
+		{
+			return JunctionIterator(this, chrId, posChr_[chrId].size() - 1, isPositiveStrand);
 		}
 
 		int64_t GetVerticesNumber() const
 		{
 			return coordinate_.size();
 		}
-
-		uint64_t GetOutgoingEdgesCount(int64_t vertexId) const
+				
+		uint64_t GetInstancesCount(int64_t vertexId) const
 		{
 			return coordinate_[abs(vertexId)].size();
 		}
 
-		EdgeIterator GetOutgoingEdge(int64_t vertexId, uint64_t n) const
+		JunctionIterator GetJunctionInstance(int64_t vertexId, uint64_t n) const
 		{
 			auto coord = coordinate_[abs(vertexId)][n];			
-			return EdgeIterator(this, coord.chr, coord.idx, posChr_[coord.chr][coord.idx].id == vertexId);
-		}
-
-		bool EdgesOnlyOnNegativeStrand(int64_t vertexId) const
-		{
-			for (auto coord : coordinate_[abs(vertexId)])
-			{
-				if (posChr_[coord.chr][coord.idx].id == vertexId)
-				{
-					return false;
-				}
-			}
-
-			return true;
+			return JunctionIterator(this, coord.chr, coord.idx, posChr_[coord.chr][coord.idx].id == vertexId);
 		}
 
 		void PredecessorsList(int64_t vertexId, std::vector<int64_t> & list) const
@@ -355,8 +371,8 @@ namespace Sibelia
 			}
 		}
 
-		EdgeStorage() {}
-		EdgeStorage(const std::string & fileName, const std::string & genomesFileName, uint64_t k) : k_(k)
+		JunctionStorage() {}
+		JunctionStorage(const std::string & fileName, const std::string & genomesFileName, uint64_t k) : k_(k)
 		{
 			Init(fileName, genomesFileName);
 		}

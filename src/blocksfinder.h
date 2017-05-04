@@ -205,6 +205,7 @@ namespace Sibelia
 					auto jt = it + 1;
 					Edge e(it.GetVertexId(), jt.GetVertexId());
 					edgeLength[e] = abs(jt.GetPosition() - it.GetPosition());
+					it = jt;
 				}
 			}
 
@@ -237,7 +238,7 @@ namespace Sibelia
 				{
 					auto jt = it + 1;
 					out << it.GetVertexId() << " -> " << jt.GetVertexId() << "[label=\"" << it.GetChrId() << ", " << it.GetPosition() << "\" color=blue]" << std::endl;
-					out << -it.GetVertexId() << " -> " << -it.GetVertexId() << "[label=\"" << it.GetChrId() << ", " << it.GetPosition() << "\" color=red]" << std::endl;
+					out << -jt.GetVertexId() << " -> " << -it.GetVertexId() << "[label=\"" << it.GetChrId() << ", " << it.GetPosition() << "\" color=red]" << std::endl;
 				}
 			}
 
@@ -481,7 +482,6 @@ namespace Sibelia
 			}
 		}
 
-
 		void ListChrs(std::ostream & out) const
 		{
 			out << "Seq_id\tSize\tDescription" << std::endl;
@@ -506,7 +506,7 @@ namespace Sibelia
 		public:
 			Path() {}
 			Path(int64_t start, const JunctionStorage & storage, int64_t maxBranchSize, int64_t minBlockSize, int64_t maxFlankingSize) :
-				maxBranchSize_(maxBranchSize), minBlockSize_(minBlockSize), maxFlankingSize_(maxBranchSize)
+				maxBranchSize_(maxBranchSize), minBlockSize_(minBlockSize), maxFlankingSize_(maxFlankingSize), storage_(&storage)
 			{
 				PointPushBack(start, 0);
 			}
@@ -562,6 +562,7 @@ namespace Sibelia
 						if (Compatible(inst.seq.back(), it))
 						{
 							newInstance = false;
+							inst.seq.push_back(it);
 							inst.rightFlankDistance = vertexDistance;
 							break;
 						}
@@ -611,7 +612,7 @@ namespace Sibelia
 					if (it->seq.back().GetVertexId() == body_.back().vertex)
 					{
 						it->seq.erase(--it->seq.end());
-						if (it->seq.empty)
+						if (it->seq.empty())
 						{
 							it = instance_.erase(it);
 						}
@@ -634,7 +635,7 @@ namespace Sibelia
 				int64_t ret = 0;
 				for (auto & inst : instance_)
 				{
-					int64_t len = Length(inst);
+					int64_t len = InstanceScore(inst);
 					if (!final || len >= minBlockSize_)
 					{
 						ret += len;
@@ -696,8 +697,10 @@ namespace Sibelia
 				return body_.end();
 			}
 
-			int64_t Length(const Instance & inst) const
+			int64_t InstanceScore(const Instance & inst) const
 			{
+				int64_t leftFlank = abs(inst.leftFlankDistance - body_.front().distance);
+				int64_t rightFlank = abs(inst.rightFlankDistance - body_.back().distance);
 				return abs(inst.seq.front().GetPosition() - inst.seq.back().GetPosition());
 			}
 		};
@@ -724,7 +727,7 @@ namespace Sibelia
 				syntenyPath_.push_back(std::vector<int64_t>());
 				for (auto pt : bestPath.PathBody())
 				{
-					syntenyPath_.back().push_back(pt);
+					syntenyPath_.back().push_back(pt.vertex);
 				}
 
 				for (size_t i = 0; i < syntenyPath_.back().size() - 1; i++)
@@ -979,8 +982,8 @@ namespace Sibelia
 			for (size_t i = 0; i < storage_.GetInstancesCount(vertexId); i++)
 			{				
 				JunctionStorage::JunctionIterator vertex = storage_.GetJunctionInstance(vertexId, i);
-				instance.push_back(vertex++);
-				for (int64_t startPosition = vertex.GetPosition(); abs(startPosition - vertex.GetPosition()) < maxBranchSize_ && vertex.Valid(); ++vertex)
+				instance.push_back(vertex);				
+				for (int64_t startPosition = vertex++.GetPosition(); vertex.Valid() && abs(startPosition - vertex.GetPosition()) < maxBranchSize_; ++vertex)
 				{					
 					int64_t nowVertexId = vertex.GetVertexId();
 					auto point = visit.find(nowVertexId);

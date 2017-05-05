@@ -95,15 +95,6 @@ namespace Sibelia
 			}
 
 			/*
-			Edge operator -> () const
-			{
-				return Edge(GetStartVertexId(), GetEndVertexId());
-			}
-
-			int64_t GetEndVertexId() const
-			{
-				return IsPositiveStrand() ? storage_->posChr_[chrId_][idx_ + 1].id : -storage_->posChr_[chrId_][idx_ - 1].id;
-			}
 
 			char GetChar() const
 			{
@@ -115,10 +106,7 @@ namespace Sibelia
 				return TwoPaCo::DnaChar::ReverseChar(storage_->sequence_[chrId_][idx_ - storage_->k_]);
 			}			
 		
-			int64_t GetEndPosition() const
-			{
-				return (++EdgeIterator(*this)).GetStartPosition();
-			}*/
+			*/
 
 
 			int64_t GetVertexId() const
@@ -205,18 +193,14 @@ namespace Sibelia
 
 			void Inc(int64_t step = 1)
 			{
-				if (Valid())
-				{
-					idx_ += IsPositiveStrand() ? +step : -step;
-				}
+				
+				idx_ += IsPositiveStrand() ? +step : -step;
 			}
 
 			void Dec(int64_t step = 1)
 			{
-				if (Valid())
-				{
-					idx_ += IsPositiveStrand() ? -step : +step;
-				}
+				
+				idx_ += IsPositiveStrand() ? -step : +step;
 			}
 
 			JunctionIterator(const JunctionStorage * storage, uint64_t chrId, int64_t idx, bool isPositiveStrand) : storage_(storage), idx_(idx), chrId_(chrId), isPositiveStrand_(isPositiveStrand)
@@ -269,7 +253,7 @@ namespace Sibelia
 
 		JunctionIterator End(uint64_t chrId, bool isPositiveStrand = true) const
 		{
-			return JunctionIterator(this, chrId, posChr_[chrId].size() - 1, isPositiveStrand);
+			return JunctionIterator(this, chrId, posChr_[chrId].size(), isPositiveStrand);
 		}
 
 		int64_t GetVerticesNumber() const

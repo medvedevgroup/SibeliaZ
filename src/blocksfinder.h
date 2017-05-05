@@ -200,7 +200,8 @@ namespace Sibelia
 			std::map<Edge, int64_t> edgeLength;			
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
-				for (auto it = storage_.Begin(i); it != storage_.End(i) - 1; )
+				auto end = storage_.End(i) - 1;
+				for (auto it = storage_.Begin(i); it != end; )
 				{
 					auto jt = it + 1;
 					Edge e(it.GetVertexId(), jt.GetVertexId());
@@ -758,7 +759,7 @@ namespace Sibelia
 				for (auto & inst : instance_)
 				{
 					InstanceScore(inst, length, score);
-					if (!final || length >= minBlockSize_)
+					if (!final || length >= minChainSize_)
 					{
 						ret += score;
 					}
@@ -843,11 +844,11 @@ namespace Sibelia
 			while (true)
 			{
 				Path currentPath = bestPath;
-				int64_t prevBestScore = bestPath.Score();
+				int64_t prevBestScore = bestPath.Score(true);
 				ExtendPathBackward(currentPath, bestPath, edgeLength, 8);
 				currentPath = bestPath;
 				ExtendPathForward(currentPath, bestPath, edgeLength, 8);
-				if (bestPath.Score() <= prevBestScore)
+				if (bestPath.Score(true) <= prevBestScore)
 				{
 					break;
 				}
@@ -870,10 +871,14 @@ namespace Sibelia
 
 				for (auto & instance : bestPath.Instances())
 				{
-					for (auto it : instance.seq)
-					{						
-						blockId_[it.GetChrId()][it.GetIndex()] = it.IsPositiveStrand() ? blocksFound_ : -blocksFound_;
-					}
+					if (bestPath.IsGoodInstance(instance))
+					{
+						auto end = instance.seq.back() + 1;
+						for (auto it = instance.seq.front(); it != end; ++it)
+						{
+							blockId_[it.GetChrId()][it.GetIndex()] = it.IsPositiveStrand() ? blocksFound_ : -blocksFound_;
+						}
+					}					
 				}				
 			}
 		}
@@ -893,7 +898,7 @@ namespace Sibelia
 						int64_t length = edgeLength[e];
 						if (currentPath.PointPushBack(nextVertex, length))
 						{
-							if (currentPath.Score() > bestPath.Score() && currentPath.Instances().size() > 1)
+							if (currentPath.Score(true) > bestPath.Score(true) && currentPath.Instances().size() > 1)
 							{
 								bestPath = currentPath;
 							}
@@ -923,8 +928,6 @@ namespace Sibelia
 						{
 							if (currentPath.Score() > bestPath.Score() && currentPath.Instances().size() > 1)
 							{
-								int64_t s2 = bestPath.Score();
-								int64_t s1 = currentPath.Score();
 								bestPath = currentPath;
 							}
 
@@ -936,31 +939,7 @@ namespace Sibelia
 			}
 		}
 
-/*
-		void ExtendPathBackward(Path & currentPath, Path & bestPath, std::map<Edge, int64_t> & edgeLength, int maxDepth)
-		{
-			if (maxDepth > 0)
-			{
-				std::vector<int64_t> adjList;
-				int64_t prevVertex = currentPath.body.front().vertex;
-				storage_.PredecessorsList(prevVertex, adjList);
-				for (auto nextVertex : adjList)
-				{
-					if (currentPath.IsInPath(nextVertex) && forbidden_.count(Edge(nextVertex, prevVertex)) == 0)
-					{							
-						currentPath.PointPushFront(nextVertex, edgeLength[Edge(nextVertex, prevVertex)], storage_, maxBranchSize_);
-						if (currentPath.score > bestPath.score && currentPath.instance.size() > 1)
-						{
-							bestPath = currentPath;
-						}
 
-						ExtendPathBackward(currentPath, bestPath, edgeLength, maxDepth - 1);
-						currentPath.PointPopFront();
-					}
-				}
-			}
-		}
-*/
 		/*
 		double EdgeWeight(const std::map<EdgeStorage::Edge, uint32_t> & bubbleCount, EdgeStorage::Edge e) const
 		{

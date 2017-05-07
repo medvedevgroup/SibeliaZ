@@ -1,6 +1,8 @@
 #ifndef _TRASERVAL_H_
 #define _TRAVERSAL_H_
 
+//#define _DEBOUG_OUT
+
 #include "junctionstorage.h"
 
 #include <set>
@@ -528,6 +530,31 @@ namespace Sibelia
 				Point(int64_t vertex, int64_t distance) : vertex(vertex), distance(distance) {}
 			};
 
+			void DebugOut(std::ostream & out) const
+			{
+				out << "Path: ";
+				for (auto & pt : body_)
+				{
+					out << pt.vertex << ' ';
+				}
+
+				out << std::endl << "Instances: " << std::endl;
+				for (auto & inst : instance_)
+				{					
+					for (auto & it : inst.seq)
+					{
+						out << "{vid:" << it.GetVertexId() 
+							<< " str:" << inst.seq.front().IsPositiveStrand()
+							<< " chr:" << inst.seq.front().GetChrId()
+							<< " pos:" << it.GetPosition() << "} ";
+					}
+
+					out << std::endl;
+				}
+
+				out << std::endl;
+			}			
+
 			bool PointPushBack(int64_t vertex, int64_t length)
 			{
 				if (FindVertexInPath(vertex) != body_.end())
@@ -655,7 +682,7 @@ namespace Sibelia
 					JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vertex, i);
 					for (auto & inst : instance_)
 					{
-						if (Compatible(inst.seq.back(), it))
+						if (Compatible(it, inst.seq.front()))
 						{
 							newInstance = false;
 							inst.seq.push_front(it);
@@ -801,18 +828,27 @@ namespace Sibelia
 		private:
 
 			bool Compatible(JunctionStorage::JunctionIterator start, JunctionStorage::JunctionIterator end) const
-			{
-				if (!(start.GetChrId() == end.GetChrId() && start.IsPositiveStrand() == end.IsPositiveStrand()))
+			{				
+				if (start.GetChrId() != end.GetChrId() || start.IsPositiveStrand() != end.IsPositiveStrand())
+				{
+					return false;
+				}				
+
+				int64_t diff = end.GetPosition() - start.GetPosition();
+				if ((start.IsPositiveStrand() &&  (diff > maxBranchSize_ || diff < 0)) ||
+					(!start.IsPositiveStrand() && (-diff > maxBranchSize_ || -diff < 0)))
 				{
 					return false;
 				}
-
-				if ((start.IsPositiveStrand() && end.GetPosition() - start.GetPosition() > maxBranchSize_) ||
-					(!start.IsPositiveStrand() && -(end.GetPosition() - start.GetPosition()) > maxBranchSize_))
+				/*
+				if (start.GetVertexId() == -15132 || end.GetVertexId() == -15132)
 				{
-					return false;
-				}
-
+					std::cerr << "PYSH" << std::endl;
+					std::cerr << "Diff: " << diff << std::endl;
+					std::cerr << start.IsPositiveStrand() << " " << start.GetChrId() << ' ' << start.GetPosition() << std::endl;
+					std::cerr << end.IsPositiveStrand() << " " << end.GetChrId() << ' ' << end.GetPosition() << std::endl;
+				}*/
+				
 				return true;
 			}						
 
@@ -840,15 +876,22 @@ namespace Sibelia
 
 		void ExtendSeed(int64_t vertex, std::map<Edge, int64_t> & edgeLength, const std::map<int64_t, int64_t> & bubbleCount)
 		{
+
 			Path bestPath(vertex, storage_, maxBranchSize_, minBlockSize_, flankingThreshold_);
 			while (true)
 			{
 				Path currentPath = bestPath;
-				int64_t prevBestScore = bestPath.Score(true);
-				ExtendPathBackward(currentPath, bestPath, edgeLength, 8);
-				currentPath = bestPath;
-				ExtendPathForward(currentPath, bestPath, edgeLength, 8);
-				if (bestPath.Score(true) <= prevBestScore)
+				int64_t prevBestScore = bestPath.Score();
+				ExtendPathBackward(currentPath, bestPath, edgeLength, 12);
+	#ifdef _DEBOUG_OUT
+				bestPath.DebugOut(std::cerr);
+	#endif
+				currentPath = bestPath;				
+				ExtendPathForward(currentPath, bestPath, edgeLength, 12);
+	#ifdef _DEBOUG_OUT
+				bestPath.DebugOut(std::cerr);
+	#endif
+				if (bestPath.Score() <= prevBestScore)
 				{
 					break;
 				}
@@ -876,6 +919,24 @@ namespace Sibelia
 						auto end = instance.seq.back() + 1;
 						for (auto it = instance.seq.front(); it != end; ++it)
 						{
+							
+							int64_t idx = it.GetIndex();
+							int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());
+							/*
+							if (idx < 0 || idx >= maxidx)
+							{
+								std::cerr << vertex << std::endl;
+								for (auto jt : instance.seq)
+								{
+									idx = jt.GetIndex();
+									maxidx = storage_.GetChrVerticesCount(jt.GetChrId());
+									std::cerr << jt.IsPositiveStrand() << ' ' << jt.GetPosition() << ' ' << idx << " " << maxidx << " " << end.GetIndex() << std::endl;
+								}
+								
+								bestPath.DebugOut(std::cerr);
+								exit(0);
+							}
+							*/
 							blockId_[it.GetChrId()][it.GetIndex()] = it.IsPositiveStrand() ? blocksFound_ : -blocksFound_;
 						}
 					}					

@@ -585,6 +585,7 @@ namespace Sibelia
 							}
 
 							nextRightFlank[j] = vertexDistance;
+							break;
 						}
 
 						j++;
@@ -659,6 +660,7 @@ namespace Sibelia
 							}
 
 							nextLeftFlank[j] = vertexDistance;
+							break;
 						}
 
 						j++;
@@ -840,14 +842,6 @@ namespace Sibelia
 				{
 					return false;
 				}
-				/*
-				if (start.GetVertexId() == -15132 || end.GetVertexId() == -15132)
-				{
-					std::cerr << "PYSH" << std::endl;
-					std::cerr << "Diff: " << diff << std::endl;
-					std::cerr << start.IsPositiveStrand() << " " << start.GetChrId() << ' ' << start.GetPosition() << std::endl;
-					std::cerr << end.IsPositiveStrand() << " " << end.GetChrId() << ' ' << end.GetPosition() << std::endl;
-				}*/
 				
 				return true;
 			}						
@@ -882,12 +876,12 @@ namespace Sibelia
 			{
 				Path currentPath = bestPath;
 				int64_t prevBestScore = bestPath.Score();
-				ExtendPathBackward(currentPath, bestPath, edgeLength, 12);
+				ExtendPathBackward(currentPath, bestPath, edgeLength, 10);
 	#ifdef _DEBOUG_OUT
 				bestPath.DebugOut(std::cerr);
 	#endif
 				currentPath = bestPath;				
-				ExtendPathForward(currentPath, bestPath, edgeLength, 12);
+				ExtendPathForward(currentPath, bestPath, edgeLength, 10);
 	#ifdef _DEBOUG_OUT
 				bestPath.DebugOut(std::cerr);
 	#endif
@@ -921,22 +915,7 @@ namespace Sibelia
 						{
 							
 							int64_t idx = it.GetIndex();
-							int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());
-							/*
-							if (idx < 0 || idx >= maxidx)
-							{
-								std::cerr << vertex << std::endl;
-								for (auto jt : instance.seq)
-								{
-									idx = jt.GetIndex();
-									maxidx = storage_.GetChrVerticesCount(jt.GetChrId());
-									std::cerr << jt.IsPositiveStrand() << ' ' << jt.GetPosition() << ' ' << idx << " " << maxidx << " " << end.GetIndex() << std::endl;
-								}
-								
-								bestPath.DebugOut(std::cerr);
-								exit(0);
-							}
-							*/
+							int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());							
 							blockId_[it.GetChrId()][it.GetIndex()] = it.IsPositiveStrand() ? blocksFound_ : -blocksFound_;
 						}
 					}					

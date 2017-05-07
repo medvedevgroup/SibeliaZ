@@ -9,6 +9,7 @@
 #include <map>
 #include <list>
 #include <deque>
+#include <cassert>
 #include <numeric>
 #include <sstream>
 #include <iostream>
@@ -207,7 +208,7 @@ namespace Sibelia
 				{
 					auto jt = it + 1;
 					Edge e(it.GetVertexId(), jt.GetVertexId());
-					edgeLength[e] = abs(jt.GetPosition() - it.GetPosition());
+					edgeLength[e.Reverse()] = edgeLength[e] = abs(jt.GetPosition() - it.GetPosition());					
 					it = jt;
 				}
 			}
@@ -732,6 +733,7 @@ namespace Sibelia
 
 			void PointPopFront()
 			{
+				int64_t newLeftFlankDistance = (++body_.begin())->distance;
 				for (auto it = instance_.begin(); it != instance_.end();)
 				{
 					if (it->seq.front().GetVertexId() == body_.front().vertex)
@@ -743,7 +745,7 @@ namespace Sibelia
 						}
 						else
 						{
-							++it;
+							++it->leftFlankDistance = newLeftFlankDistance;
 						}
 					}
 					else
@@ -757,6 +759,7 @@ namespace Sibelia
 
 			void PointPopBack()
 			{
+				int64_t newRightFlankDistance = (--(--body_.end()))->distance;
 				for (auto it = instance_.begin(); it != instance_.end();)
 				{
 					if (it->seq.back().GetVertexId() == body_.back().vertex)
@@ -768,7 +771,7 @@ namespace Sibelia
 						}
 						else
 						{
-							++it;
+							it++->rightFlankDistance = newRightFlankDistance;
 						}
 					}
 					else
@@ -936,9 +939,12 @@ namespace Sibelia
 					if (forbidden_.count(e) == 0)
 					{
 						int64_t length = edgeLength[e];
+						assert(length > 0);
 						if (currentPath.PointPushBack(nextVertex, length))
 						{
-							if (currentPath.Score(true) > bestPath.Score(true) && currentPath.Instances().size() > 1)
+							int64_t currentScore = currentPath.Score();
+							int64_t prevBestScore = bestPath.Score();
+							if (currentScore > prevBestScore && currentPath.Instances().size() > 1)
 							{
 								bestPath = currentPath;
 							}
@@ -964,6 +970,7 @@ namespace Sibelia
 					if (forbidden_.count(e) == 0)
 					{
 						int64_t length = edgeLength[e];
+						assert(length > 0);
 						if (currentPath.PointPushFront(nextVertex, length))
 						{
 							if (currentPath.Score() > bestPath.Score() && currentPath.Instances().size() > 1)

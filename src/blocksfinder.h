@@ -507,7 +507,7 @@ namespace Sibelia
 				maxBranchSize_(maxBranchSize), minBlockSize_(minBlockSize), maxFlankingSize_(maxFlankingSize), storage_(&storage),
 				minChainSize_(minBlockSize - 2 * maxFlankingSize)
 			{
-				PointPushBack(start, 0);
+				PointPushBack(Edge(0, start, 0, 0));
 			}
 
 			struct Instance
@@ -648,7 +648,7 @@ namespace Sibelia
 					JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vertex, i);
 					for (auto & inst : instance_)
 					{
-						if (Compatible(it, inst.seq.front()))
+						if (Compatible(it, inst.seq.front(), e))
 						{
 							int64_t rightFlank = abs(inst.rightFlankDistance - body_.back().distance);
 							if (abs(it.GetPosition() - inst.seq.back().GetPosition()) >= minChainSize_ && rightFlank > maxFlankingSize_)
@@ -681,7 +681,7 @@ namespace Sibelia
 					JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vertex, i);
 					for (auto & inst : instance_)
 					{
-						if (Compatible(it, inst.seq.front()))
+						if (Compatible(it, inst.seq.front(), e))
 						{
 							newInstance = false;
 							inst.seq.push_front(it);
@@ -900,8 +900,8 @@ namespace Sibelia
 
 				for (size_t i = 0; i < syntenyPath_.back().size() - 1; i++)
 				{
-					forbidden_.insert(Edge(syntenyPath_.back()[i], syntenyPath_.back()[i + 1]));
-					forbidden_.insert(Edge(-syntenyPath_.back()[i + 1], -syntenyPath_.back()[i]));
+					forbidden_.insert(LightEdge(syntenyPath_.back()[i], syntenyPath_.back()[i + 1]));
+					forbidden_.insert(LightEdge(-syntenyPath_.back()[i + 1], -syntenyPath_.back()[i]));
 				}
 
 				for (auto & instance : bestPath.Instances())
@@ -929,7 +929,7 @@ namespace Sibelia
 				storage_.OutgoingEdges(prevVertex, adjList);
 				for (auto e : adjList)
 				{
-					if (forbidden_.count(e) == 0)
+					if (forbidden_.count(e.GetLightEdge()) == 0)
 					{
 						if (currentPath.PointPushBack(e))
 						{
@@ -957,7 +957,7 @@ namespace Sibelia
 				storage_.IngoingEdges(prevVertex, adjList);
 				for (auto e : adjList)
 				{
-					if (forbidden_.count(e) == 0)
+					if (forbidden_.count(e.GetLightEdge()) == 0)
 					{
 						if (currentPath.PointPushFront(e))
 						{
@@ -1130,7 +1130,7 @@ namespace Sibelia
 		int64_t maxBranchSize_;
 		int64_t flankingThreshold_;		
 		const JunctionStorage & storage_;
-		std::set<Edge> forbidden_;
+		std::set<LightEdge> forbidden_;
 		std::vector<std::vector<int64_t> > blockId_;
 		std::vector<std::vector<int64_t> > syntenyPath_;		
 

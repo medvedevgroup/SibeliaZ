@@ -10,6 +10,8 @@
 
 namespace Sibelia
 {
+	typedef std::pair<int64_t, int64_t> LightEdge;
+
 	class Edge
 	{
 	public:
@@ -19,6 +21,11 @@ namespace Sibelia
 			startVertex_(startVertex), endVertex_(endVertex), ch_(ch), length_(length)
 		{
 
+		}
+
+		LightEdge GetLightEdge() const
+		{
+			return LightEdge(startVertex_, endVertex_);
 		}
 
 		int64_t GetStartVertex() const
@@ -64,6 +71,16 @@ namespace Sibelia
 			}
 
 			return false;
+		}
+
+		bool operator == (const Edge & e) const
+		{
+			return startVertex_ == e.startVertex_ && endVertex_ == e.endVertex_ && ch_ == e.ch_;
+		}
+
+		bool operator != (const Edge & e) const
+		{
+			return !(*this == e);
 		}
 
 	private:

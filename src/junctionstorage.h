@@ -154,14 +154,20 @@ namespace Sibelia
 				return storage_->posChr_[chrId_][idx_].pos + storage_->k_;
 			}
 
+			JunctionIterator Reverse()
+			{
+				return JunctionIterator(storage_, chrId_, idx_, !isPositiveStrand_);
+			}
+
 			char GetChar() const
 			{
+				int64_t pos = storage_->posChr_[chrId_][idx_].pos;
 				if (IsPositiveStrand())
 				{
-					return storage_->sequence_[chrId_][idx_ + storage_->k_];
+					return storage_->sequence_[chrId_][pos + storage_->k_];
 				}
 
-				return TwoPaCo::DnaChar::ReverseChar(storage_->sequence_[chrId_][idx_ - storage_->k_]);
+				return TwoPaCo::DnaChar::ReverseChar(storage_->sequence_[chrId_][pos - 1]);
 			}
 
 			uint64_t GetIndex() const
@@ -331,7 +337,7 @@ namespace Sibelia
 					if (coord.idx + 1 < posChr_[coord.chr].size())
 					{
 						const Vertex & prev = posChr_[coord.chr][coord.idx + 1];
-						char ch = TwoPaCo::DnaChar::ReverseChar(sequence_[coord.chr][prev.pos - k_]);
+						char ch = TwoPaCo::DnaChar::ReverseChar(sequence_[coord.chr][prev.pos - 1]);
 						list.push_back(Edge(-prev.id, -now.id, ch, prev.pos - now.pos));
 					}					
 				}
@@ -360,7 +366,7 @@ namespace Sibelia
 					if (coord.idx > 0)
 					{
 						const Vertex & next = posChr_[coord.chr][coord.idx - 1];
-						char ch = TwoPaCo::DnaChar::ReverseChar(sequence_[coord.chr][now.pos - k_]);
+						char ch = TwoPaCo::DnaChar::ReverseChar(sequence_[coord.chr][now.pos - 1]);
 						list.push_back(Edge(-now.id, -next.id, ch, now.pos - next.pos));
 					}
 				}

@@ -10,7 +10,7 @@ size_t Atoi(const char * str)
 	return ret;
 }
 
-const int32_t Sibelia::BlocksFinder::UNKNOWN_BLOCK = INT32_MAX;
+const int64_t Sibelia::BlocksFinder::UNKNOWN_BLOCK = INT32_MAX;
 
 class OddConstraint : public TCLAP::Constraint < unsigned int >
 {
@@ -76,6 +76,14 @@ int main(int argc, char * argv[])
 			"integer",
 			cmd);
 
+		TCLAP::ValueArg<unsigned int> lookingDepth("",
+			"depth",
+			"Looking depth",
+			false,
+			8,
+			"integer",
+			cmd);
+
 		TCLAP::ValueArg<unsigned int> threads("t",
 			"threads",
 			"Number of worker threads",
@@ -128,7 +136,7 @@ int main(int argc, char * argv[])
 	
 		Sibelia::JunctionStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue());
 		Sibelia::BlocksFinder finder(storage, kvalue.getValue());		
-		finder.FindBlocks(minBlockSize.getValue(), maxBranchSize.getValue(), maxFlankingSize.getValue());
+		finder.FindBlocks(minBlockSize.getValue(), maxBranchSize.getValue(), maxFlankingSize.getValue(), lookingDepth.getValue());
 		finder.GenerateLegacyOutput(outDirName.getValue());
 		std::ofstream dumpStream(outDirName.getValue() + "/graph.dot");
 		finder.Dump(dumpStream);

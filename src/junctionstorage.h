@@ -284,12 +284,7 @@ namespace Sibelia
 
 		JunctionIterator GetIterator(uint64_t chrId, uint64_t idx, bool isPositiveStrand = true) const
 		{
-			if (isPositiveStrand)
-			{
-				return JunctionIterator(this, chrId, idx, isPositiveStrand);
-			}
-
-			return JunctionIterator(this, chrId, posChr_[chrId].size() - idx - 1, isPositiveStrand);
+			return JunctionIterator(this, chrId, idx, isPositiveStrand);
 		}
 
 		JunctionIterator Begin(uint64_t chrId, bool isPositiveStrand = true) const

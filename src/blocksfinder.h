@@ -180,7 +180,7 @@ namespace Sibelia
 			scoreFullChains_ = true;
 		}
 
-		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t flankingThreshold, int64_t lookingDepth)
+		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t flankingThreshold, int64_t lookingDepth, const std::string & debugOut)
 		{
 			blocksFound_ = 0;
 			lookingDepth_ = lookingDepth;
@@ -208,6 +208,7 @@ namespace Sibelia
 
 			std::sort(bubbleCountVector.begin(), bubbleCountVector.end());
 			int count = 0;
+			std::ofstream debugStream(debugOut.c_str());
 			for (auto it = bubbleCountVector.rbegin(); it != bubbleCountVector.rend(); ++it)
 			{
 				if (count++ % 1000 == 0)
@@ -215,7 +216,7 @@ namespace Sibelia
 					std::cerr << count << '\t' << bubbleCountVector.size() << std::endl;
 				}
 
-				ExtendSeed(it->second, bubbleCount);
+				ExtendSeed(it->second, bubbleCount, debugStream);
 			}
 		}
 
@@ -602,7 +603,8 @@ namespace Sibelia
 				{
 					j = 0;
 					JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vertex, i);
-					if ((*blockId_)[it.GetChrId()][it.GetIndex()].block != UNKNOWN_BLOCK)
+					if ((*blockId_)[it.GetChrId()][it.GetIndex()].block != UNKNOWN_BLOCK || 
+						inside_.count(std::make_pair(it.GetChrId(), it.GetIndex())))
 					{
 						continue;
 					}
@@ -640,7 +642,8 @@ namespace Sibelia
 				{
 					bool newInstance = true;
 					JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vertex, i);
-					if ((*blockId_)[it.GetChrId()][it.GetIndex()].block != UNKNOWN_BLOCK)
+					if ((*blockId_)[it.GetChrId()][it.GetIndex()].block != UNKNOWN_BLOCK || 
+						inside_.count(std::make_pair(it.GetChrId(), it.GetIndex())))
 					{
 						continue;
 					}
@@ -652,6 +655,7 @@ namespace Sibelia
 							newInstance = false;
 							inst.seq.push_back(it);
 							inst.rightFlankDistance = vertexDistance;
+							inside_.insert(std::make_pair(it.GetChrId(), it.GetIndex()));
 							break;
 						}
 					}
@@ -688,7 +692,8 @@ namespace Sibelia
 				{
 					j = 0;
 					JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vertex, i);
-					if ((*blockId_)[it.GetChrId()][it.GetIndex()].block != UNKNOWN_BLOCK)
+					if ((*blockId_)[it.GetChrId()][it.GetIndex()].block != UNKNOWN_BLOCK ||
+						inside_.count(std::make_pair(it.GetChrId(), it.GetIndex())))
 					{
 						continue;
 					}
@@ -726,7 +731,8 @@ namespace Sibelia
 				{
 					bool newInstance = true;
 					JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vertex, i);
-					if ((*blockId_)[it.GetChrId()][it.GetIndex()].block != UNKNOWN_BLOCK)
+					if ((*blockId_)[it.GetChrId()][it.GetIndex()].block != UNKNOWN_BLOCK || 
+						inside_.count(std::make_pair(it.GetChrId(), it.GetIndex())))
 					{
 						continue;
 					}
@@ -738,6 +744,7 @@ namespace Sibelia
 							newInstance = false;
 							inst.seq.push_front(it);
 							inst.leftFlankDistance = vertexDistance;
+							inside_.insert(std::make_pair(it.GetChrId(), it.GetIndex()));
 							break;
 						}
 					}
@@ -786,6 +793,8 @@ namespace Sibelia
 				{
 					if (it->seq.front().GetVertexId() == body_.front().vertex)
 					{
+						JunctionStorage::JunctionIterator & j = it->seq.front();
+						inside_.erase(std::make_pair(j.GetChrId(), j.GetIndex()));
 						it->seq.pop_front();
 						if (it->seq.empty())
 						{
@@ -812,6 +821,8 @@ namespace Sibelia
 				{
 					if (it->seq.back().GetVertexId() == body_.back().vertex)
 					{
+						JunctionStorage::JunctionIterator & j = it->seq.back();
+						inside_.erase(std::make_pair(j.GetChrId(), j.GetIndex()));
 						it->seq.pop_back();
 						if (it->seq.empty())
 						{
@@ -918,6 +929,7 @@ namespace Sibelia
 				return true;
 			}						
 
+			std::set<std::pair<int64_t, int64_t> > inside_;
 			std::deque<Point> body_;
 			std::list<Instance> instance_;
 			int64_t minChainSize_;
@@ -941,22 +953,16 @@ namespace Sibelia
 			}			
 		};
 
-		void ExtendSeed(int64_t vertex, const std::map<int64_t, int64_t> & bubbleCount)
+		void ExtendSeed(int64_t vertex, const std::map<int64_t, int64_t> & bubbleCount, std::ostream & debugOut)
 		{
 			Path bestPath(vertex, storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
 			while (true)
 			{
 				Path currentPath = bestPath;
 				int64_t prevBestScore = bestPath.Score(scoreFullChains_);
-				ExtendPathBackward(currentPath, bestPath, lookingDepth_);
-	#ifdef _DEBUG_OUT
-				bestPath.DebugOut(std::cerr);
-	#endif
+				ExtendPathBackward(currentPath, bestPath, lookingDepth_);	
 				currentPath = bestPath;				
 				ExtendPathForward(currentPath, bestPath, lookingDepth_);
-	#ifdef _DEBUG_OUT
-				bestPath.DebugOut(std::cerr);
-	#endif
 				if (bestPath.Score(scoreFullChains_) <= prevBestScore)
 				{
 					break;
@@ -964,12 +970,9 @@ namespace Sibelia
 			}
 
 			if (bestPath.Score(true) > 0 && bestPath.MiddlePathLength() >= minBlockSize_ && bestPath.GoodInstances() > 1)
-			{				
-	#ifdef _DEBUG_OUT
-				std::cerr << "A best path:" << std::endl;
-				bestPath.DebugOut(std::cerr, false);
-	#endif
-				blocksFound_++;
+			{					
+				debugOut << "Block No." << ++blocksFound_ << ":"  << std::endl;
+				bestPath.DebugOut(debugOut, false);
 				syntenyPath_.push_back(std::vector<int64_t>());
 				for (auto pt : bestPath.PathBody())
 				{					
@@ -1015,6 +1018,9 @@ namespace Sibelia
 					{
 						if (currentPath.PointPushBack(e))
 						{
+#ifdef _DEBUG_OUT
+							currentPath.DebugOut(std::cerr);
+#endif
 							int64_t currentScore = currentPath.Score(scoreFullChains_);
 							int64_t prevBestScore = bestPath.Score(scoreFullChains_);
 							if (currentScore > prevBestScore && currentPath.Instances().size() > 1)
@@ -1043,6 +1049,9 @@ namespace Sibelia
 					{
 						if (currentPath.PointPushFront(e))
 						{
+#ifdef _DEBUG_OUT
+							currentPath.DebugOut(std::cerr);
+#endif
 							if (currentPath.Score(scoreFullChains_) > bestPath.Score(scoreFullChains_) && currentPath.Instances().size() > 1)
 							{
 								bestPath = currentPath;

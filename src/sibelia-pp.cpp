@@ -136,7 +136,11 @@ int main(int argc, char * argv[])
 	
 		Sibelia::JunctionStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue());
 		Sibelia::BlocksFinder finder(storage, kvalue.getValue());		
-		finder.FindBlocks(minBlockSize.getValue(), maxBranchSize.getValue(), maxFlankingSize.getValue(), lookingDepth.getValue());
+		finder.FindBlocks(minBlockSize.getValue(),
+			maxBranchSize.getValue(),
+			maxFlankingSize.getValue(),
+			lookingDepth.getValue(),
+			outDirName.getValue() + "/paths.txt");
 		finder.GenerateLegacyOutput(outDirName.getValue());
 		std::ofstream dumpStream(outDirName.getValue() + "/graph.dot");
 		finder.Dump(dumpStream);

@@ -92,6 +92,14 @@ int main(int argc, char * argv[])
 			"integer",
 			cmd);
 
+		TCLAP::ValueArg<unsigned int> sampleSize("",
+			"ssize",
+			"Sample size for randomized walk",
+			false,
+			0,
+			"integer",
+			cmd);
+
 		TCLAP::ValueArg<std::string> tmpDirName("",
 			"tmpdir",
 			"Temporary directory name",
@@ -140,6 +148,7 @@ int main(int argc, char * argv[])
 			maxBranchSize.getValue(),
 			maxFlankingSize.getValue(),
 			lookingDepth.getValue(),
+			sampleSize.getValue(),
 			outDirName.getValue() + "/paths.txt");
 		finder.GenerateLegacyOutput(outDirName.getValue());
 		std::ofstream dumpStream(outDirName.getValue() + "/graph.dot");

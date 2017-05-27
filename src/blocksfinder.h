@@ -1027,10 +1027,9 @@ namespace Sibelia
 		{
 			if (maxDepth > 0)
 			{
-				std::vector<Edge> adjList;
 				int64_t prevVertex = currentPath.PathBody().back().vertex;
-				storage_.OutgoingEdges(prevVertex, adjList);
-				for (auto e : adjList)
+				storage_.OutgoingEdges(prevVertex, adjList_);
+				for (auto e : adjList_)
 				{
 					if (forbidden_.count(e.GetLightEdge()) == 0)
 					{

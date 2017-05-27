@@ -9,6 +9,7 @@
 #include <map>
 #include <list>
 #include <deque>
+#include <ctime>
 #include <iterator>
 #include <cassert>
 #include <numeric>
@@ -183,6 +184,8 @@ namespace Sibelia
 
 		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t flankingThreshold, int64_t lookingDepth, int64_t sampleSize, const std::string & debugOut)
 		{
+			time_t mark = time(0);
+
 			blocksFound_ = 0;
 			sampleSize_ = sampleSize;
 			lookingDepth_ = lookingDepth;
@@ -196,11 +199,11 @@ namespace Sibelia
 			{
 				blockId_[i].resize(storage_.GetChrVerticesCount(i));
 			}
-			
+						
 			std::map<int64_t, int64_t> bubbleCount;
 			for (int64_t vid = -storage_.GetVerticesNumber() + 1; vid < storage_.GetVerticesNumber(); vid++)
 			{
-				CountBubbles(vid, bubbleCount);
+				CountBubbles(vid, bubbleCount);				
 			}
 
 			for (auto it = bubbleCount.rbegin(); it != bubbleCount.rend(); ++it)
@@ -220,6 +223,8 @@ namespace Sibelia
 
 				ExtendSeed(it->second, bubbleCount, debugStream);
 			}
+
+			std::cout << "Time: " << time(0) - mark << std::endl;
 		}
 
 		void Dump(std::ostream & out) const
@@ -594,11 +599,10 @@ namespace Sibelia
 				}
 
 				size_t j = 0;
-				std::vector<int64_t> nextRightFlank(instance_.size());
 				int64_t vertexDistance = body_.empty() ? 0 : body_.back().distance + e.GetLength();
 				for (auto & inst : instance_)
 				{
-					nextRightFlank[j++] = inst.rightFlankDistance;
+					nextFlank_[j++] = inst.rightFlankDistance;
 				}
 
 				for (size_t i = 0; i < storage_->GetInstancesCount(vertex); i++)
@@ -621,7 +625,7 @@ namespace Sibelia
 								return false;
 							}
 
-							nextRightFlank[j] = vertexDistance;
+							nextFlank_[j] = vertexDistance;
 							break;
 						}
 
@@ -630,7 +634,7 @@ namespace Sibelia
 				}
 
 				auto it = instance_.begin();
-				for (int64_t & rightFlank : nextRightFlank)
+				for (int64_t & rightFlank : nextFlank_)
 				{
 					if (abs(it->seq.front().GetPosition() - it->seq.back().GetPosition()) >= minChainSize_ && abs(vertexDistance - rightFlank) > maxFlankingSize_)
 					{
@@ -664,6 +668,7 @@ namespace Sibelia
 
 					if (newInstance)
 					{
+						nextFlank_.push_back(0);
 						instance_.push_back(Instance());
 						instance_.back().seq.push_back(it);
 						instance_.back().leftFlankDistance = instance_.back().rightFlankDistance = vertexDistance;
@@ -682,12 +687,11 @@ namespace Sibelia
 					return false;
 				}
 
-				size_t j = 0;
-				std::vector<int64_t> nextLeftFlank(instance_.size());
+				size_t j = 0;				
 				int64_t vertexDistance = body_.empty() ? 0 : body_.front().distance - e.GetLength();
 				for (auto & inst : instance_)
 				{
-					nextLeftFlank[j++] = inst.leftFlankDistance;
+					nextFlank_[j++] = inst.leftFlankDistance;
 				}
 
 				for (size_t i = 0; i < storage_->GetInstancesCount(vertex); i++)
@@ -710,7 +714,7 @@ namespace Sibelia
 								return false;
 							}
 
-							nextLeftFlank[j] = vertexDistance;
+							nextFlank_[j] = vertexDistance;
 							break;
 						}
 
@@ -719,7 +723,7 @@ namespace Sibelia
 				}
 
 				auto it = instance_.begin();
-				for (int64_t leftFlank : nextLeftFlank)
+				for (int64_t leftFlank : nextFlank_)
 				{
 					if (abs(it->seq.front().GetPosition() - it->seq.back().GetPosition()) >= minChainSize_ && abs(vertexDistance - leftFlank) > maxFlankingSize_)
 					{
@@ -753,6 +757,7 @@ namespace Sibelia
 
 					if (newInstance)
 					{
+						nextFlank_.push_back(0);
 						instance_.push_back(Instance());
 						instance_.back().seq.push_back(it);
 						instance_.back().leftFlankDistance = instance_.back().rightFlankDistance = vertexDistance;
@@ -801,6 +806,7 @@ namespace Sibelia
 						if (it->seq.empty())
 						{
 							it = instance_.erase(it);
+							nextFlank_.pop_back();
 						}
 						else
 						{
@@ -829,6 +835,7 @@ namespace Sibelia
 						if (it->seq.empty())
 						{
 							it = instance_.erase(it);
+							nextFlank_.pop_back();
 						}
 						else
 						{
@@ -893,7 +900,7 @@ namespace Sibelia
 
 		private:
 
-			bool Compatible(JunctionStorage::JunctionIterator start, JunctionStorage::JunctionIterator end, Edge e) const
+			bool Compatible(const JunctionStorage::JunctionIterator & start, const JunctionStorage::JunctionIterator & end, const Edge & e) const
 			{			
 				if (start.GetChrId() != end.GetChrId() || start.IsPositiveStrand() != end.IsPositiveStrand())
 				{
@@ -938,6 +945,7 @@ namespace Sibelia
 			int64_t minBlockSize_;
 			int64_t maxBranchSize_;
 			int64_t maxFlankingSize_;			
+			std::vector<int64_t> nextFlank_;
 			const JunctionStorage * storage_;
 			const std::vector<std::vector<Assignment> > * blockId_;
 
@@ -1050,10 +1058,9 @@ namespace Sibelia
 		{
 			if (maxDepth > 0)
 			{
-				std::vector<Edge> adjList;
 				int64_t prevVertex = currentPath.PathBody().front().vertex;
-				storage_.IngoingEdges(prevVertex, adjList);
-				for (auto e : adjList)
+				storage_.IngoingEdges(prevVertex, adjList_);
+				for (auto e : adjList_)
 				{
 					if (forbidden_.count(e.GetLightEdge()) == 0)
 					{
@@ -1220,6 +1227,7 @@ namespace Sibelia
 		int64_t flankingThreshold_;		
 		const JunctionStorage & storage_;
 		std::set<LightEdge> forbidden_;
+		std::vector<Edge> adjList_;
 		std::vector<std::vector<Assignment> > blockId_;
 		std::vector<std::vector<int64_t> > syntenyPath_;		
 

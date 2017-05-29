@@ -101,16 +101,10 @@ namespace Sibelia
 				nextFlank_[j++] = inst.rightFlankDistance;
 			}
 
-			for (size_t i = 0; i < storage_->GetInstancesCount(vertex); i++)
+			FillBuffer(vertex);
+			for (auto it : junctionBuffer_)
 			{
-				j = 0;
-				JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vertex, i);
-				if ((*blockId_)[it.GetChrId()][it.GetIndex()].block != Assignment::UNKNOWN_BLOCK ||
-					inside_.count(std::make_pair(it.GetChrId(), it.GetIndex())))
-				{
-					continue;
-				}
-
+				j = 0;			
 				for (auto & inst : instance_)
 				{
 					if (Compatible(inst.seq.back(), it, e))
@@ -140,16 +134,9 @@ namespace Sibelia
 				++it;
 			}
 
-			for (size_t i = 0; i < storage_->GetInstancesCount(vertex); i++)
+			for (auto it : junctionBuffer_)
 			{
-				bool newInstance = true;
-				JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vertex, i);
-				if ((*blockId_)[it.GetChrId()][it.GetIndex()].block != Assignment::UNKNOWN_BLOCK ||
-					inside_.count(std::make_pair(it.GetChrId(), it.GetIndex())))
-				{
-					continue;
-				}
-
+				bool newInstance = true;				
 				for (auto & inst : instance_)
 				{
 					if (Compatible(inst.seq.back(), it, e))
@@ -181,7 +168,7 @@ namespace Sibelia
 			if (FindVertexInPath(vertex) != body_.end())
 			{
 				return false;
-			}
+			}			
 
 			size_t j = 0;
 			int64_t vertexDistance = body_.empty() ? 0 : body_.front().distance - e.GetLength();
@@ -190,16 +177,10 @@ namespace Sibelia
 				nextFlank_[j++] = inst.leftFlankDistance;
 			}
 
-			for (size_t i = 0; i < storage_->GetInstancesCount(vertex); i++)
+			FillBuffer(vertex);
+			for (auto it : junctionBuffer_)
 			{
-				j = 0;
-				JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vertex, i);
-				if ((*blockId_)[it.GetChrId()][it.GetIndex()].block != Assignment::UNKNOWN_BLOCK ||
-					inside_.count(std::make_pair(it.GetChrId(), it.GetIndex())))
-				{
-					continue;
-				}
-
+				j = 0;				
 				for (auto & inst : instance_)
 				{
 					if (Compatible(it, inst.seq.front(), e))
@@ -229,16 +210,9 @@ namespace Sibelia
 				++it;
 			}
 
-			for (size_t i = 0; i < storage_->GetInstancesCount(vertex); i++)
+			for (auto it : junctionBuffer_)
 			{
-				bool newInstance = true;
-				JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vertex, i);
-				if ((*blockId_)[it.GetChrId()][it.GetIndex()].block != Assignment::UNKNOWN_BLOCK ||
-					inside_.count(std::make_pair(it.GetChrId(), it.GetIndex())))
-				{
-					continue;
-				}
-
+				bool newInstance = true;			
 				for (auto & inst : instance_)
 				{
 					if (Compatible(it, inst.seq.front(), e))
@@ -442,8 +416,25 @@ namespace Sibelia
 		int64_t maxBranchSize_;
 		int64_t maxFlankingSize_;
 		std::vector<int64_t> nextFlank_;
+		std::vector<JunctionStorage::JunctionIterator> junctionBuffer_;
 		const JunctionStorage * storage_;
 		const std::vector<std::vector<Assignment> > * blockId_;
+
+		void FillBuffer(int64_t vertex)
+		{
+			junctionBuffer_.clear();
+			for (size_t i = 0; i < storage_->GetInstancesCount(vertex); i++)
+			{
+				JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vertex, i);
+				if ((*blockId_)[it.GetChrId()][it.GetIndex()].block != Assignment::UNKNOWN_BLOCK ||
+					inside_.count(std::make_pair(it.GetChrId(), it.GetIndex())))
+				{
+					continue;
+				}
+
+				junctionBuffer_.push_back(it);
+			}
+		}
 
 		std::deque<Point>::const_iterator FindVertexInPath(int64_t vertex) const
 		{

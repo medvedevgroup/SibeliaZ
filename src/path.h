@@ -143,8 +143,7 @@ namespace Sibelia
 					{
 						newInstance = false;
 						inst.seq.push_back(it);
-						inst.rightFlankDistance = vertexDistance;
-						inside_.insert(std::make_pair(it.GetChrId(), it.GetIndex()));
+						inst.rightFlankDistance = vertexDistance;						
 						break;
 					}
 				}
@@ -219,8 +218,7 @@ namespace Sibelia
 					{
 						newInstance = false;
 						inst.seq.push_front(it);
-						inst.leftFlankDistance = vertexDistance;
-						inside_.insert(std::make_pair(it.GetChrId(), it.GetIndex()));
+						inst.leftFlankDistance = vertexDistance;						
 						break;
 					}
 				}
@@ -270,8 +268,7 @@ namespace Sibelia
 			{
 				if (it->seq.front().GetVertexId() == body_.front().vertex)
 				{
-					JunctionStorage::JunctionIterator & j = it->seq.front();
-					inside_.erase(std::make_pair(j.GetChrId(), j.GetIndex()));
+					JunctionStorage::JunctionIterator & j = it->seq.front();					
 					it->seq.pop_front();
 					if (it->seq.empty())
 					{
@@ -299,8 +296,7 @@ namespace Sibelia
 			{
 				if (it->seq.back().GetVertexId() == body_.back().vertex)
 				{
-					JunctionStorage::JunctionIterator & j = it->seq.back();
-					inside_.erase(std::make_pair(j.GetChrId(), j.GetIndex()));
+					JunctionStorage::JunctionIterator & j = it->seq.back();					
 					it->seq.pop_back();
 					if (it->seq.empty())
 					{
@@ -407,8 +403,7 @@ namespace Sibelia
 
 			return true;
 		}
-
-		std::set<std::pair<int64_t, int64_t> > inside_;
+		
 		std::deque<Point> body_;
 		std::list<Instance> instance_;
 		int64_t minChainSize_;
@@ -426,13 +421,28 @@ namespace Sibelia
 			for (size_t i = 0; i < storage_->GetInstancesCount(vertex); i++)
 			{
 				JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vertex, i);
-				if ((*blockId_)[it.GetChrId()][it.GetIndex()].block != Assignment::UNKNOWN_BLOCK ||
-					inside_.count(std::make_pair(it.GetChrId(), it.GetIndex())))
+				if ((*blockId_)[it.GetChrId()][it.GetIndex()].block != Assignment::UNKNOWN_BLOCK)
 				{
 					continue;
 				}
 
-				junctionBuffer_.push_back(it);
+				bool within = false;
+				for (auto & instance : instance_)
+				{
+					int64_t chrId = instance.seq.front().GetChrId();
+					int64_t leftIdx = instance.seq.front().GetIndex();
+					int64_t rightIdx = instance.seq.back().GetIndex();
+					if (it.GetChrId() == chrId && it.GetIndex() >= leftIdx && it.GetIndex() <= rightIdx)
+					{
+						within = true;
+						break;
+					}
+				}
+
+				if (!within)
+				{
+					junctionBuffer_.push_back(it);
+				}
 			}
 		}
 

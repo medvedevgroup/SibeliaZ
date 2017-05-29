@@ -10,7 +10,7 @@ size_t Atoi(const char * str)
 	return ret;
 }
 
-const int64_t Sibelia::BlocksFinder::UNKNOWN_BLOCK = INT32_MAX;
+const int64_t Sibelia::Assignment::UNKNOWN_BLOCK = INT32_MAX;
 
 class OddConstraint : public TCLAP::Constraint < unsigned int >
 {

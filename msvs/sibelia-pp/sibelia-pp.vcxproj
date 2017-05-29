@@ -155,6 +155,7 @@
     <ClInclude Include="..\..\src\outputgenerator.h" />
     <ClInclude Include="..\..\src\blocksfinder.h" />
     <ClInclude Include="..\..\src\junctionstorage.h" />
+    <ClInclude Include="..\..\src\path.h" />
     <ClInclude Include="..\..\src\streamfastaparser.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

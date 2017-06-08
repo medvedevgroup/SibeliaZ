@@ -427,9 +427,9 @@ namespace Sibelia
 			if (maxDepth > 0)
 			{
 				int64_t prevVertex = currentPath.PathBody().back().vertex;
-				storage_.OutgoingEdges(prevVertex, adjList_);
-				for (auto e : adjList_)
+				for (int64_t idx = 0; idx < storage_.OutgoingEdgesNumber(prevVertex); idx++)
 				{
+					Edge e = storage_.OutgoingEdge(prevVertex, idx);
 					if (forbidden_.count(e.GetLightEdge()) == 0)
 					{
 						if (currentPath.PointPushBack(e))
@@ -456,10 +456,10 @@ namespace Sibelia
 		{
 			if (maxDepth > 0)
 			{
-				int64_t prevVertex = currentPath.PathBody().front().vertex;
-				storage_.IngoingEdges(prevVertex, adjList_);
-				for (auto e : adjList_)
+				int64_t prevVertex = currentPath.PathBody().front().vertex;				
+				for (int64_t idx = 0; idx < storage_.IngoingEdgesNumber(prevVertex); idx++)
 				{
+					Edge e = storage_.IngoingEdge(prevVertex, idx);
 					if (forbidden_.count(e.GetLightEdge()) == 0)
 					{
 						if (currentPath.PointPushFront(e))

@@ -262,7 +262,7 @@ namespace Sibelia
 			
 		};
 
-		uint64_t GetChrNumber() const
+		int64_t GetChrNumber() const
 		{
 			return posChr_.size();
 		}
@@ -277,7 +277,7 @@ namespace Sibelia
 			return sequenceDescription_[idx];
 		}
 
-		uint64_t GetChrVerticesCount(uint64_t chrId) const
+		int64_t GetChrVerticesCount(uint64_t chrId) const
 		{
 			return posChr_[chrId].size();
 		}
@@ -312,7 +312,27 @@ namespace Sibelia
 			auto coord = coordinate_[abs(vertexId)][n];			
 			return JunctionIterator(this, coord.chr, coord.idx, posChr_[coord.chr][coord.idx].id == vertexId);
 		}
+
+		int64_t IngoingEdgesNumber(int64_t vertexId) const
+		{
+			return ingoingEdge_[vertexId + GetVerticesNumber()].size();
+		}
+
+		int64_t OutgoingEdgesNumber(int64_t vertexId) const
+		{
+			return outgoingEdge_[vertexId + GetVerticesNumber()].size();
+		}
 		
+		Edge IngoingEdge(int64_t vertexId, int64_t idx) const
+		{
+			return ingoingEdge_[vertexId + GetVerticesNumber()][idx];
+		}
+
+		Edge OutgoingEdge(int64_t vertexId, int64_t idx) const
+		{
+			return outgoingEdge_[vertexId + GetVerticesNumber()][idx];
+		}
+
 		void IngoingEdges(int64_t vertexId, std::vector<Edge> & list) const
 		{
 			list.clear();
@@ -402,6 +422,15 @@ namespace Sibelia
 					sequence_[record].push_back(ch);
 				}
 			}
+
+			int64_t vertices = GetVerticesNumber();
+			ingoingEdge_.resize(vertices * 2 + 1);
+			outgoingEdge_.resize(vertices * 2 + 1);
+			for (int64_t vertexId = -vertices + 1; vertexId < vertices; vertexId++)
+			{
+				IngoingEdges(vertexId, ingoingEdge_[vertexId + vertices]);
+				OutgoingEdges(vertexId, outgoingEdge_[vertexId + vertices]);
+			}
 		}
 
 		JunctionStorage() {}
@@ -412,7 +441,15 @@ namespace Sibelia
 
 	private:
 		
+		struct LightEdge
+		{
+			int64_t vertex;
+			char ch;
+		};
+
 		int64_t k_;
+		std::vector<std::vector<Edge> > ingoingEdge_;
+		std::vector<std::vector<Edge> > outgoingEdge_;
 		std::vector<std::string> sequence_;
 		std::vector<std::string> sequenceDescription_;
 		std::vector<VertexVector> posChr_;

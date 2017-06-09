@@ -1,7 +1,7 @@
 #ifndef _PATH_H_
 #define _PATH_H_
 
-#include "junctionstorage.h"
+#include "forbidden.h"
 
 namespace Sibelia
 {
@@ -21,12 +21,13 @@ namespace Sibelia
 		}
 	};
 
+	struct BestPath;
 
 	struct Path
 	{
 	public:
 		Path() {}
-		Path(int64_t start,
+		Path(Edge start,
 			const JunctionStorage & storage,
 			int64_t maxBranchSize,
 			int64_t minBlockSize,
@@ -35,7 +36,7 @@ namespace Sibelia
 			maxBranchSize_(maxBranchSize), minBlockSize_(minBlockSize), maxFlankingSize_(maxFlankingSize), storage_(&storage),
 			minChainSize_(minBlockSize - 2 * maxFlankingSize), blockId_(&blockId)
 		{
-			PointPushBack(Edge(0, start, 0, 0));
+			PointPushBack(start);
 		}
 
 		struct Instance
@@ -47,10 +48,10 @@ namespace Sibelia
 
 		struct Point
 		{
-			int64_t vertex;
+			Edge edge;
 			int64_t distance;
 			Point() {}
-			Point(int64_t vertex, int64_t distance) : vertex(vertex), distance(distance) {}
+			Point(Edge edge, int64_t distance) : edge(edge), distance(distance) {}
 		};
 
 		void PrintInstance(const Instance & inst, std::ostream & out) const
@@ -67,7 +68,7 @@ namespace Sibelia
 		}
 
 		void DebugOut(std::ostream & out, bool all = true) const
-		{
+		{/*
 			out << "Path: ";
 			for (auto & pt : body_)
 			{
@@ -84,6 +85,7 @@ namespace Sibelia
 			}
 
 			out << std::endl;
+			*/
 		}
 
 		bool PointPushBack(const Edge & e)
@@ -157,7 +159,7 @@ namespace Sibelia
 				}
 			}
 
-			body_.push_back(Point(vertex, vertexDistance));
+			body_.push_back(Point(e, vertexDistance));
 			return true;
 		}
 
@@ -232,7 +234,7 @@ namespace Sibelia
 				}
 			}
 
-			body_.push_front(Point(vertex, vertexDistance));
+			body_.push_front(Point(e, vertexDistance));
 			return true;
 		}
 
@@ -256,9 +258,9 @@ namespace Sibelia
 			return body_.back().distance - body_.front().distance;
 		}
 
-		int64_t GetVertex(size_t index) const
+		Edge GetEdge(size_t index) const
 		{
-			return body_[index].vertex;
+			return body_[index].edge;
 		}
 
 		void PointPopFront()
@@ -266,7 +268,7 @@ namespace Sibelia
 			int64_t newLeftFlankDistance = (++body_.begin())->distance;
 			for (auto it = instance_.begin(); it != instance_.end();)
 			{
-				if (it->seq.front().GetVertexId() == body_.front().vertex)
+				if (it->seq.front().GetVertexId() == body_.front().edge.GetStartVertex())
 				{
 					JunctionStorage::JunctionIterator & j = it->seq.front();					
 					it->seq.pop_front();
@@ -294,7 +296,7 @@ namespace Sibelia
 			int64_t newRightFlankDistance = (--(--body_.end()))->distance;
 			for (auto it = instance_.begin(); it != instance_.end();)
 			{
-				if (it->seq.back().GetVertexId() == body_.back().vertex)
+				if (it->seq.back().GetVertexId() == body_.back().edge.GetEndVertex())
 				{
 					JunctionStorage::JunctionIterator & j = it->seq.back();					
 					it->seq.pop_back();
@@ -450,7 +452,7 @@ namespace Sibelia
 		{
 			for (auto it = body_.begin(); it != body_.end(); ++it)
 			{
-				if (it->vertex == vertex)
+				if (it->edge.GetEndVertex() == vertex || it->edge.GetStartVertex() == vertex)
 				{
 					return it;
 				}
@@ -458,6 +460,57 @@ namespace Sibelia
 
 			return body_.end();
 		}
+	};
+
+	struct BestPath
+	{
+		int64_t score;
+		int64_t leftFlankVertex;
+		int64_t rightFlankVertex;
+		std::deque<Edge> body;
+		void Fix()
+		{
+			if (body.size() > 0)
+			{
+				leftFlankVertex = body.front().GetEndVertex();
+				rightFlankVertex = body.front().GetStartVertex();
+			}
+		}
+
+		void UpdateForward(const Path & path, int64_t newScore)
+		{
+			score = newScore;
+			while (body.size() > 0 && body.back().GetEndVertex() != rightFlankVertex)
+			{
+				body.pop_back();
+			}
+
+			auto it = --path.PathBody().end();
+			for (; it->edge.GetEndVertex() != rightFlankVertex; --it);
+			for (++it; it != path.PathBody().end(); ++it)
+			{
+				body.push_back(it->edge);
+			}
+		}
+
+		void UpdateBackward(const Path & path, int64_t newScore)
+		{
+			score = newScore;
+			score = newScore;
+			while (body.size() > 0 && body.front().GetStartVertex() != leftFlankVertex)
+			{
+				body.pop_front();
+			}
+
+			auto it = path.PathBody().begin();
+			for (; it->edge.GetStartVertex() != leftFlankVertex; ++it);
+			for (++it; it != path.PathBody().end(); ++it)
+			{
+				body.push_front(it->edge);
+			}
+		}
+
+		BestPath() : score(0) {}
 	};
 }
 

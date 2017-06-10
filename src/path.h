@@ -68,11 +68,11 @@ namespace Sibelia
 		}
 
 		void DebugOut(std::ostream & out, bool all = true) const
-		{/*
+		{
 			out << "Path: ";
 			for (auto & pt : body_)
 			{
-				out << pt.vertex << ' ';
+				//out << pt.vertex << ' ';
 			}
 
 			out << std::endl << "Instances: " << std::endl;
@@ -85,7 +85,7 @@ namespace Sibelia
 			}
 
 			out << std::endl;
-			*/
+		
 		}
 
 		bool PointPushBack(const Edge & e)
@@ -472,8 +472,8 @@ namespace Sibelia
 		{
 			if (body.size() > 0)
 			{
-				leftFlankVertex = body.front().GetEndVertex();
-				rightFlankVertex = body.front().GetStartVertex();
+				leftFlankVertex = body.front().GetStartVertex();
+				rightFlankVertex = body.back().GetEndVertex();
 			}
 		}
 
@@ -485,32 +485,51 @@ namespace Sibelia
 				body.pop_back();
 			}
 
-			auto it = --path.PathBody().end();
-			for (; it->edge.GetEndVertex() != rightFlankVertex; --it);
-			for (++it; it != path.PathBody().end(); ++it)
+			if (body.size() > 0)
 			{
-				body.push_back(it->edge);
+				auto it = --path.PathBody().end();
+				for (; it->edge.GetEndVertex() != rightFlankVertex; --it);
+				for (++it; it != path.PathBody().end(); ++it)
+				{
+					body.push_back(it->edge);
+				}
 			}
+			else
+			{
+				for (auto it = path.PathBody().begin(); it != path.PathBody().end(); ++it)
+				{
+					body.push_back(it->edge);
+				}
+			}			
 		}
 
 		void UpdateBackward(const Path & path, int64_t newScore)
 		{
-			score = newScore;
 			score = newScore;
 			while (body.size() > 0 && body.front().GetStartVertex() != leftFlankVertex)
 			{
 				body.pop_front();
 			}
 
-			auto it = path.PathBody().begin();
-			for (; it->edge.GetStartVertex() != leftFlankVertex; ++it);
-			for (++it; it != path.PathBody().end(); ++it)
+			if (body.size() > 0)
 			{
-				body.push_front(it->edge);
+				auto it = path.PathBody().begin();
+				for (; it->edge.GetStartVertex() != leftFlankVertex; ++it);
+				for (++it; it != path.PathBody().end(); ++it)
+				{
+					body.push_front(it->edge);
+				}
 			}
+			else
+			{
+				for (auto it = path.PathBody().begin(); it != path.PathBody().end(); ++it)
+				{
+					body.push_back(it->edge);
+				}
+			}			
 		}
 
-		BestPath() : score(0) {}
+		BestPath() : score(0), leftFlankVertex(0), rightFlankVertex(0) {}
 	};
 }
 

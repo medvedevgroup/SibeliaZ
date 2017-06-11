@@ -371,7 +371,7 @@ namespace Sibelia
 	
 		void ExtendSeed(const Edge & e, const std::map<int64_t, int64_t> & bubbleCount, std::ostream & debugOut)
 		{
-			bool x = e.GetStartVertex() == -132;
+///			bool x = e.GetStartVertex() == 21387;
 			BestPath bestPath(e);
 			Path currentPath(e, storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
 			while (true)

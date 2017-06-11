@@ -465,67 +465,85 @@ namespace Sibelia
 	struct BestPath
 	{
 		int64_t score;		
-		std::list<Edge> body;		
-		
-		std::list<Edge>::iterator rightFlank;
-		std::list<Edge>::reverse_iterator leftFlank;
+		int64_t leftFlank;
+		int64_t rightFlank;
+		std::deque<Edge> left;
+		std::deque<Edge> right;
 
 		void FixForward(Path & path)
 		{			
-			auto it = ++std::list<Edge>::iterator(rightFlank);
-			for (; it != body.end(); ++it)
+			auto it = right.begin() + rightFlank;
+			for (; it != right.end(); ++it)
 			{
-				path.PointPushBack(*it);
+				assert(path.PointPushBack(*it));
 			}
 
-			rightFlank = --body.end();
+			rightFlank = right.size();
+			assert(left.front() == right.front());
 		}
 
 		void FixBackward(Path & path)
 		{			
-			auto it = ++std::list<Edge>::reverse_iterator(leftFlank);
-			for (; it != body.rend(); ++it)
+			auto it = left.begin() + leftFlank;
+			for (; it != left.end(); ++it)
 			{
-				path.PointPushFront(*it);
+				assert(path.PointPushFront(*it));				
 			}
 
-			leftFlank = --body.rend();
+			leftFlank = left.size();
+			assert(left.front() == right.front());
 		}
 
 		void UpdateForward(const Path & path, int64_t newScore)
 		{
 			score = newScore;
-			body.erase(++std::list<Edge>::iterator(rightFlank), body.end());	
-			auto it = --path.PathBody().end();
-			for (; it->edge != *rightFlank; --it);
+			right.erase(right.begin() + rightFlank, right.end());
+			auto it = path.PathBody().end();
+			for (--it; it->edge != right[rightFlank - 1]; --it);
 			for (++it; it != path.PathBody().end(); ++it)
 			{
-				body.push_back(it->edge);
+				right.push_back(it->edge);
 			}
+
+			assert(left.front() == right.front());
 		}
 
 		void UpdateBackward(const Path & path, int64_t newScore)
 		{
 			score = newScore;
-			for (auto it = --body.rend(); it != leftFlank; )
+			left.erase(left.begin() + leftFlank, left.end());
+			auto it = path.PathBody().rend();
+			/*
+			for (size_t i = 0; i < path.PathBody().size(); i++)
 			{
-				--it;
-				body.pop_front();
+				Edge e = path.PathBody()[i].edge;
+				std::cout << e.GetStartVertex() << ", " << e.GetEndVertex() << "; ";
+			}
+
+			std::cout << std::endl << leftFlank << std::endl;
+			for (size_t i = 0; i < left.size(); i++)
+			{
+				Edge e = left[i];
+				std::cout << e.GetStartVertex() << ", " << e.GetEndVertex() << "; ";
 			}
 			
-			auto it = --path.PathBody().rend();
-			for (; it->edge != *leftFlank; --it);
+			std::cout << std::endl;*/
+
+			for (--it; it->edge != left[leftFlank - 1]; --it);
 			for (++it; it != path.PathBody().rend(); ++it)
 			{
-				body.push_front(it->edge);
-			}			
+				left.push_back(it->edge);
+			}
+
+			assert(left.front() == right.front());
 		}
 
 		BestPath(Edge e) : score(0)
 		{
-			body.push_back(e);
-			rightFlank = body.begin();
-			leftFlank = body.rbegin();
+			left.push_back(e);
+			right.push_back(e);
+			rightFlank = right.size();
+			leftFlank = left.size();
 		}
 	};
 }

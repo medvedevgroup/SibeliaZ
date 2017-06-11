@@ -25,7 +25,8 @@ namespace Sibelia
 		bool Notin(const Edge & e) const
 		{
 			int64_t v = e.GetStartVertex() + vertices_;
-			return std::find(forbidden_[v].begin(), forbidden_[v].end(), e.GetChar()) == forbidden_[v].end();
+			bool ret = std::find(forbidden_[v].begin(), forbidden_[v].end(), e.GetChar()) == forbidden_[v].end();
+			return ret;
 		}
 
 	private:

@@ -43,7 +43,7 @@ namespace Sibelia
 
 		Edge Reverse() const
 		{
-			return Edge(-startVertex_, -endVertex_, revCh_, ch_, length_);
+			return Edge(-endVertex_, -startVertex_, revCh_, ch_, length_);
 		}
 
 		char GetRevChar() const

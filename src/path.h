@@ -72,7 +72,7 @@ namespace Sibelia
 			out << "Path: ";
 			for (auto & pt : body_)
 			{
-				//out << pt.vertex << ' ';
+				out << "(" << pt.edge.GetStartVertex() << "," << pt.edge.GetEndVertex() << "," << pt.edge.GetChar() << ") ";
 			}
 
 			out << std::endl << "Instances: " << std::endl;
@@ -464,72 +464,69 @@ namespace Sibelia
 
 	struct BestPath
 	{
-		int64_t score;
-		int64_t leftFlankVertex;
-		int64_t rightFlankVertex;
-		std::deque<Edge> body;
-		void Fix()
-		{
-			if (body.size() > 0)
+		int64_t score;		
+		std::list<Edge> body;		
+		
+		std::list<Edge>::iterator rightFlank;
+		std::list<Edge>::reverse_iterator leftFlank;
+
+		void FixForward(Path & path)
+		{			
+			auto it = ++std::list<Edge>::iterator(rightFlank);
+			for (; it != body.end(); ++it)
 			{
-				leftFlankVertex = body.front().GetStartVertex();
-				rightFlankVertex = body.back().GetEndVertex();
+				path.PointPushBack(*it);
 			}
+
+			rightFlank = --body.end();
+		}
+
+		void FixBackward(Path & path)
+		{			
+			auto it = ++std::list<Edge>::reverse_iterator(leftFlank);
+			for (; it != body.rend(); ++it)
+			{
+				path.PointPushFront(*it);
+			}
+
+			leftFlank = --body.rend();
 		}
 
 		void UpdateForward(const Path & path, int64_t newScore)
 		{
 			score = newScore;
-			while (body.size() > 0 && body.back().GetEndVertex() != rightFlankVertex)
+			body.erase(++std::list<Edge>::iterator(rightFlank), body.end());	
+			auto it = --path.PathBody().end();
+			for (; it->edge != *rightFlank; --it);
+			for (++it; it != path.PathBody().end(); ++it)
 			{
-				body.pop_back();
+				body.push_back(it->edge);
 			}
-
-			if (body.size() > 0)
-			{
-				auto it = --path.PathBody().end();
-				for (; it->edge.GetEndVertex() != rightFlankVertex; --it);
-				for (++it; it != path.PathBody().end(); ++it)
-				{
-					body.push_back(it->edge);
-				}
-			}
-			else
-			{
-				for (auto it = path.PathBody().begin(); it != path.PathBody().end(); ++it)
-				{
-					body.push_back(it->edge);
-				}
-			}			
 		}
 
 		void UpdateBackward(const Path & path, int64_t newScore)
 		{
 			score = newScore;
-			while (body.size() > 0 && body.front().GetStartVertex() != leftFlankVertex)
+			for (auto it = --body.rend(); it != leftFlank; )
 			{
+				--it;
 				body.pop_front();
 			}
-
-			if (body.size() > 0)
+			
+			auto it = --path.PathBody().rend();
+			for (; it->edge != *leftFlank; --it);
+			for (++it; it != path.PathBody().rend(); ++it)
 			{
-				auto it = path.PathBody().begin();
-				for (; it->edge.GetStartVertex() != leftFlankVertex; ++it);
-				for (++it; it != path.PathBody().end(); ++it)
-				{
-					body.push_front(it->edge);
-				}
-			}
-			else
-			{
-				for (auto it = path.PathBody().begin(); it != path.PathBody().end(); ++it)
-				{
-					body.push_back(it->edge);
-				}
+				body.push_front(it->edge);
 			}			
 		}
 
-		BestPath() : score(0), leftFlankVertex(0), rightFlankVertex(0) {}
+		BestPath(Edge e) : score(0)
+		{
+			body.push_back(e);
+			rightFlank = body.begin();
+			leftFlank = body.rbegin();
+		}
 	};
 }
 

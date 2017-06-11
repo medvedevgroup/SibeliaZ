@@ -1,6 +1,6 @@
 #include "blocksfinder.h"
 
-/*
+
 namespace Sibelia
 { 
 	#include <errno.h>
@@ -299,4 +299,4 @@ namespace Sibelia
 
 		out << DELIMITER << std::endl;
 	}
-}*/
+}

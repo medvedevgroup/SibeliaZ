@@ -255,7 +255,7 @@ namespace Sibelia
 						"[label=\"" << e.GetChar() << ", " << i + 1 << "\" color=green]" << std::endl;
 					e = e.Reverse();
 					out << e.GetStartVertex() << " -> " << e.GetEndVertex() <<
-						"[label=\"" << e.GetChar() << ", " << i + 1 << "\" color=green]" << std::endl;					
+						"[label=\"" << e.GetChar() << ", " << -(int64_t(i + 1)) << "\" color=green]" << std::endl;					
 				}
 			}
 
@@ -371,7 +371,8 @@ namespace Sibelia
 	
 		void ExtendSeed(const Edge & e, const std::map<int64_t, int64_t> & bubbleCount, std::ostream & debugOut)
 		{
-			BestPath bestPath;
+			bool x = e.GetStartVertex() == -132;
+			BestPath bestPath(e);
 			Path currentPath(e, storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
 			while (true)
 			{				
@@ -383,9 +384,9 @@ namespace Sibelia
 				else
 				{
 					ExtendPathBackward(currentPath, bestPath, lookingDepth_);
-					bestPath.Fix();					
+					bestPath.FixBackward(currentPath);					
 					ExtendPathForward(currentPath, bestPath, lookingDepth_);
-					bestPath.Fix();
+					bestPath.FixForward(currentPath);
 				}
 				
 				if (bestPath.score <= prevBestScore)
@@ -393,13 +394,13 @@ namespace Sibelia
 					break;
 				}
 			}
-			/*
-			if (bestPath.Score(true) > 0 && bestPath.MiddlePathLength() >= minBlockSize_ && bestPath.GoodInstances() > 1)
+			
+			if (currentPath.Score(true) > 0 && currentPath.MiddlePathLength() >= minBlockSize_ && currentPath.GoodInstances() > 1)
 			{					
 				debugOut << "Block No." << ++blocksFound_ << ":"  << std::endl;
-				bestPath.DebugOut(debugOut, false);
+				currentPath.DebugOut(debugOut, false);
 				syntenyPath_.push_back(std::vector<Edge>());
-				for (auto pt : bestPath.PathBody())
+				for (auto pt : currentPath.PathBody())
 				{					
 					syntenyPath_.back().push_back(pt.edge);
 				}
@@ -410,9 +411,9 @@ namespace Sibelia
 				}
 
 				int64_t instanceCount = 0;
-				for (auto & instance : bestPath.Instances())
+				for (auto & instance : currentPath.Instances())
 				{
-					if (bestPath.IsGoodInstance(instance))
+					if (currentPath.IsGoodInstance(instance))
 					{
 						auto end = instance.seq.back() + 1;
 						for (auto it = instance.seq.front(); it != end; ++it)
@@ -426,7 +427,7 @@ namespace Sibelia
 						instanceCount++;
 					}					
 				}
-			}*/
+			}
 		}
 		
 		void ExtendPathForward(Path & currentPath, BestPath & bestPath, int maxDepth)
@@ -466,7 +467,7 @@ namespace Sibelia
 				for (int64_t idx = 0; idx < storage_.IngoingEdgesNumber(prevVertex); idx++)
 				{
 					Edge e = storage_.IngoingEdge(prevVertex, idx);
-					if (forbidden_.Notin(e) == 0)
+					if (forbidden_.Notin(e))
 					{	
 						if (currentPath.PointPushFront(e))
 						{

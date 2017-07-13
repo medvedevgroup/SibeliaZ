@@ -1,4 +1,5 @@
 #ifndef _FORBIDDEN_H_
+#define _FORBIDDEN_H_
 
 #include "junctionstorage.h"
 

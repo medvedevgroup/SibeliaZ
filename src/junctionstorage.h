@@ -172,6 +172,16 @@ namespace Sibelia
 			uint64_t GetIndex() const
 			{
 				return idx_;
+			}			
+
+			uint64_t GetRelativeIndex() const
+			{
+				if (IsPositiveStrand())
+				{
+					return idx_;
+				}
+				
+				return storage_->sequence_[chrId_].size() - idx_ - 1;
 			}
 
 			uint64_t GetChrId() const

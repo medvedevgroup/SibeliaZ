@@ -40,9 +40,11 @@ namespace Sibelia
 		}
 
 		struct Instance
-		{
+		{			
+			int64_t nextFlankDistance;
 			int64_t leftFlankDistance;
 			int64_t rightFlankDistance;
+			JunctionStorage::JunctionIterator nextJunction;
 			std::deque<JunctionStorage::JunctionIterator> seq;
 		};
 
@@ -84,10 +86,34 @@ namespace Sibelia
 				}
 			}
 
-			out << std::endl;
-		
+			out << std::endl;		
 		}
 
+		size_t PathLength() const
+		{
+			return body_.size();
+		}
+
+		const std::list<Instance> & Instances() const
+		{
+			return instance_;
+		}
+
+		const std::deque<Point> & PathBody() const
+		{
+			return body_;
+		}
+
+		int64_t MiddlePathLength() const
+		{
+			return body_.back().distance - body_.front().distance;
+		}
+
+		Edge GetEdge(size_t index) const
+		{
+			return body_[index].edge;
+		}		
+		
 		bool PointPushBack(const Edge & e)
 		{
 			int64_t vertex = e.GetEndVertex();
@@ -96,73 +122,72 @@ namespace Sibelia
 				return false;
 			}
 
-			size_t j = 0;
 			int64_t vertexDistance = body_.empty() ? 0 : body_.back().distance + e.GetLength();
 			for (auto & inst : instance_)
 			{
-				nextFlank_[j++] = inst.rightFlankDistance;
+				inst.nextFlankDistance = inst.rightFlankDistance;
+				inst.nextJunction = storage_->End(inst.seq.back().GetChrId(), inst.seq.back().IsPositiveStrand());				
 			}
 
 			FillBuffer(vertex);
+			std::vector<JunctionStorage::JunctionIterator> newInstance;
 			for (auto it : junctionBuffer_)
 			{
-				j = 0;			
+				bool nowNewInstance = true;
 				for (auto & inst : instance_)
 				{
 					if (Compatible(inst.seq.back(), it, e))
 					{
+						nowNewInstance = false;
 						int64_t leftFlank = abs(inst.leftFlankDistance - body_.front().distance);
 						if (abs(it.GetPosition() - inst.seq.front().GetPosition()) >= minChainSize_ && leftFlank > maxFlankingSize_)
 						{
 							return false;
 						}
-
-						nextFlank_[j] = vertexDistance;
-						break;
+						
+						if (it.GetRelativeIndex() < inst.nextJunction.GetRelativeIndex())
+						{
+							inst.nextJunction = it;
+							inst.nextFlankDistance = vertexDistance;
+							break;
+						}												
 					}
+				}
 
-					j++;
+				if (nowNewInstance)
+				{
+					newInstance.push_back(it);
 				}
 			}
 
-			auto it = instance_.begin();
-			for (int64_t & rightFlank : nextFlank_)
+			for (auto & it : instance_)
 			{
-				if (abs(it->seq.front().GetPosition() - it->seq.back().GetPosition()) >= minChainSize_ && abs(vertexDistance - rightFlank) > maxFlankingSize_)
+				if (abs(it.seq.front().GetPosition() - it.seq.back().GetPosition()) >= minChainSize_ && abs(vertexDistance - it.nextFlankDistance) > maxFlankingSize_)
 				{
 					return false;
 				}
-
-				++it;
 			}
 
-			for (auto it : junctionBuffer_)
+			for (auto & inst : instance_)
 			{
-				bool newInstance = true;				
-				for (auto & inst : instance_)
+				if (inst.nextFlankDistance == vertexDistance)
 				{
-					if (Compatible(inst.seq.back(), it, e))
-					{
-						newInstance = false;
-						inst.seq.push_back(it);
-						inst.rightFlankDistance = vertexDistance;						
-						break;
-					}
+					inst.seq.push_back(inst.nextJunction);
+					inst.rightFlankDistance = vertexDistance;
 				}
-
-				if (newInstance)
-				{
-					nextFlank_.push_back(0);
-					instance_.push_back(Instance());
-					instance_.back().seq.push_back(it);
-					instance_.back().leftFlankDistance = instance_.back().rightFlankDistance = vertexDistance;
-				}
+			}
+				
+			for (auto & it : newInstance)
+			{
+				instance_.push_back(Instance());
+				instance_.back().seq.push_back(it);
+				instance_.back().leftFlankDistance = instance_.back().rightFlankDistance = vertexDistance;
 			}
 
 			body_.push_back(Point(e, vertexDistance));
 			return true;
 		}
-
+/*
 		bool PointPushFront(const Edge & e)
 		{
 			int64_t vertex = e.GetStartVertex();
@@ -236,32 +261,7 @@ namespace Sibelia
 
 			body_.push_front(Point(e, vertexDistance));
 			return true;
-		}
-
-		size_t PathLength() const
-		{
-			return body_.size();
-		}
-
-		const std::list<Instance> & Instances() const
-		{
-			return instance_;
-		}
-
-		const std::deque<Point> & PathBody() const
-		{
-			return body_;
-		}
-
-		int64_t MiddlePathLength() const
-		{
-			return body_.back().distance - body_.front().distance;
-		}
-
-		Edge GetEdge(size_t index) const
-		{
-			return body_[index].edge;
-		}
+		}		
 
 		void PointPopFront()
 		{
@@ -290,6 +290,7 @@ namespace Sibelia
 
 			body_.pop_front();
 		}
+		*/
 
 		void PointPopBack()
 		{
@@ -302,8 +303,7 @@ namespace Sibelia
 					it->seq.pop_back();
 					if (it->seq.empty())
 					{
-						it = instance_.erase(it);
-						nextFlank_.pop_back();
+						it = instance_.erase(it);						
 					}
 					else
 					{
@@ -412,11 +412,10 @@ namespace Sibelia
 		int64_t minBlockSize_;
 		int64_t maxBranchSize_;
 		int64_t maxFlankingSize_;
-		std::vector<int64_t> nextFlank_;
-		std::vector<JunctionStorage::JunctionIterator> junctionBuffer_;
-		const JunctionStorage * storage_;
+		const JunctionStorage * storage_;		
 		const std::vector<std::vector<Assignment> > * blockId_;
-
+		std::vector<JunctionStorage::JunctionIterator> junctionBuffer_;
+		
 		void FillBuffer(int64_t vertex)
 		{
 			junctionBuffer_.clear();
@@ -446,7 +445,7 @@ namespace Sibelia
 					junctionBuffer_.push_back(it);
 				}
 			}
-		}
+		}		
 
 		std::deque<Point>::const_iterator FindVertexInPath(int64_t vertex) const
 		{
@@ -483,7 +482,7 @@ namespace Sibelia
 		}
 
 		void FixBackward(Path & path)
-		{			
+		{/*
 			auto it = left.begin() + leftFlank;
 			for (; it != left.end(); ++it)
 			{
@@ -491,7 +490,7 @@ namespace Sibelia
 			}
 
 			leftFlank = left.size();
-			assert(left.front() == right.front());
+			assert(left.front() == right.front());*/
 		}
 
 		void UpdateForward(const Path & path, int64_t newScore)
@@ -512,22 +511,7 @@ namespace Sibelia
 		{
 			score = newScore;
 			left.erase(left.begin() + leftFlank, left.end());
-			auto it = path.PathBody().rend();
-			/*
-			for (size_t i = 0; i < path.PathBody().size(); i++)
-			{
-				Edge e = path.PathBody()[i].edge;
-				std::cout << e.GetStartVertex() << ", " << e.GetEndVertex() << "; ";
-			}
-
-			std::cout << std::endl << leftFlank << std::endl;
-			for (size_t i = 0; i < left.size(); i++)
-			{
-				Edge e = left[i];
-				std::cout << e.GetStartVertex() << ", " << e.GetEndVertex() << "; ";
-			}
-			
-			std::cout << std::endl;*/
+			auto it = path.PathBody().rend();			
 
 			for (--it; it->edge != left[leftFlank - 1]; --it);
 			for (++it; it != path.PathBody().rend(); ++it)

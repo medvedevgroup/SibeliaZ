@@ -222,10 +222,8 @@ namespace Sibelia
 					std::cerr << count << '\t' << bubbleCountVector.size() << std::endl;
 				}
 
-				for (int64_t idx = 0; idx < storage_.OutgoingEdgesNumber(it->second); ++idx)
-				{
-					ExtendSeed(storage_.OutgoingEdge(it->second, idx), bubbleCount, debugStream);
-				}				
+				
+				ExtendSeed(it->second, bubbleCount, debugStream);								
 			}
 
 			std::cout << "Time: " << time(0) - mark << std::endl;
@@ -369,10 +367,10 @@ namespace Sibelia
 		typedef std::vector< std::vector<size_t> > BubbledBranches;
 
 	
-		void ExtendSeed(const Edge & e, const std::map<int64_t, int64_t> & bubbleCount, std::ostream & debugOut)
+		void ExtendSeed(int64_t vid, const std::map<int64_t, int64_t> & bubbleCount, std::ostream & debugOut)
 		{
-			BestPath bestPath(e);
-			Path currentPath(e, storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
+			BestPath bestPath(vid);
+			Path currentPath(vid, storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
 			while (true)
 			{				
 				int64_t prevBestScore = bestPath.score;
@@ -433,7 +431,7 @@ namespace Sibelia
 		{
 			if (maxDepth > 0)
 			{
-				int64_t prevVertex = currentPath.PathBody().back().edge.GetEndVertex();
+				int64_t prevVertex = currentPath.GetEndVertex();
 				for (int64_t idx = 0; idx < storage_.OutgoingEdgesNumber(prevVertex); idx++)
 				{
 					Edge e = storage_.OutgoingEdge(prevVertex, idx);
@@ -459,10 +457,10 @@ namespace Sibelia
 		}
 		
 		void ExtendPathBackward(Path & currentPath, BestPath & bestPath, int maxDepth)
-		{/*
+		{
 			if (maxDepth > 0)
 			{
-				int64_t prevVertex = currentPath.PathBody().front().edge.GetStartVertex();
+				int64_t prevVertex = currentPath.GetStartVertex();
 				for (int64_t idx = 0; idx < storage_.IngoingEdgesNumber(prevVertex); idx++)
 				{
 					Edge e = storage_.IngoingEdge(prevVertex, idx);
@@ -484,8 +482,7 @@ namespace Sibelia
 						}
 					}
 				}
-			}
-			*/
+			}		
 		}
 		
 		void CountBubbles(int64_t vertexId, std::map<int64_t, int64_t> & bubbleCount)

@@ -81,12 +81,12 @@ namespace Sibelia
 			return !(*this == e);
 		}
 
-	private:
+	private:		
+		int64_t startVertex_;
+		int64_t endVertex_;
 		char ch_;
 		char revCh_;
 		int64_t length_;
-		int64_t startVertex_;
-		int64_t endVertex_;
 	};
 
 	class JunctionStorage
@@ -181,7 +181,7 @@ namespace Sibelia
 					return idx_;
 				}
 				
-				return storage_->sequence_[chrId_].size() - idx_ - 1;
+				return storage_->posChr_[chrId_].size() - idx_ - 1;
 			}
 
 			uint64_t GetChrId() const

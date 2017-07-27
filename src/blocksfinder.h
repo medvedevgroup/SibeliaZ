@@ -373,7 +373,7 @@ namespace Sibelia
 			Path currentPath(vid, storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
 			while (true)
 			{				
-				int64_t prevBestScore = bestPath.score;
+				int64_t prevBestScore = bestPath.score_;
 				if (sampleSize_ > 0)
 				{
 //					ExtendPathRandom(currentPath, bestPath, sampleSize_, lookingDepth_, bubbleCount);
@@ -386,7 +386,7 @@ namespace Sibelia
 					bestPath.FixForward(currentPath);
 				}
 				
-				if (bestPath.score <= prevBestScore)
+				if (bestPath.score_ <= prevBestScore)
 				{
 					break;
 				}
@@ -397,9 +397,11 @@ namespace Sibelia
 				debugOut << "Block No." << ++blocksFound_ << ":"  << std::endl;
 				currentPath.DebugOut(debugOut, false);
 				syntenyPath_.push_back(std::vector<Edge>());
-				for (auto pt : currentPath.PathBody())
+				std::vector<Edge> nowPathBody;
+				currentPath.DumpPath(nowPathBody);
+				for (auto pt : nowPathBody)
 				{					
-					syntenyPath_.back().push_back(pt.edge);
+					syntenyPath_.back().push_back(pt);
 				}
 
 				for (size_t i = 0; i < syntenyPath_.back().size() - 1; i++)
@@ -443,7 +445,7 @@ namespace Sibelia
 							currentPath.DebugOut(std::cerr);
 #endif
 							int64_t currentScore = currentPath.Score(scoreFullChains_);							
-							if (currentScore > bestPath.score && currentPath.Instances().size() > 1)
+							if (currentScore > bestPath.score_ && currentPath.GoodInstances() > 1)
 							{
 								bestPath.UpdateForward(currentPath, currentScore);
 							}
@@ -472,7 +474,7 @@ namespace Sibelia
 							currentPath.DebugOut(std::cerr);
 #endif
 							int64_t currentScore = currentPath.Score(scoreFullChains_);
-							if (currentScore > bestPath.score && currentPath.Instances().size() > 1)
+							if (currentScore > bestPath.score_ && currentPath.GoodInstances() > 1)
 							{
 								bestPath.UpdateBackward(currentPath, currentScore);
 							}					

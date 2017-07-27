@@ -249,7 +249,6 @@ namespace Sibelia
 
 			rightBody_.push_back(Point(e, startVertexDistance));
 			distance_[e.GetEndVertex()] = endVertexDistance;
-			assert(IsConsistent());
 			return true;
 		}
 
@@ -328,8 +327,7 @@ namespace Sibelia
 			}
 
 			leftBody_.push_back(Point(e, startVertexDistance));
-			distance_[e.GetStartVertex()] = startVertexDistance;
-			assert(IsConsistent());
+			distance_[e.GetStartVertex()] = startVertexDistance;			
 			return true;
 		}		
 
@@ -359,9 +357,7 @@ namespace Sibelia
 				{
 					++it;
 				}
-			}
-
-			assert(IsConsistent());
+			}			
 		}	
 
 		void PointPopBack()
@@ -391,8 +387,6 @@ namespace Sibelia
 					++it;
 				}
 			}
-
-			assert(IsConsistent());
 		}
 
 		int64_t Score(bool final = false) const
@@ -440,27 +434,6 @@ namespace Sibelia
 			int64_t rightFlank = abs(inst.rightFlankDistance - (rightBody_.size() > 0 ? rightBody_.back().endDistance : 0));
 			length = abs(inst.seq.front().GetPosition() - inst.seq.back().GetPosition());
 			score = length - leftFlank - rightFlank;
-		}
-
-		bool IsConsistent() const
-		{/*
-			if (checkConsistency_)
-			{
-				Path testPath(body_.front().edge.GetStartVertex(), *storage_, maxBranchSize_, minBlockSize_, maxFlankingSize_, *blockId_, false);
-				for (auto it = body_.begin() + 1; it != body_.end(); ++it)
-				{
-					if (!testPath.PointPushBack(it->edge))
-					{
-						testPath.PointPushBack(it->edge);
-						assert(false);
-					}
-				}
-
-				assert(body_ == testPath.body_);				
-				assert(instance_ == testPath.instance_);				
-			}			
-			*/
-			return true;
 		}
 
 	private:
@@ -578,7 +551,8 @@ namespace Sibelia
 		{			
 			for (auto & pt : newRightBody_)
 			{
-				assert(path.PointPushBack(pt.edge));
+				bool ret = path.PointPushBack(pt.edge);
+				assert(ret);
 			}
 
 			newRightBody_.clear();
@@ -589,7 +563,8 @@ namespace Sibelia
 		{
 			for (auto & pt : newLeftBody_)
 			{
-				assert(path.PointPushFront(pt.edge));
+				bool ret = path.PointPushFront(pt.edge);
+				assert(ret);
 			}
 			
 			newLeftBody_.clear();

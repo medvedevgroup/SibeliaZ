@@ -391,7 +391,7 @@ namespace Sibelia
 					break;
 				}
 			}
-			
+						
 			if (currentPath.Score(true) > 0 && currentPath.MiddlePathLength() >= minBlockSize_ && currentPath.GoodInstances() > 1)
 			{					
 				debugOut << "Block No." << ++blocksFound_ << ":"  << std::endl;
@@ -445,7 +445,7 @@ namespace Sibelia
 							currentPath.DebugOut(std::cerr);
 #endif
 							int64_t currentScore = currentPath.Score(scoreFullChains_);							
-							if (currentScore > bestPath.score_ && currentPath.GoodInstances() > 1)
+							if (currentScore > bestPath.score_ && currentPath.Instances().size() > 1)
 							{
 								bestPath.UpdateForward(currentPath, currentScore);
 							}
@@ -473,8 +473,8 @@ namespace Sibelia
 #ifdef _DEBUG_OUT
 							currentPath.DebugOut(std::cerr);
 #endif
-							int64_t currentScore = currentPath.Score(scoreFullChains_);
-							if (currentScore > bestPath.score_ && currentPath.GoodInstances() > 1)
+							int64_t currentScore = currentPath.Score(scoreFullChains_);						
+							if (currentScore > bestPath.score_ && currentPath.Instances().size() > 1)
 							{
 								bestPath.UpdateBackward(currentPath, currentScore);
 							}					

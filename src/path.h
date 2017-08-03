@@ -1,7 +1,7 @@
 #ifndef _PATH_H_
 #define _PATH_H_
 
-#include "forbidden.h"
+#include "distancekeeper.h"
 
 namespace Sibelia
 {
@@ -25,26 +25,31 @@ namespace Sibelia
 
 	struct Path
 	{
-	public:
-		Path() {}
+	public:		
 		Path(int64_t vid,
 			const JunctionStorage & storage,
+			DistanceKeeper & distanceKeeper,
 			int64_t maxBranchSize,
 			int64_t minBlockSize,
 			int64_t maxFlankingSize,
 			const std::vector<std::vector<Assignment> > & blockId,
 			bool checkConsistency = false) :
-			maxBranchSize_(maxBranchSize), minBlockSize_(minBlockSize), maxFlankingSize_(maxFlankingSize), storage_(&storage),
+			maxBranchSize_(maxBranchSize), minBlockSize_(minBlockSize), maxFlankingSize_(maxFlankingSize), storage_(&storage), distanceKeeper_(distanceKeeper),
 			minChainSize_(minBlockSize - 2 * maxFlankingSize), blockId_(&blockId), checkConsistency_(checkConsistency), origin_(vid)
 		{
 			FillBuffer(vid);
-			distance_[vid] = 0;
+			distanceKeeper_.Set(vid, 0);
 			for (auto & it : junctionBuffer_)
 			{
 				instance_.push_back(Instance());
 				instance_.back().seq.push_back(it);
 				instance_.back().leftFlankDistance = instance_.back().rightFlankDistance = 0;
 			}
+		}
+
+		~Path()
+		{
+			distanceKeeper_.Unset(origin_);
 		}
 
 		struct Instance
@@ -248,7 +253,7 @@ namespace Sibelia
 			}
 
 			rightBody_.push_back(Point(e, startVertexDistance));
-			distance_[e.GetEndVertex()] = endVertexDistance;
+			distanceKeeper_.Set(e.GetEndVertex(), endVertexDistance);
 			return true;
 		}
 
@@ -327,7 +332,7 @@ namespace Sibelia
 			}
 
 			leftBody_.push_back(Point(e, startVertexDistance));
-			distance_[e.GetStartVertex()] = startVertexDistance;			
+			distanceKeeper_.Set(e.GetStartVertex(), startVertexDistance);
 			return true;
 		}		
 
@@ -335,7 +340,7 @@ namespace Sibelia
 		{
 			int64_t lastVertex = leftBody_.back().edge.GetStartVertex();
 			leftBody_.pop_back();
-			distance_.erase(lastVertex);
+			distanceKeeper_.Unset(lastVertex);
 			for (auto it = instance_.begin(); it != instance_.end(); )
 			{
 				if (it->seq.front().GetVertexId() == lastVertex)
@@ -348,9 +353,8 @@ namespace Sibelia
 					}
 					else
 					{
-						int64_t vd = it->seq.front().GetVertexId();
-						assert(distance_.count(vd));
-						it++->leftFlankDistance = distance_[vd];
+						int64_t vd = it->seq.front().GetVertexId();						
+						it++->leftFlankDistance = distanceKeeper_.Get(vd);
 					}
 				}
 				else
@@ -364,7 +368,7 @@ namespace Sibelia
 		{
 			int64_t lastVertex = rightBody_.back().edge.GetEndVertex();
 			rightBody_.pop_back();
-			distance_.erase(lastVertex);
+			distanceKeeper_.Unset(lastVertex);
 			for (auto it = instance_.begin(); it != instance_.end(); )
 			{
 				if (it->seq.back().GetVertexId() == lastVertex)
@@ -377,9 +381,8 @@ namespace Sibelia
 					}
 					else
 					{
-						int64_t vd = it->seq.back().GetVertexId();
-						assert(distance_.count(vd));
-						it++->rightFlankDistance = distance_[vd];						
+						int64_t vd = it->seq.back().GetVertexId();						
+						it++->rightFlankDistance = distanceKeeper_.Get(vd);						
 					}
 				}
 				else
@@ -481,7 +484,7 @@ namespace Sibelia
 		std::deque<Point> leftBody_;
 		std::deque<Point> rightBody_;
 		std::list<Instance> instance_;
-		std::map<int64_t, int64_t> distance_;
+		DistanceKeeper & distanceKeeper_;		
 		int64_t origin_;
 		int64_t minChainSize_;
 		int64_t minBlockSize_;

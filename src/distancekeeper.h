@@ -13,6 +13,11 @@ namespace Sibelia
 			distance_.assign(vertices_ * 2, NO_DISTANCE);
 		}
 
+		bool IsSet(int64_t v) const
+		{
+			return distance_[v + vertices_] != NO_DISTANCE;
+		}
+
 		void Set(int64_t v, int64_t d)
 		{
 			distance_[v + vertices_] = d;

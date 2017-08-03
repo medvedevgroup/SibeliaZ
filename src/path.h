@@ -33,9 +33,10 @@ namespace Sibelia
 			int64_t minBlockSize,
 			int64_t maxFlankingSize,
 			const std::vector<std::vector<Assignment> > & blockId,
+			std::vector<std::vector<bool> > & junctionInWork,
 			bool checkConsistency = false) :
 			maxBranchSize_(maxBranchSize), minBlockSize_(minBlockSize), maxFlankingSize_(maxFlankingSize), storage_(&storage), distanceKeeper_(distanceKeeper),
-			minChainSize_(minBlockSize - 2 * maxFlankingSize), blockId_(&blockId), checkConsistency_(checkConsistency), origin_(vid)
+			minChainSize_(minBlockSize - 2 * maxFlankingSize), blockId_(&blockId), junctionInWork_(junctionInWork), checkConsistency_(checkConsistency), origin_(vid)
 		{
 			FillBuffer(vid);
 			distanceKeeper_.Set(vid, 0);
@@ -176,18 +177,20 @@ namespace Sibelia
 			{
 				ret.push_back(it->edge);
 			}
-		}
-		
+		}		
+
 		bool PointPushBack(const Edge & e)
 		{
 			int64_t vertex = e.GetEndVertex();
-			if (FindVertexInPath(rightBody_, vertex) || FindVertexInPath(leftBody_, vertex))
+			if (distanceKeeper_.IsSet(vertex))
 			{
 				return false;
 			}
 
 			int64_t startVertexDistance = rightBody_.empty() ? 0 : rightBody_.back().endDistance;
 			int64_t endVertexDistance = startVertexDistance + e.GetLength();
+
+			
 			for (auto & inst : instance_)
 			{
 				inst.nextFlankDistance = inst.rightFlankDistance;
@@ -260,7 +263,7 @@ namespace Sibelia
 		bool PointPushFront(const Edge & e)
 		{
 			int64_t vertex = e.GetStartVertex();
-			if (FindVertexInPath(rightBody_, vertex) || FindVertexInPath(leftBody_, vertex))
+			if (distanceKeeper_.IsSet(vertex))
 			{
 				return false;
 			}
@@ -484,16 +487,20 @@ namespace Sibelia
 		std::deque<Point> leftBody_;
 		std::deque<Point> rightBody_;
 		std::list<Instance> instance_;
-		DistanceKeeper & distanceKeeper_;		
+		
 		int64_t origin_;
 		int64_t minChainSize_;
 		int64_t minBlockSize_;
 		int64_t maxBranchSize_;
 		int64_t maxFlankingSize_;
 		bool checkConsistency_;
-		const JunctionStorage * storage_;		
-		const std::vector<std::vector<Assignment> > * blockId_;
+		std::vector<Instance*> history_;
+		const JunctionStorage * storage_;
+		DistanceKeeper & distanceKeeper_;
+		std::vector<std::vector<bool> > & junctionInWork_;
+		const std::vector<std::vector<Assignment> > * blockId_;		
 		std::vector<JunctionStorage::JunctionIterator> junctionBuffer_;
+		
 		
 		void FillBuffer(int64_t vertex)
 		{
@@ -548,8 +555,7 @@ namespace Sibelia
 		int64_t rightFlank_;
 		std::vector<Path::Point> newLeftBody_;
 		std::vector<Path::Point> newRightBody_;
-		
-		
+				
 		void FixForward(Path & path)
 		{			
 			for (auto & pt : newRightBody_)

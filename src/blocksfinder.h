@@ -193,12 +193,14 @@ namespace Sibelia
 			minBlockSize_ = minBlockSize;
 			maxBranchSize_ = maxBranchSize;			
 			flankingThreshold_ = flankingThreshold;
+			std::vector<std::vector<bool> > junctionInWork;
 			std::vector<std::pair<int64_t, int64_t> > bubbleCountVector;
-
 			blockId_.resize(storage_.GetChrNumber());
+			junctionInWork.resize(storage_.GetChrNumber());
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
 				blockId_[i].resize(storage_.GetChrVerticesCount(i));
+				junctionInWork[i].resize(storage_.GetChrVerticesCount(i));
 			}
 			
 			std::map<int64_t, int64_t> bubbleCount;
@@ -223,7 +225,7 @@ namespace Sibelia
 					std::cerr << count << '\t' << bubbleCountVector.size() << std::endl;
 				}
 				
-				ExtendSeed(it->second, bubbleCount, distanceKeeper, debugStream);								
+				ExtendSeed(it->second, bubbleCount, distanceKeeper, junctionInWork, debugStream);								
 			}
 
 			std::cout << "Time: " << time(0) - mark << std::endl;
@@ -238,9 +240,9 @@ namespace Sibelia
 				{
 					auto jt = it + 1;
 					out << it.GetVertexId() << " -> " << jt.GetVertexId() 
-						<< "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "\" color=blue]" << std::endl;
+						<< "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "\" color=blue]\n";
 					out << jt.Reverse().GetVertexId() << " -> " << it.Reverse().GetVertexId() 
-						<< "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "\" color=red]" << std::endl;
+						<< "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "\" color=red]\n";
 				}
 			}
 
@@ -250,10 +252,10 @@ namespace Sibelia
 				{
 					Edge e = syntenyPath_[i][j];
 					out << e.GetStartVertex() << " -> " << e.GetEndVertex() <<
-						"[label=\"" << e.GetChar() << ", " << i + 1 << "\" color=green]" << std::endl;
+						"[label=\"" << e.GetChar() << ", " << i + 1 << "\" color=green]\n";
 					e = e.Reverse();
 					out << e.GetStartVertex() << " -> " << e.GetEndVertex() <<
-						"[label=\"" << e.GetChar() << ", " << -(int64_t(i + 1)) << "\" color=green]" << std::endl;					
+						"[label=\"" << e.GetChar() << ", " << -(int64_t(i + 1)) << "\" color=green]\n";
 				}
 			}
 
@@ -367,10 +369,14 @@ namespace Sibelia
 		typedef std::vector< std::vector<size_t> > BubbledBranches;
 
 	
-		void ExtendSeed(int64_t vid, const std::map<int64_t, int64_t> & bubbleCount, DistanceKeeper & distanceKeeper, std::ostream & debugOut)
+		void ExtendSeed(int64_t vid,
+			const std::map<int64_t, int64_t> & bubbleCount,
+			DistanceKeeper & distanceKeeper,
+			std::vector<std::vector<bool> > & junctionInWork,
+			std::ostream & debugOut)
 		{
 			BestPath bestPath(vid);
-			Path currentPath(vid, storage_, distanceKeeper, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
+			Path currentPath(vid, storage_, distanceKeeper, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_, junctionInWork);
 			while (true)
 			{				
 				int64_t prevBestScore = bestPath.score_;

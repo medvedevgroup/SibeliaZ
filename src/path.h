@@ -66,6 +66,17 @@ namespace Sibelia
 				} while (start++ != end);
 			}
 			
+			for (auto & p : leftBody_)
+			{
+				distanceKeeper_.Unset(p.edge.GetEndVertex());
+				distanceKeeper_.Unset(p.edge.GetStartVertex());				
+			}
+
+			for (auto & p : rightBody_)
+			{
+				distanceKeeper_.Unset(p.edge.GetEndVertex());
+				distanceKeeper_.Unset(p.edge.GetStartVertex());
+			}
 		}
 
 		struct Instance

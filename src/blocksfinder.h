@@ -182,7 +182,7 @@ namespace Sibelia
 		{
 			scoreFullChains_ = false;
 		}
-		
+
 		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t flankingThreshold, int64_t lookingDepth, int64_t sampleSize, const std::string & debugOut)
 		{
 			time_t mark = time(0);
@@ -191,22 +191,20 @@ namespace Sibelia
 			sampleSize_ = sampleSize;
 			lookingDepth_ = lookingDepth;
 			minBlockSize_ = minBlockSize;
-			maxBranchSize_ = maxBranchSize;			
+			maxBranchSize_ = maxBranchSize;
 			flankingThreshold_ = flankingThreshold;
 			std::vector<std::vector<bool> > junctionInWork;
 			std::vector<std::pair<int64_t, int64_t> > bubbleCountVector;
 			blockId_.resize(storage_.GetChrNumber());
-			junctionInWork.resize(storage_.GetChrNumber());
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
 				blockId_[i].resize(storage_.GetChrVerticesCount(i));
-				junctionInWork[i].resize(storage_.GetChrVerticesCount(i));
 			}
-			
+
 			std::map<int64_t, int64_t> bubbleCount;
 			for (int64_t vid = -storage_.GetVerticesNumber() + 1; vid < storage_.GetVerticesNumber(); vid++)
 			{
-				CountBubbles(vid, bubbleCount);				
+				CountBubbles(vid, bubbleCount);
 			}
 
 			for (auto it = bubbleCount.rbegin(); it != bubbleCount.rend(); ++it)
@@ -214,8 +212,8 @@ namespace Sibelia
 				bubbleCountVector.push_back(std::make_pair(it->second, it->first));
 			}
 
-			std::sort(bubbleCountVector.begin(), bubbleCountVector.end());
 			int64_t count = 0;
+			std::sort(bubbleCountVector.begin(), bubbleCountVector.end());
 			std::ofstream debugStream(debugOut.c_str());
 			DistanceKeeper distanceKeeper(storage_.GetVerticesNumber());
 			for (auto it = bubbleCountVector.rbegin(); it != bubbleCountVector.rend(); ++it)
@@ -224,8 +222,9 @@ namespace Sibelia
 				{
 					std::cerr << count << '\t' << bubbleCountVector.size() << std::endl;
 				}
-				
-				ExtendSeed(it->second, bubbleCount, distanceKeeper, junctionInWork, debugStream);								
+
+				ExtendSeed(it->second, bubbleCount, distanceKeeper, debugStream);
+				assert(CheckBlockIdIntegrity());
 			}
 
 			std::cout << "Time: " << time(0) - mark << std::endl;
@@ -239,9 +238,9 @@ namespace Sibelia
 				for (auto it = storage_.Begin(i); it != storage_.End(i) - 1; ++it)
 				{
 					auto jt = it + 1;
-					out << it.GetVertexId() << " -> " << jt.GetVertexId() 
+					out << it.GetVertexId() << " -> " << jt.GetVertexId()
 						<< "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "\" color=blue]\n";
-					out << jt.Reverse().GetVertexId() << " -> " << it.Reverse().GetVertexId() 
+					out << jt.Reverse().GetVertexId() << " -> " << it.Reverse().GetVertexId()
 						<< "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "\" color=red]\n";
 				}
 			}
@@ -261,7 +260,7 @@ namespace Sibelia
 
 			out << "}" << std::endl;
 		}
-		
+
 		void ListBlocksSequences(const BlockList & block, const std::string & fileName) const
 		{
 			std::ofstream out;
@@ -318,7 +317,7 @@ namespace Sibelia
 						int64_t cstart = storage_.GetIterator(chr, i, bid > 0).GetPosition();
 						int64_t cend = storage_.GetIterator(chr, j, bid > 0).GetPosition() + (bid > 0 ? k_ : -k_);
 						int64_t start = std::min(cstart, cend);
-						int64_t end = std::max(cstart, cend);						
+						int64_t end = std::max(cstart, cend);
 						instance.push_back(BlockInstance(bid, chr, start, end));
 						i = j + 1;
 					}
@@ -328,16 +327,16 @@ namespace Sibelia
 					}
 				}
 			}
-			
+
 			CreateOutDirectory(outDir);
 			GenerateReport(instance, outDir + "/" + "coverage_report.txt");
 			ListBlocksIndices(instance, outDir + "/" + "blocks_coords.txt");
 			ListBlocksSequences(instance, outDir + "/" + "blocks_sequences.fasta");
 		}
 
-		
+
 	private:
-		
+
 		template<class Iterator>
 		void OutputLines(Iterator start, size_t length, std::ostream & out) const
 		{
@@ -368,15 +367,29 @@ namespace Sibelia
 
 		typedef std::vector< std::vector<size_t> > BubbledBranches;
 
+		bool CheckBlockIdIntegrity() const
+		{
+			for (auto & bidVector : blockId_)
+			{
+				for (auto a : bidVector)
+				{
+					if (a.block == Assignment::IN_USE)
+					{
+						return false;
+					}
+				}
+			}
+
+			return true;
+		}
 	
 		void ExtendSeed(int64_t vid,
 			const std::map<int64_t, int64_t> & bubbleCount,
-			DistanceKeeper & distanceKeeper,
-			std::vector<std::vector<bool> > & junctionInWork,
+			DistanceKeeper & distanceKeeper,			
 			std::ostream & debugOut)
-		{
-			BestPath bestPath(vid);
-			Path currentPath(vid, storage_, distanceKeeper, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_, junctionInWork);
+		{			
+			BestPath bestPath(vid);			
+			Path currentPath(vid, storage_, distanceKeeper, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
 			while (true)
 			{				
 				int64_t prevBestScore = bestPath.score_;

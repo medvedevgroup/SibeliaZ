@@ -161,7 +161,7 @@ namespace Sibelia
 			out << std::endl;		
 		}		
 
-		const std::list<Instance> & Instances() const
+		const std::vector<Instance> & Instances() const
 		{
 			return instance_;
 		}		
@@ -292,7 +292,7 @@ namespace Sibelia
 			int64_t lastVertex = rightBody_.back().edge.GetEndVertex();
 			rightBody_.pop_back();
 			distanceKeeper_.Unset(lastVertex);
-			for (auto it = instance_.begin(); it != instance_.end(); )
+			for (auto it = instance_.rbegin(); it != instance_.rend(); )
 			{
 				if (it->seq.back().GetVertexId() == lastVertex)
 				{
@@ -308,7 +308,9 @@ namespace Sibelia
 					it->seq.pop_back();
 					if (it->seq.empty())
 					{
-						it = instance_.erase(it);
+						assert(it == instance_.rbegin());
+						instance_.pop_back();
+						it = instance_.rbegin();
 					}
 					else
 					{
@@ -521,7 +523,7 @@ namespace Sibelia
 		
 		std::deque<Point> leftBody_;
 		std::deque<Point> rightBody_;
-		std::list<Instance> instance_;
+		std::vector<Instance> instance_;
 		
 		int64_t origin_;
 		int64_t minChainSize_;

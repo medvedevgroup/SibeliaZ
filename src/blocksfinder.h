@@ -399,8 +399,8 @@ namespace Sibelia
 				}
 				else
 				{
-					ExtendPathBackward(currentPath, bestPath, lookingDepth_);
-					bestPath.FixBackward(currentPath);					
+//					ExtendPathBackward(currentPath, bestPath, lookingDepth_);
+//					bestPath.FixBackward(currentPath);					
 					ExtendPathForward(currentPath, bestPath, lookingDepth_);
 					bestPath.FixForward(currentPath);
 				}

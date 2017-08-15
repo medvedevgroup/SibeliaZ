@@ -81,12 +81,8 @@ namespace Sibelia
 		struct Instance
 		{	
 		private:
-		public:
-			
-			int64_t nextFlankDistance;
-			JunctionStorage::JunctionIterator nextJunction;
-			
-			std::deque<JunctionStorage::JunctionIterator> seq;
+		public:			
+			std::vector<JunctionStorage::JunctionIterator> seq;
 
 
 			void Push(const JunctionStorage::JunctionIterator & it)
@@ -441,8 +437,8 @@ namespace Sibelia
 
 		friend class BestPath;
 
-		std::deque<Point> leftBody_;
-		std::deque<Point> rightBody_;
+		std::vector<Point> leftBody_;
+		std::vector<Point> rightBody_;
 		std::vector<Instance> instance_;
 
 		int64_t origin_;

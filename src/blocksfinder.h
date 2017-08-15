@@ -398,7 +398,7 @@ namespace Sibelia
 			if (currentPath.Score(true) > 0 && currentPath.MiddlePathLength() >= minBlockSize_ && currentPath.GoodInstances() > 1)
 			{					
 				debugOut << "Block No." << ++blocksFound_ << ":"  << std::endl;
-				currentPath.DebugOut(debugOut, false);
+//				currentPath.DebugOut(debugOut, false);
 				syntenyPath_.push_back(std::vector<Edge>());
 				std::vector<Edge> nowPathBody;
 				currentPath.DumpPath(nowPathBody);

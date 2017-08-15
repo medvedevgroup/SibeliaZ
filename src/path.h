@@ -6,8 +6,9 @@
 namespace Sibelia
 {
 	struct Assignment
-	{		
-		static const int64_t UNKNOWN_BLOCK;		
+	{
+		static const int64_t IN_USE;
+		static const int64_t UNKNOWN_BLOCK;
 		int64_t block;
 		int64_t instance;
 		Assignment() : block(UNKNOWN_BLOCK), instance(UNKNOWN_BLOCK)
@@ -25,78 +26,102 @@ namespace Sibelia
 
 	struct Path
 	{
-	public:		
+	public:
 		Path(int64_t vid,
 			const JunctionStorage & storage,
 			DistanceKeeper & distanceKeeper,
 			int64_t maxBranchSize,
 			int64_t minBlockSize,
 			int64_t maxFlankingSize,
-			std::vector<std::vector<Assignment> > & blockId,			
+			std::vector<std::vector<Assignment> > & blockId,
 			bool checkConsistency = false) :
 			maxBranchSize_(maxBranchSize), minBlockSize_(minBlockSize), maxFlankingSize_(maxFlankingSize), storage_(&storage), distanceKeeper_(distanceKeeper),
 			minChainSize_(minBlockSize - 2 * maxFlankingSize), blockId_(blockId), checkConsistency_(checkConsistency), origin_(vid)
 		{
-			distanceKeeper_.Set(vid, 0);/*
+			FillBuffer(vid);
+			distanceKeeper_.Set(vid, 0);
 			for (auto & it : junctionBuffer_)
 			{
 				instance_.push_back(Instance());
 				instance_.back().seq.push_back(it);
 				instance_.back().leftFlankDistance = instance_.back().rightFlankDistance = 0;
-			}*/
+			}
 		}
 
 		~Path()
 		{
 			distanceKeeper_.Unset(origin_);
-			
+			for (auto & inst : instance_)
+			{
+				JunctionStorage::JunctionIterator start = inst.seq.front();
+				JunctionStorage::JunctionIterator end = inst.seq.back();
+				do
+				{
+					auto & bid = blockId_[start.GetChrId()][start.GetIndex()].block;
+					if (bid == Assignment::IN_USE)
+					{
+						bid = Assignment::UNKNOWN_BLOCK;
+					}
+
+				} while (start++ != end);
+			}
+
 			for (auto & p : leftBody_)
 			{
-				distanceKeeper_.Unset(p.edge.GetEndVertex());
-				distanceKeeper_.Unset(p.edge.GetStartVertex());				
+				distanceKeeper_.Unset(p.Edge().GetEndVertex());
+				distanceKeeper_.Unset(p.Edge().GetStartVertex());
 			}
 
 			for (auto & p : rightBody_)
 			{
-				distanceKeeper_.Unset(p.edge.GetEndVertex());
-				distanceKeeper_.Unset(p.edge.GetStartVertex());
+				distanceKeeper_.Unset(p.Edge().GetEndVertex());
+				distanceKeeper_.Unset(p.Edge().GetStartVertex());
 			}
 		}
 
 		struct Instance
-		{	
-			JunctionStorage::JunctionIterator leftFlank;
-			JunctionStorage::JunctionIterator rightFlank;
+		{
+			int64_t nextFlankDistance;
+			int64_t leftFlankDistance;
+			int64_t rightFlankDistance;
+			JunctionStorage::JunctionIterator nextJunction;
+			std::deque<JunctionStorage::JunctionIterator> seq;
 
-			int64_t LeftFlankDistance(const DistanceKeeper & keeper) const
-			{
-
-			}
-
-			int64_t RightFlankDistance(const DistanceKeeper & keeper) const
-			{
-
-			}
-			
-			/*
 			bool operator == (const Instance & inst) const
 			{
-				return LeftFlankDistance == inst.leftFlankDistance && rightFlankDistance == inst.rightFlankDistance && seq == inst.seq;
+				return leftFlankDistance == inst.leftFlankDistance && rightFlankDistance == inst.rightFlankDistance && seq == inst.seq;
 			}
 
 			bool operator != (const Instance & inst) const
 			{
 				return inst != *this;
-			}*/
+			}
 		};
 
 		struct Point
 		{
+		private:
 			Edge edge;
 			int64_t startDistance;
-			int64_t endDistance;
+		public:
 			Point() {}
-			Point(Edge edge, int64_t startDistance) : edge(edge), startDistance(startDistance), endDistance(startDistance + edge.GetLength()) {}
+			Point(Edge edge, int64_t startDistance) : edge(edge), startDistance(startDistance) {}
+
+			Edge Edge() const
+			{
+				return edge;
+			}
+
+			int64_t StartDistance() const
+			{
+				return startDistance;
+			}
+
+			int64_t EndDistance() const
+			{
+				return startDistance + edge.GetLength();
+			}
+
 			bool operator == (const Point & p) const
 			{
 				return startDistance == p.startDistance && edge == p.edge;
@@ -112,7 +137,7 @@ namespace Sibelia
 		{
 			return origin_;
 		}
-/*
+
 		void PrintInstance(const Instance & inst, std::ostream & out) const
 		{
 			for (auto & it : inst.seq)
@@ -125,7 +150,7 @@ namespace Sibelia
 
 			out << std::endl;
 		}
-
+		/*
 		void DebugOut(std::ostream & out, bool all = true) const
 		{
 			out << "Path: ";
@@ -150,24 +175,24 @@ namespace Sibelia
 				}
 			}
 
-			out << std::endl;		
-		}		
-*/
+			out << std::endl;
+		}*/
+
 		const std::vector<Instance> & Instances() const
 		{
 			return instance_;
-		}		
+		}
 
 		int64_t MiddlePathLength() const
 		{
-			return (rightBody_.size() > 0 ? rightBody_.back().endDistance : 0) - (leftBody_.size() > 0 ? leftBody_.back().startDistance : 0);
+			return (rightBody_.size() > 0 ? rightBody_.back().EndDistance() : 0) - (leftBody_.size() > 0 ? leftBody_.back().StartDistance() : 0);
 		}
-		
+
 		int64_t GetEndVertex() const
 		{
 			if (rightBody_.size() > 0)
 			{
-				return rightBody_.back().edge.GetEndVertex();
+				return rightBody_.back().Edge().GetEndVertex();
 			}
 
 			return origin_;
@@ -177,7 +202,7 @@ namespace Sibelia
 		{
 			if (leftBody_.size() > 0)
 			{
-				return leftBody_.back().edge.GetStartVertex();
+				return leftBody_.back().Edge().GetStartVertex();
 			}
 
 			return origin_;
@@ -188,14 +213,22 @@ namespace Sibelia
 			ret.clear();
 			for (auto it = leftBody_.rbegin(); it != leftBody_.rend(); ++it)
 			{
-				ret.push_back(it->edge);
+				ret.push_back(it->Edge());
 			}
 
 			for (auto it = rightBody_.rbegin(); it != rightBody_.rend(); ++it)
 			{
-				ret.push_back(it->edge);
+				ret.push_back(it->Edge());
 			}
-		}				
+		}
+
+		void AssignBlockId(JunctionStorage::JunctionIterator start, JunctionStorage::JunctionIterator end, int64_t value)
+		{
+			do
+			{
+				blockId_[start.GetChrId()][start.GetIndex()].block = value;
+			} while (start++ != end);
+		}
 
 		bool PointPushBack(const Edge & e)
 		{
@@ -204,20 +237,20 @@ namespace Sibelia
 			{
 				return false;
 			}
-			
-			int64_t startVertexDistance = rightBody_.empty() ? 0 : rightBody_.back().endDistance;
+
+			int64_t startVertexDistance = rightBody_.empty() ? 0 : rightBody_.back().EndDistance();
 			int64_t endVertexDistance = startVertexDistance + e.GetLength();
 			for (auto & inst : instance_)
-			{				
+			{
 				int64_t chrId = inst.seq.back().GetChrId();
 				JunctionStorage::JunctionIterator startIt = inst.seq.back();
 				JunctionStorage::JunctionIterator nowIt = startIt + 1;
 				if (nowIt.Valid() && blockId_[chrId][nowIt.GetIndex()].block == Assignment::UNKNOWN_BLOCK)
-				{					
-					bool reach = false;					
+				{
+					bool reach = false;
 					if (startIt.GetVertexId() == e.GetStartVertex() && nowIt.GetVertexId() == vertex && inst.seq.back().GetChar() == e.GetChar())
-					{						
-						reach = true;						
+					{
+						reach = true;
 					}
 					else
 					{
@@ -231,13 +264,13 @@ namespace Sibelia
 									break;
 								}
 							}
-						}						
+						}
 					}
-					
+
 					if (reach)
-					{						
+					{
 						int64_t nextLength = abs(nowIt.GetPosition() - inst.seq.front().GetPosition());
-						int64_t leftFlankSize = abs(inst.leftFlankDistance - (leftBody_.empty() ? 0 : leftBody_.back().startDistance));
+						int64_t leftFlankSize = abs(inst.leftFlankDistance - (leftBody_.empty() ? 0 : leftBody_.back().StartDistance()));
 						if (nextLength >= minChainSize_ && leftFlankSize > maxFlankingSize_)
 						{
 							rightBody_.push_back(Point(e, startVertexDistance));
@@ -245,21 +278,23 @@ namespace Sibelia
 							PointPopBack();
 							return false;
 						}
-						
+
+						AssignBlockId(inst.seq.back() + 1, nowIt, Assignment::IN_USE);
 						inst.seq.push_back(nowIt);
-						inst.rightFlankDistance = endVertexDistance;												
+						inst.rightFlankDistance = endVertexDistance;
 					}
 				}
 			}
 
-			
+
 			for (size_t i = 0; i < storage_->GetInstancesCount(vertex); i++)
 			{
 				JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vertex, i);
 				if (blockId_[it.GetChrId()][it.GetIndex()].block == Assignment::UNKNOWN_BLOCK)
 				{
 					instance_.push_back(Instance());
-					instance_.back().seq.push_back(it);					
+					instance_.back().seq.push_back(it);
+					blockId_[it.GetChrId()][it.GetIndex()].block = Assignment::IN_USE;
 					instance_.back().leftFlankDistance = instance_.back().rightFlankDistance = startVertexDistance;
 				}
 			}
@@ -271,13 +306,22 @@ namespace Sibelia
 
 		void PointPopBack()
 		{
-			int64_t lastVertex = rightBody_.back().edge.GetEndVertex();
+			int64_t lastVertex = rightBody_.back().Edge().GetEndVertex();
 			rightBody_.pop_back();
 			distanceKeeper_.Unset(lastVertex);
 			for (auto it = instance_.rbegin(); it != instance_.rend(); )
 			{
 				if (it->seq.back().GetVertexId() == lastVertex)
-				{					
+				{
+					if (it->seq.size() > 1)
+					{
+						AssignBlockId(*(it->seq.end() - 2) + 1, *(it->seq.end() - 1), Assignment::UNKNOWN_BLOCK);
+					}
+					else
+					{
+						blockId_[it->seq.back().GetChrId()][it->seq.back().GetIndex()].block = Assignment::UNKNOWN_BLOCK;
+					}
+
 					it->seq.pop_back();
 					if (it->seq.empty())
 					{
@@ -300,12 +344,14 @@ namespace Sibelia
 
 		bool PointPushFront(const Edge & e)
 		{
+		
 			return true;
-		}		
+		}
 
 		void PointPopFront()
 		{
-		}			
+			
+		}
 
 		int64_t Score(bool final = false) const
 		{
@@ -348,67 +394,63 @@ namespace Sibelia
 
 		void InstanceScore(const Instance & inst, int64_t & length, int64_t & score) const
 		{
-			int64_t leftFlank = abs(inst.leftFlankDistance - (leftBody_.size() > 0 ? leftBody_.back().startDistance : 0));
-			int64_t rightFlank = abs(inst.rightFlankDistance - (rightBody_.size() > 0 ? rightBody_.back().endDistance : 0));
+			int64_t leftFlank = abs(inst.leftFlankDistance - (leftBody_.size() > 0 ? leftBody_.back().StartDistance() : 0));
+			int64_t rightFlank = abs(inst.rightFlankDistance - (rightBody_.size() > 0 ? rightBody_.back().EndDistance() : 0));
 			length = abs(inst.seq.front().GetPosition() - inst.seq.back().GetPosition());
 			score = length - leftFlank - rightFlank;
 		}
 
 	private:
 
-		bool Compatible(const JunctionStorage::JunctionIterator & start, const JunctionStorage::JunctionIterator & end, const Edge & e) const
-		{
-			if (start.GetChrId() != end.GetChrId() || start.IsPositiveStrand() != end.IsPositiveStrand())
-			{
-				return false;
-			}
-
-			int64_t diff = end.GetPosition() - start.GetPosition();
-			if (start.IsPositiveStrand())
-			{
-				if (diff < 0)
-				{
-					return false;
-				}
-
-				auto start1 = start + 1;
-				if (diff > maxBranchSize_ && (start.GetChar() != e.GetChar() || end != start1 || start1.GetVertexId() != e.GetEndVertex()))
-				{
-					return false;
-				}
-			}
-			else
-			{
-				if (-diff < 0)
-				{
-					return false;
-				}
-
-				auto start1 = start + 1;
-				if (-diff > maxBranchSize_ && (start.GetChar() != e.GetChar() || end != start1 || start1.GetVertexId() != e.GetEndVertex()))
-				{
-					return false;
-				}
-			}
-
-			return true;
-		}
 
 		friend class BestPath;
-		
+
 		std::deque<Point> leftBody_;
 		std::deque<Point> rightBody_;
 		std::vector<Instance> instance_;
-		
+
 		int64_t origin_;
 		int64_t minChainSize_;
 		int64_t minBlockSize_;
 		int64_t maxBranchSize_;
 		int64_t maxFlankingSize_;
-		bool checkConsistency_;		
+		bool checkConsistency_;
 		const JunctionStorage * storage_;
-		DistanceKeeper & distanceKeeper_;		
-		std::vector<std::vector<Assignment> > & blockId_;						
+		DistanceKeeper & distanceKeeper_;
+		std::vector<std::vector<Assignment> > & blockId_;
+		std::vector<JunctionStorage::JunctionIterator> junctionBuffer_;
+
+
+		void FillBuffer(int64_t vertex)
+		{
+			junctionBuffer_.clear();
+			for (size_t i = 0; i < storage_->GetInstancesCount(vertex); i++)
+			{
+				JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vertex, i);
+				if (blockId_[it.GetChrId()][it.GetIndex()].block != Assignment::UNKNOWN_BLOCK)
+				{
+					continue;
+				}
+
+				bool within = false;
+				for (auto & instance : instance_)
+				{
+					int64_t chrId = instance.seq.front().GetChrId();
+					int64_t leftIdx = instance.seq.front().GetIndex();
+					int64_t rightIdx = instance.seq.back().GetIndex();
+					if (it.GetChrId() == chrId && it.GetIndex() >= leftIdx && it.GetIndex() <= rightIdx)
+					{
+						within = true;
+						break;
+					}
+				}
+
+				if (!within)
+				{
+					junctionBuffer_.push_back(it);
+				}
+			}
+		}
 	};
 
 	struct BestPath
@@ -418,12 +460,12 @@ namespace Sibelia
 		int64_t rightFlank_;
 		std::vector<Path::Point> newLeftBody_;
 		std::vector<Path::Point> newRightBody_;
-				
+
 		void FixForward(Path & path)
-		{			
+		{
 			for (auto & pt : newRightBody_)
 			{
-				bool ret = path.PointPushBack(pt.edge);
+				bool ret = path.PointPushBack(pt.Edge());
 				assert(ret);
 			}
 
@@ -435,10 +477,10 @@ namespace Sibelia
 		{
 			for (auto & pt : newLeftBody_)
 			{
-				bool ret = path.PointPushFront(pt.edge);
+				bool ret = path.PointPushFront(pt.Edge());
 				assert(ret);
 			}
-			
+
 			newLeftBody_.clear();
 			leftFlank_ = path.leftBody_.size();
 		}
@@ -458,8 +500,8 @@ namespace Sibelia
 		}
 
 		BestPath(int64_t vid) : score_(0), leftFlank_(0), rightFlank_(0)
-		{			
-			
+		{
+
 		}
 	};
 }

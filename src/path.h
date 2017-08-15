@@ -43,8 +43,7 @@ namespace Sibelia
 			for (auto & it : junctionBuffer_)
 			{
 				instance_.push_back(Instance());
-				instance_.back().seq.push_back(it);
-				instance_.back().leftFlankDistance = instance_.back().rightFlankDistance = 0;
+				instance_.back().seq.push_back(it);				
 			}
 		}
 
@@ -80,13 +79,23 @@ namespace Sibelia
 		}
 
 		struct Instance
-		{
+		{			
+		public:
+			
 			int64_t nextFlankDistance;
-			int64_t leftFlankDistance;
-			int64_t rightFlankDistance;
 			JunctionStorage::JunctionIterator nextJunction;
 			std::deque<JunctionStorage::JunctionIterator> seq;
 
+			int64_t LeftFlankDistance(const DistanceKeeper & keeper) const
+			{
+				return keeper.Get(seq.front().GetVertexId());
+			}
+
+			int64_t RightFlankDistance(const DistanceKeeper & keeper) const
+			{
+				return keeper.Get(seq.back().GetVertexId());
+			}
+/*
 			bool operator == (const Instance & inst) const
 			{
 				return leftFlankDistance == inst.leftFlankDistance && rightFlankDistance == inst.rightFlankDistance && seq == inst.seq;
@@ -96,6 +105,7 @@ namespace Sibelia
 			{
 				return inst != *this;
 			}
+			*/
 		};
 
 		struct Point
@@ -254,7 +264,7 @@ namespace Sibelia
 					}
 					else
 					{
-						if (abs(endVertexDistance - inst.rightFlankDistance) <= maxBranchSize_)
+						if (abs(endVertexDistance - inst.RightFlankDistance(distanceKeeper_)) <= maxBranchSize_)
 						{
 							for (; nowIt.Valid() && blockId_[chrId][nowIt.GetIndex()].block == Assignment::UNKNOWN_BLOCK && abs(nowIt.GetPosition() - startIt.GetPosition()) <= maxBranchSize_; ++nowIt)
 							{
@@ -270,7 +280,7 @@ namespace Sibelia
 					if (reach)
 					{
 						int64_t nextLength = abs(nowIt.GetPosition() - inst.seq.front().GetPosition());
-						int64_t leftFlankSize = abs(inst.leftFlankDistance - (leftBody_.empty() ? 0 : leftBody_.back().StartDistance()));
+						int64_t leftFlankSize = abs(inst.LeftFlankDistance(distanceKeeper_) - (leftBody_.empty() ? 0 : leftBody_.back().StartDistance()));
 						if (nextLength >= minChainSize_ && leftFlankSize > maxFlankingSize_)
 						{
 							rightBody_.push_back(Point(e, startVertexDistance));
@@ -280,8 +290,7 @@ namespace Sibelia
 						}
 
 						AssignBlockId(inst.seq.back() + 1, nowIt, Assignment::IN_USE);
-						inst.seq.push_back(nowIt);
-						inst.rightFlankDistance = endVertexDistance;
+						inst.seq.push_back(nowIt);						
 					}
 				}
 			}
@@ -294,8 +303,7 @@ namespace Sibelia
 				{
 					instance_.push_back(Instance());
 					instance_.back().seq.push_back(it);
-					blockId_[it.GetChrId()][it.GetIndex()].block = Assignment::IN_USE;
-					instance_.back().leftFlankDistance = instance_.back().rightFlankDistance = startVertexDistance;
+					blockId_[it.GetChrId()][it.GetIndex()].block = Assignment::IN_USE;					
 				}
 			}
 
@@ -331,8 +339,7 @@ namespace Sibelia
 					}
 					else
 					{
-						int64_t vd = it->seq.back().GetVertexId();
-						it++->rightFlankDistance = distanceKeeper_.Get(vd);
+						it++;
 					}
 				}
 				else
@@ -394,8 +401,8 @@ namespace Sibelia
 
 		void InstanceScore(const Instance & inst, int64_t & length, int64_t & score) const
 		{
-			int64_t leftFlank = abs(inst.leftFlankDistance - (leftBody_.size() > 0 ? leftBody_.back().StartDistance() : 0));
-			int64_t rightFlank = abs(inst.rightFlankDistance - (rightBody_.size() > 0 ? rightBody_.back().EndDistance() : 0));
+			int64_t leftFlank = abs(inst.LeftFlankDistance(distanceKeeper_) - (leftBody_.size() > 0 ? leftBody_.back().StartDistance() : 0));
+			int64_t rightFlank = abs(inst.RightFlankDistance(distanceKeeper_) - (rightBody_.size() > 0 ? rightBody_.back().EndDistance() : 0));
 			length = abs(inst.seq.front().GetPosition() - inst.seq.back().GetPosition());
 			score = length - leftFlank - rightFlank;
 		}

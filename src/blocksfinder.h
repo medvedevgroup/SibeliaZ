@@ -7,7 +7,6 @@
 #include <set>
 #include <map>
 #include <list>
-#include <deque>
 #include <ctime>
 #include <iterator>
 #include <cassert>
@@ -417,8 +416,8 @@ namespace Sibelia
 				{
 					if (currentPath.IsGoodInstance(instance))
 					{
-						auto end = instance.seq.back() + 1;
-						for (auto it = instance.seq.front(); it != end; ++it)
+						auto end = instance.Back() + 1;
+						for (auto it = instance.Front(); it != end; ++it)
 						{
 							int64_t idx = it.GetIndex();
 							int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());							

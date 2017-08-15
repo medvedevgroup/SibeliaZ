@@ -1,6 +1,7 @@
 #ifndef _PATH_H_
 #define _PATH_H_
 
+#include <cassert>
 #include "distancekeeper.h"
 
 namespace Sibelia
@@ -42,8 +43,7 @@ namespace Sibelia
 			distanceKeeper_.Set(vid, 0);
 			for (auto & it : junctionBuffer_)
 			{
-				instance_.push_back(Instance());
-				instance_.back().Push(it);
+				instance_.push_back(Instance(it));
 			}
 		}
 
@@ -81,55 +81,49 @@ namespace Sibelia
 		struct Instance
 		{	
 		private:
+			JunctionStorage::JunctionIterator front_;
+			JunctionStorage::JunctionIterator back_;
 		public:			
-			std::vector<JunctionStorage::JunctionIterator> seq;
-
-
-			void Push(const JunctionStorage::JunctionIterator & it)
+		
+			Instance()
 			{
-				seq.push_back(it);
+
 			}
 
-			void Pop()
+			Instance(JunctionStorage::JunctionIterator & it) : front_(it), back_(it)
 			{
-				seq.pop_back();
+
 			}
 
-			size_t Size() const
+			void ChangeBack(const JunctionStorage::JunctionIterator & it)
 			{
-				return seq.size();
+				back_ = it;
+			}			
+
+			bool SinglePoint() const
+			{
+				return front_ == back_;
 			}
 
 			JunctionStorage::JunctionIterator Front() const
 			{
-				return seq.front();
+				return front_;
 			}
 
 			JunctionStorage::JunctionIterator Back() const
 			{
-				return seq.back();
+				return back_;
 			}
 
 			int64_t LeftFlankDistance(const DistanceKeeper & keeper) const
 			{
-				return keeper.Get(seq.front().GetVertexId());
+				return keeper.Get(front_.GetVertexId());
 			}
 
 			int64_t RightFlankDistance(const DistanceKeeper & keeper) const
 			{
-				return keeper.Get(seq.back().GetVertexId());
+				return keeper.Get(back_.GetVertexId());
 			}
-/*
-			bool operator == (const Instance & inst) const
-			{
-				return leftFlankDistance == inst.leftFlankDistance && rightFlankDistance == inst.rightFlankDistance && seq == inst.seq;
-			}
-
-			bool operator != (const Instance & inst) const
-			{
-				return inst != *this;
-			}
-			*/
 		};
 
 		struct Point
@@ -316,7 +310,7 @@ namespace Sibelia
 						}
 
 						AssignBlockId(inst.Back() + 1, nowIt, Assignment::IN_USE);
-						inst.Push(nowIt);						
+						inst.ChangeBack(nowIt);						
 					}
 				}
 			}
@@ -327,8 +321,7 @@ namespace Sibelia
 				JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vertex, i);
 				if (blockId_[it.GetChrId()][it.GetIndex()].block == Assignment::UNKNOWN_BLOCK)
 				{
-					instance_.push_back(Instance());
-					instance_.back().Push(it);
+					instance_.push_back(Instance(it));
 					blockId_[it.GetChrId()][it.GetIndex()].block = Assignment::IN_USE;					
 				}
 			}

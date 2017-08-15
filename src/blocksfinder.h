@@ -223,8 +223,7 @@ namespace Sibelia
 					std::cerr << count << '\t' << bubbleCountVector.size() << std::endl;
 				}
 
-				ExtendSeed(it->second, bubbleCount, distanceKeeper, debugStream);
-				assert(CheckBlockIdIntegrity());
+				ExtendSeed(it->second, bubbleCount, distanceKeeper, debugStream);				
 			}
 
 			std::cout << "Time: " << time(0) - mark << std::endl;
@@ -366,22 +365,7 @@ namespace Sibelia
 		};
 
 		typedef std::vector< std::vector<size_t> > BubbledBranches;
-
-		bool CheckBlockIdIntegrity() const
-		{
-			for (auto & bidVector : blockId_)
-			{
-				for (auto a : bidVector)
-				{
-					if (a.block == Assignment::IN_USE)
-					{
-						return false;
-					}
-				}
-			}
-
-			return true;
-		}
+		
 	
 		void ExtendSeed(int64_t vid,
 			const std::map<int64_t, int64_t> & bubbleCount,

@@ -131,38 +131,38 @@ namespace Sibelia
 
 			bool IsPositiveStrand() const
 			{
-				return isPositiveStrand_;
+				return chrId_ > 0;
 			}
 
 			int64_t GetVertexId(const JunctionStorage * storage_) const
 			{
-				return IsPositiveStrand() ? storage_->posChr_[chrId_][idx_].id : -storage_->posChr_[chrId_][idx_].id;
+				return IsPositiveStrand() ? storage_->posChr_[GetChrId()][idx_].id : -storage_->posChr_[GetChrId()][idx_].id;
 			}
 
 			int64_t GetPosition(const JunctionStorage * storage_) const
 			{
 				if (IsPositiveStrand())
 				{
-					return storage_->posChr_[chrId_][idx_].pos;
+					return storage_->posChr_[GetChrId()][idx_].pos;
 				}
 
-				return storage_->posChr_[chrId_][idx_].pos + storage_->k_;
+				return storage_->posChr_[GetChrId()][idx_].pos + storage_->k_;
 			}
 
 			JunctionIterator Reverse()
 			{
-				return JunctionIterator(chrId_, idx_, !isPositiveStrand_);
+				return JunctionIterator(GetChrId(), idx_, !IsPositiveStrand());
 			}
 
 			char GetChar(const JunctionStorage * storage_) const
 			{
-				int64_t pos = storage_->posChr_[chrId_][idx_].pos;
+				int64_t pos = storage_->posChr_[GetChrId()][idx_].pos;
 				if (IsPositiveStrand())
 				{
-					return storage_->sequence_[chrId_][pos + storage_->k_];
+					return storage_->sequence_[GetChrId()][pos + storage_->k_];
 				}
 
-				return TwoPaCo::DnaChar::ReverseChar(storage_->sequence_[chrId_][pos - 1]);
+				return TwoPaCo::DnaChar::ReverseChar(storage_->sequence_[GetChrId()][pos - 1]);
 			}
 
 			uint64_t GetIndex() const
@@ -177,17 +177,17 @@ namespace Sibelia
 					return idx_;
 				}
 
-				return storage_->posChr_[chrId_].size() - idx_ - 1;
+				return storage_->posChr_[GetChrId()].size() - idx_ - 1;
 			}
 
 			uint64_t GetChrId() const
 			{
-				return chrId_;
+				return abs(chrId_) - 1;
 			}
 
 			bool Valid(const JunctionStorage * storage_) const
 			{
-				return idx_ >= 0 && idx_ < storage_->posChr_[chrId_].size();
+				return idx_ >= 0 && idx_ < storage_->posChr_[GetChrId()].size();
 			}
 
 			JunctionIterator& operator++ ()
@@ -254,16 +254,14 @@ namespace Sibelia
 				idx_ += IsPositiveStrand() ? -step : +step;
 			}
 
-			JunctionIterator(uint64_t chrId, int64_t idx, bool isPositiveStrand) : idx_(idx), chrId_(chrId), isPositiveStrand_(isPositiveStrand)
+			JunctionIterator(uint64_t chrId, int64_t idx, bool isPositiveStrand) : idx_(idx), chrId_(isPositiveStrand ? chrId + 1 : -(chrId + 1))
 			{
 
 			}
 
 			friend class JunctionStorage;
-			uint64_t chrId_;
+			int64_t chrId_;
 			int64_t idx_;
-			bool isPositiveStrand_;
-
 		};
 
 		int64_t GetChrNumber() const

@@ -236,10 +236,10 @@ namespace Sibelia
 				for (auto it = storage_.Begin(i); it != storage_.End(i) - 1; ++it)
 				{
 					auto jt = it + 1;
-					out << it.GetVertexId() << " -> " << jt.GetVertexId()
-						<< "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "\" color=blue]\n";
-					out << jt.Reverse().GetVertexId() << " -> " << it.Reverse().GetVertexId()
-						<< "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "\" color=red]\n";
+					out << it.GetVertexId(&storage_) << " -> " << jt.GetVertexId(&storage_)
+						<< "[label=\"" << it.GetChar(&storage_) << ", " << it.GetChrId() << ", " << it.GetPosition(&storage_) << "\" color=blue]\n";
+					out << jt.Reverse().GetVertexId(&storage_) << " -> " << it.Reverse().GetVertexId(&storage_)
+						<< "[label=\"" << it.GetChar(&storage_) << ", " << it.GetChrId() << ", " << it.GetPosition(&storage_) << "\" color=red]\n";
 				}
 			}
 
@@ -312,8 +312,8 @@ namespace Sibelia
 						size_t j = i;
 						for (; j < blockId_[chr].size() && blockId_[chr][i] == blockId_[chr][j]; j++);
 						j--;
-						int64_t cstart = storage_.GetIterator(chr, i, bid > 0).GetPosition();
-						int64_t cend = storage_.GetIterator(chr, j, bid > 0).GetPosition() + (bid > 0 ? k_ : -k_);
+						int64_t cstart = storage_.GetIterator(chr, i, bid > 0).GetPosition(&storage_);
+						int64_t cend = storage_.GetIterator(chr, j, bid > 0).GetPosition(&storage_) + (bid > 0 ? k_ : -k_);
 						int64_t start = std::min(cstart, cend);
 						int64_t end = std::max(cstart, cend);
 						instance.push_back(BlockInstance(bid, chr, start, end));
@@ -498,9 +498,9 @@ namespace Sibelia
 			{				
 				JunctionStorage::JunctionIterator vertex = storage_.GetJunctionInstance(vertexId, i);
 				instance.push_back(vertex);				
-				for (int64_t startPosition = vertex++.GetPosition(); vertex.Valid() && abs(startPosition - vertex.GetPosition()) < maxBranchSize_; ++vertex)
+				for (int64_t startPosition = vertex++.GetPosition(&storage_); vertex.Valid(&storage_) && abs(startPosition - vertex.GetPosition(&storage_)) < maxBranchSize_; ++vertex)
 				{					
-					int64_t nowVertexId = vertex.GetVertexId();
+					int64_t nowVertexId = vertex.GetVertexId(&storage_);
 					auto point = visit.find(nowVertexId);
 					if (point == visit.end())
 					{
@@ -526,7 +526,7 @@ namespace Sibelia
 						auto & edgeIt = instance[point->second.branchId[i]];
 						if (edgeIt.IsPositiveStrand())
 						{
-							bubbleCount[edgeIt.GetVertexId()] += n * (n - 1) / 2;
+							bubbleCount[edgeIt.GetVertexId(&storage_)] += n * (n - 1) / 2;
 						}
 					}
 				}

@@ -115,14 +115,14 @@ namespace Sibelia
 				return back_;
 			}
 
-			int64_t LeftFlankDistance(const DistanceKeeper & keeper) const
+			int64_t LeftFlankDistance(const DistanceKeeper & keeper, const JunctionStorage * storage_) const
 			{
-				return keeper.Get(front_.GetVertexId());
+				return keeper.Get(front_.GetVertexId(storage_));
 			}
 
-			int64_t RightFlankDistance(const DistanceKeeper & keeper) const
+			int64_t RightFlankDistance(const DistanceKeeper & keeper, const JunctionStorage * storage_) const
 			{
-				return keeper.Get(back_.GetVertexId());
+				return keeper.Get(back_.GetVertexId(storage_));
 			}
 		};
 
@@ -275,20 +275,20 @@ namespace Sibelia
 				int64_t chrId = inst.Back().GetChrId();
 				JunctionStorage::JunctionIterator startIt = inst.Back();
 				JunctionStorage::JunctionIterator nowIt = startIt + 1;
-				if (nowIt.Valid() && blockId_[chrId][nowIt.GetIndex()].block == Assignment::UNKNOWN_BLOCK)
+				if (nowIt.Valid(storage_) && blockId_[chrId][nowIt.GetIndex()].block == Assignment::UNKNOWN_BLOCK)
 				{
 					bool reach = false;
-					if (startIt.GetVertexId() == e.GetStartVertex() && nowIt.GetVertexId() == vertex && inst.Back().GetChar() == e.GetChar())
+					if (startIt.GetVertexId(storage_) == e.GetStartVertex() && nowIt.GetVertexId(storage_) == vertex && inst.Back().GetChar(storage_) == e.GetChar())
 					{
 						reach = true;
 					}
 					else
 					{
-						if (abs(endVertexDistance - inst.RightFlankDistance(distanceKeeper_)) <= maxBranchSize_)
+						if (abs(endVertexDistance - inst.RightFlankDistance(distanceKeeper_, storage_)) <= maxBranchSize_)
 						{
-							for (; nowIt.Valid() && blockId_[chrId][nowIt.GetIndex()].block == Assignment::UNKNOWN_BLOCK && abs(nowIt.GetPosition() - startIt.GetPosition()) <= maxBranchSize_; ++nowIt)
+							for (; nowIt.Valid(storage_) && blockId_[chrId][nowIt.GetIndex()].block == Assignment::UNKNOWN_BLOCK && abs(nowIt.GetPosition(storage_) - startIt.GetPosition(storage_)) <= maxBranchSize_; ++nowIt)
 							{
-								if (nowIt.GetVertexId() == vertex)
+								if (nowIt.GetVertexId(storage_) == vertex)
 								{
 									reach = true;
 									break;
@@ -299,8 +299,8 @@ namespace Sibelia
 
 					if (reach)
 					{
-						int64_t nextLength = abs(nowIt.GetPosition() - inst.Front().GetPosition());
-						int64_t leftFlankSize = abs(inst.LeftFlankDistance(distanceKeeper_) - (leftBody_.empty() ? 0 : leftBody_.back().StartDistance()));
+						int64_t nextLength = abs(nowIt.GetPosition(storage_) - inst.Front().GetPosition(storage_));
+						int64_t leftFlankSize = abs(inst.LeftFlankDistance(distanceKeeper_, storage_) - (leftBody_.empty() ? 0 : leftBody_.back().StartDistance()));
 						if (nextLength >= minChainSize_ && leftFlankSize > maxFlankingSize_)
 						{
 							rightBody_.push_back(Point(e, startVertexDistance));
@@ -337,7 +337,7 @@ namespace Sibelia
 			distanceKeeper_.Unset(lastVertex);
 			for (auto it = instance_.rbegin(); it != instance_.rend(); )
 			{
-				if (it->Back().GetVertexId() == lastVertex)
+				if (it->Back().GetVertexId(storage_) == lastVertex)
 				{
 					if (it->Front() == it->Back())
 					{
@@ -351,7 +351,7 @@ namespace Sibelia
 						auto jt = it->Back();
 						while (true)
 						{
-							if (distanceKeeper_.IsSet(jt.GetVertexId()))
+							if (distanceKeeper_.IsSet(jt.GetVertexId(storage_)))
 							{
 								it->ChangeBack(jt);
 								break;
@@ -425,9 +425,9 @@ namespace Sibelia
 
 		void InstanceScore(const Instance & inst, int64_t & length, int64_t & score) const
 		{
-			int64_t leftFlank = abs(inst.LeftFlankDistance(distanceKeeper_) - (leftBody_.size() > 0 ? leftBody_.back().StartDistance() : 0));
-			int64_t rightFlank = abs(inst.RightFlankDistance(distanceKeeper_) - (rightBody_.size() > 0 ? rightBody_.back().EndDistance() : 0));
-			length = abs(inst.Front().GetPosition() - inst.Back().GetPosition());
+			int64_t leftFlank = abs(inst.LeftFlankDistance(distanceKeeper_, storage_) - (leftBody_.size() > 0 ? leftBody_.back().StartDistance() : 0));
+			int64_t rightFlank = abs(inst.RightFlankDistance(distanceKeeper_, storage_) - (rightBody_.size() > 0 ? rightBody_.back().EndDistance() : 0));
+			length = abs(inst.Front().GetPosition(storage_) - inst.Back().GetPosition(storage_));
 			score = length - leftFlank - rightFlank;
 		}
 

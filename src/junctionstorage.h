@@ -120,10 +120,11 @@ namespace Sibelia
 
 	public:		
 
+
 		class JunctionIterator
 		{
 		public:
-			JunctionIterator() : idx_(0), storage_(0)
+			JunctionIterator() : idx_(0)
 			{
 
 			}
@@ -132,18 +133,13 @@ namespace Sibelia
 			{
 				return isPositiveStrand_;
 			}
-			
-			int64_t operator * () const
-			{
-				return GetVertexId();
-			}
 
-			int64_t GetVertexId() const
+			int64_t GetVertexId(const JunctionStorage * storage_) const
 			{
 				return IsPositiveStrand() ? storage_->posChr_[chrId_][idx_].id : -storage_->posChr_[chrId_][idx_].id;
 			}
 
-			int64_t GetPosition() const
+			int64_t GetPosition(const JunctionStorage * storage_) const
 			{
 				if (IsPositiveStrand())
 				{
@@ -155,10 +151,10 @@ namespace Sibelia
 
 			JunctionIterator Reverse()
 			{
-				return JunctionIterator(storage_, chrId_, idx_, !isPositiveStrand_);
+				return JunctionIterator(chrId_, idx_, !isPositiveStrand_);
 			}
 
-			char GetChar() const
+			char GetChar(const JunctionStorage * storage_) const
 			{
 				int64_t pos = storage_->posChr_[chrId_][idx_].pos;
 				if (IsPositiveStrand())
@@ -172,24 +168,24 @@ namespace Sibelia
 			uint64_t GetIndex() const
 			{
 				return idx_;
-			}			
+			}
 
-			uint64_t GetRelativeIndex() const
+			uint64_t GetRelativeIndex(const JunctionStorage * storage_) const
 			{
 				if (IsPositiveStrand())
 				{
 					return idx_;
 				}
-				
+
 				return storage_->posChr_[chrId_].size() - idx_ - 1;
 			}
 
 			uint64_t GetChrId() const
 			{
 				return chrId_;
-			}						
+			}
 
-			bool Valid() const
+			bool Valid(const JunctionStorage * storage_) const
 			{
 				return idx_ >= 0 && idx_ < storage_->posChr_[chrId_].size();
 			}
@@ -199,7 +195,7 @@ namespace Sibelia
 				Inc();
 				return *this;
 			}
-			
+
 			JunctionIterator operator++ (int)
 			{
 				JunctionIterator ret(*this);
@@ -228,7 +224,7 @@ namespace Sibelia
 			}
 
 			JunctionIterator operator-- (int)
-			{				
+			{
 				JunctionIterator ret(*this);
 				Dec();
 				return ret;
@@ -248,27 +244,26 @@ namespace Sibelia
 
 			void Inc(int64_t step = 1)
 			{
-				
+
 				idx_ += IsPositiveStrand() ? +step : -step;
 			}
 
 			void Dec(int64_t step = 1)
 			{
-				
+
 				idx_ += IsPositiveStrand() ? -step : +step;
 			}
 
-			JunctionIterator(const JunctionStorage * storage, uint64_t chrId, int64_t idx, bool isPositiveStrand) : storage_(storage), idx_(idx), chrId_(chrId), isPositiveStrand_(isPositiveStrand)
+			JunctionIterator(uint64_t chrId, int64_t idx, bool isPositiveStrand) : idx_(idx), chrId_(chrId), isPositiveStrand_(isPositiveStrand)
 			{
 
 			}
 
 			friend class JunctionStorage;
-			const JunctionStorage * storage_;
 			uint64_t chrId_;
 			int64_t idx_;
 			bool isPositiveStrand_;
-			
+
 		};
 
 		int64_t GetChrNumber() const
@@ -293,17 +288,17 @@ namespace Sibelia
 
 		JunctionIterator GetIterator(uint64_t chrId, uint64_t idx, bool isPositiveStrand = true) const
 		{
-			return JunctionIterator(this, chrId, idx, isPositiveStrand);
+			return JunctionIterator(chrId, idx, isPositiveStrand);
 		}
 
 		JunctionIterator Begin(uint64_t chrId, bool isPositiveStrand = true) const
 		{
-			return JunctionIterator(this, chrId, 0, isPositiveStrand);
+			return JunctionIterator(chrId, 0, isPositiveStrand);
 		}
 
 		JunctionIterator End(uint64_t chrId, bool isPositiveStrand = true) const
 		{
-			return JunctionIterator(this, chrId, posChr_[chrId].size(), isPositiveStrand);
+			return JunctionIterator(chrId, posChr_[chrId].size(), isPositiveStrand);
 		}
 
 		int64_t GetVerticesNumber() const
@@ -319,7 +314,7 @@ namespace Sibelia
 		JunctionIterator GetJunctionInstance(int64_t vertexId, uint64_t n) const
 		{
 			auto coord = coordinate_[abs(vertexId)][n];			
-			return JunctionIterator(this, coord.chr, coord.idx, posChr_[coord.chr][coord.idx].id == vertexId);
+			return JunctionIterator(coord.chr, coord.idx, posChr_[coord.chr][coord.idx].id == vertexId);
 		}
 
 		int64_t IngoingEdgesNumber(int64_t vertexId) const

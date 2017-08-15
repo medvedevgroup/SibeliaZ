@@ -339,26 +339,32 @@ namespace Sibelia
 			{
 				if (it->Back().GetVertexId() == lastVertex)
 				{
-					if (it->Size() > 1)
-					{
-						AssignBlockId(*(it->seq.end() - 2) + 1, *(it->seq.end() - 1), Assignment::UNKNOWN_BLOCK);
-					}
-					else
+					if (it->Front() == it->Back())
 					{
 						blockId_[it->Back().GetChrId()][it->Back().GetIndex()].block = Assignment::UNKNOWN_BLOCK;
-					}
-
-					it->Pop();
-					if (it->Size() == 0)
-					{
 						assert(it == instance_.rbegin());
 						instance_.pop_back();
 						it = instance_.rbegin();
 					}
 					else
 					{
+						auto jt = it->Back();
+						while (true)
+						{
+							if (distanceKeeper_.IsSet(jt.GetVertexId()))
+							{
+								it->ChangeBack(jt);
+								break;
+							}
+							else
+							{
+								blockId_[jt.GetChrId()][jt.GetIndex()].block = Assignment::UNKNOWN_BLOCK;
+								--jt;
+							}
+						}
+
 						it++;
-					}
+					}				
 				}
 				else
 				{

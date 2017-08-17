@@ -249,15 +249,7 @@ namespace Sibelia
 			{
 				ret.push_back(it->Edge());
 			}
-		}
-
-		void AssignBlockId(JunctionStorage::JunctionIterator start, JunctionStorage::JunctionIterator end, int64_t value)
-		{
-			do
-			{
-				blockId_[start.GetChrId()][start.GetIndex()].block = value;
-			} while (start++ != end);
-		}
+		}		
 
 		bool PointPushBack(const Edge & e)
 		{
@@ -309,7 +301,7 @@ namespace Sibelia
 							return false;
 						}
 
-						AssignBlockId(inst.Back() + 1, nowIt, Assignment::IN_USE);
+						blockId_[nowIt.GetChrId()][nowIt.GetIndex()].block = Assignment::IN_USE;						
 						inst.ChangeBack(nowIt);						
 					}
 				}
@@ -322,7 +314,7 @@ namespace Sibelia
 				if (blockId_[it.GetChrId()][it.GetIndex()].block == Assignment::UNKNOWN_BLOCK)
 				{
 					instance_.push_back(Instance(it));
-					blockId_[it.GetChrId()][it.GetIndex()].block = Assignment::IN_USE;					
+					blockId_[it.GetChrId()][it.GetIndex()].block = Assignment::IN_USE;
 				}
 			}
 
@@ -339,9 +331,9 @@ namespace Sibelia
 			{
 				if (it->Back().GetVertexId(storage_) == lastVertex)
 				{
+					blockId_[it->Back().GetChrId()][it->Back().GetIndex()].block = Assignment::UNKNOWN_BLOCK;
 					if (it->Front() == it->Back())
-					{
-						blockId_[it->Back().GetChrId()][it->Back().GetIndex()].block = Assignment::UNKNOWN_BLOCK;
+					{						
 						assert(it == instance_.rbegin());
 						instance_.pop_back();
 						it = instance_.rbegin();
@@ -358,7 +350,6 @@ namespace Sibelia
 							}
 							else
 							{
-								blockId_[jt.GetChrId()][jt.GetIndex()].block = Assignment::UNKNOWN_BLOCK;
 								--jt;
 							}
 						}

@@ -43,12 +43,15 @@ namespace Sibelia
 
 		void Init(int64_t vid)
 		{
-			origin_ = vid;
-			FillBuffer(vid);
+			origin_ = vid;			
 			distanceKeeper_.Set(vid, 0);
-			for (auto & it : junctionBuffer_)
+			for (size_t i = 0; i < storage_->GetInstancesCount(vid); i++)
 			{
-				instance_.push_back(Instance(it));
+				JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vid, i);
+				if (blockId_[it.GetChrId()][it.GetIndex()].block == Assignment::UNKNOWN_BLOCK)
+				{
+					instance_.push_back(Instance(it));
+				}
 			}
 		}
 
@@ -448,40 +451,7 @@ namespace Sibelia
 		bool checkConsistency_;
 		DistanceKeeper distanceKeeper_;
 		const JunctionStorage * storage_;		
-		std::vector<std::vector<Assignment> > & blockId_;
-		std::vector<JunctionStorage::JunctionIterator> junctionBuffer_;
-
-
-		void FillBuffer(int64_t vertex)
-		{
-			junctionBuffer_.clear();
-			for (size_t i = 0; i < storage_->GetInstancesCount(vertex); i++)
-			{
-				JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vertex, i);
-				if (blockId_[it.GetChrId()][it.GetIndex()].block != Assignment::UNKNOWN_BLOCK)
-				{
-					continue;
-				}
-
-				bool within = false;
-				for (auto & instance : instance_)
-				{
-					int64_t chrId = instance.Front().GetChrId();
-					int64_t leftIdx = instance.Front().GetIndex();
-					int64_t rightIdx = instance.Back().GetIndex();
-					if (it.GetChrId() == chrId && it.GetIndex() >= leftIdx && it.GetIndex() <= rightIdx)
-					{
-						within = true;
-						break;
-					}
-				}
-
-				if (!within)
-				{
-					junctionBuffer_.push_back(it);
-				}
-			}
-		}
+		std::vector<std::vector<Assignment> > & blockId_;		
 	};
 
 	struct BestPath

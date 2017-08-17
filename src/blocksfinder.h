@@ -547,7 +547,6 @@ namespace Sibelia
 		int64_t flankingThreshold_;		
 		const JunctionStorage & storage_;
 		Forbidden forbidden_;
-		std::vector<Edge> adjList_;
 		std::vector<std::vector<Assignment> > blockId_;
 		std::vector<std::vector<Edge> > syntenyPath_;		
 

@@ -177,7 +177,7 @@ namespace Sibelia
 	{
 	public:
 
-		BlocksFinder(const JunctionStorage & storage, size_t k) : storage_(storage), k_(k), forbidden_(storage)
+		BlocksFinder(JunctionStorage & storage, size_t k) : storage_(storage), k_(k), forbidden_(storage)
 		{
 			scoreFullChains_ = false;
 		}
@@ -214,6 +214,7 @@ namespace Sibelia
 			int64_t count = 0;
 			std::sort(bubbleCountVector.begin(), bubbleCountVector.end());
 			std::ofstream debugStream(debugOut.c_str());
+			storage_.AssignProbabilities(bubbleCount);
 			BestPath bestPath;
 			Path currentPath(storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
 			for (auto it = bubbleCountVector.rbegin(); it != bubbleCountVector.rend(); ++it)
@@ -380,7 +381,38 @@ namespace Sibelia
 				int64_t prevBestScore = bestPath.score_;
 				if (sampleSize_ > 0)
 				{
-//					ExtendPathRandom(currentPath, bestPath, sampleSize_, lookingDepth_, bubbleCount);
+					for (size_t sample = 0; sample < sampleSize_; sample++)
+					{
+						for (size_t d = 0; ; d++)
+						{
+							Edge e = storage_.RandomForwardEdge(currentPath.GetEndVertex());
+							if (!e.Valid() || d == lookingDepth_ || !currentPath.PointPushBack(e))
+							{
+								for (size_t i = 0; i < d; i++)
+								{
+									currentPath.PointPopBack();
+								}
+
+								break;
+							}
+							else
+							{
+								int64_t currentScore = currentPath.Score(scoreFullChains_);
+								if (currentScore > bestPath.score_ && currentPath.Instances().size() > 1)
+								{
+									bestPath.UpdateForward(currentPath, currentScore);
+								}
+							}
+						}
+					}
+
+					bestPath.FixForward(currentPath);
+
+					if (bestPath.score_ <= prevBestScore * 1.1)
+					{
+						break;
+					}
+
 				}
 				else
 				{
@@ -539,17 +571,16 @@ namespace Sibelia
 	
 		int64_t k_;
 		int64_t sampleSize_;
-		bool scoreFullChains_;
-		int64_t lookingDepth_;
 		int64_t blocksFound_;
+		Forbidden forbidden_;
+		bool scoreFullChains_;		
+		int64_t lookingDepth_;		
 		int64_t minBlockSize_;
 		int64_t maxBranchSize_;
-		int64_t flankingThreshold_;		
-		const JunctionStorage & storage_;
-		Forbidden forbidden_;
-		std::vector<std::vector<Assignment> > blockId_;
-		std::vector<std::vector<Edge> > syntenyPath_;		
-
+		int64_t flankingThreshold_;
+		JunctionStorage & storage_;
+		std::vector<std::vector<Edge> > syntenyPath_;
+		std::vector<std::vector<Assignment> > blockId_;	
 	};
 }
 

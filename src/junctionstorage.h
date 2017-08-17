@@ -13,7 +13,7 @@ namespace Sibelia
 	class Edge
 	{
 	public:
-		Edge() {}
+		Edge() : startVertex_(INT64_MAX), endVertex_(INT64_MAX) {}
 
 		Edge(int64_t startVertex, int64_t endVertex, char ch, char revCh, int64_t length) :
 			startVertex_(startVertex), endVertex_(endVertex), ch_(ch), revCh_(revCh), length_(length)
@@ -71,6 +71,11 @@ namespace Sibelia
 			return false;
 		}
 
+		bool Valid() const
+		{
+			return startVertex_ != INT64_MAX;
+		}
+
 		bool operator == (const Edge & e) const
 		{
 			return startVertex_ == e.startVertex_ && endVertex_ == e.endVertex_ && ch_ == e.ch_;
@@ -81,7 +86,7 @@ namespace Sibelia
 			return !(*this == e);
 		}
 
-	private:		
+	private:
 		int64_t startVertex_;
 		int64_t endVertex_;
 		char ch_;
@@ -441,11 +446,89 @@ namespace Sibelia
 			}
 		}
 
+		double Weight(int64_t vid, std::map<int64_t, int64_t> & bubbleCount) const
+		{
+			if (bubbleCount[vid] == 0)
+			{
+				return 0.1;
+			}
+
+			return bubbleCount[vid];
+		}
+
+		void AssignProbabilities(std::map<int64_t, int64_t> & bubbleCount)
+		{
+			ingoingEdgeProb_.resize(ingoingEdge_.size());
+			outgoingEdgeProb_.resize(outgoingEdge_.size());
+			for (int64_t vid = 0; vid < ingoingEdge_.size(); vid++)
+			{
+				if (ingoingEdge_[vid].size() > 0)
+				{
+					double ingoingTotal = 0;
+					for (auto & e : ingoingEdge_[vid])
+					{
+						ingoingTotal += Weight(e.GetStartVertex(), bubbleCount);
+					}
+
+					for (auto & e : ingoingEdge_[vid])
+					{
+						ingoingEdgeProb_[vid].push_back(Weight(e.GetStartVertex(), bubbleCount) / ingoingTotal + (ingoingEdgeProb_[vid].size() > 0 ? ingoingEdgeProb_[vid].back() : 0));
+					}
+
+					ingoingEdgeProb_[vid].back() = 1.01;
+				}
+
+				if (outgoingEdge_[vid].size() > 0)
+				{
+					double outgoingTotal = 0;
+					for (auto & e : outgoingEdge_[vid])
+					{
+						outgoingTotal += Weight(e.GetEndVertex(), bubbleCount);
+					}
+
+					for (auto & e : outgoingEdge_[vid])
+					{
+						outgoingEdgeProb_[vid].push_back(Weight(e.GetEndVertex(), bubbleCount) / outgoingTotal + (outgoingEdgeProb_[vid].size() > 0 ? outgoingEdgeProb_[vid].back() : 0));
+					}
+
+					outgoingEdgeProb_[vid].back() = 1.01;
+				}
+			}
+		}
+
+		Edge RandomForwardEdge(int64_t vid) const
+		{
+			int64_t adjVid = vid + GetVerticesNumber();
+			if (outgoingEdge_[adjVid].size() > 0)
+			{
+				double coin = double(rand()) / RAND_MAX;
+				size_t it = std::lower_bound(outgoingEdgeProb_[adjVid].begin(), outgoingEdgeProb_[adjVid].end(), coin) - outgoingEdgeProb_[adjVid].begin();
+				return outgoingEdge_[adjVid][it];
+			}
+
+			return Edge();
+		}
+
+		Edge RandomBackwardEdge(int64_t vid) const
+		{
+			int64_t adjVid = vid + GetVerticesNumber();
+			if (ingoingEdge_[adjVid].size() > 0)
+			{
+				double coin = double(rand()) / RAND_MAX;
+				size_t it = std::lower_bound(ingoingEdgeProb_[adjVid].begin(), ingoingEdgeProb_[adjVid].end(), coin) - ingoingEdgeProb_[adjVid].begin();
+				return ingoingEdge_[adjVid][it];
+			}
+
+			return Edge();
+		}
+
+
 		JunctionStorage() {}
 		JunctionStorage(const std::string & fileName, const std::string & genomesFileName, uint64_t k) : k_(k)
 		{
 			Init(fileName, genomesFileName);
 		}
+
 
 	private:
 		
@@ -458,6 +541,8 @@ namespace Sibelia
 		int64_t k_;
 		std::vector<std::vector<Edge> > ingoingEdge_;
 		std::vector<std::vector<Edge> > outgoingEdge_;
+		std::vector<std::vector<double> > ingoingEdgeProb_;
+		std::vector<std::vector<double> > outgoingEdgeProb_;
 		std::vector<std::string> sequence_;
 		std::vector<std::string> sequenceDescription_;
 		std::vector<VertexVector> posChr_;

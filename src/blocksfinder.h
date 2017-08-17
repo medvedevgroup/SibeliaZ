@@ -214,7 +214,8 @@ namespace Sibelia
 			int64_t count = 0;
 			std::sort(bubbleCountVector.begin(), bubbleCountVector.end());
 			std::ofstream debugStream(debugOut.c_str());
-			DistanceKeeper distanceKeeper(storage_.GetVerticesNumber());
+			BestPath bestPath;
+			Path currentPath(storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
 			for (auto it = bubbleCountVector.rbegin(); it != bubbleCountVector.rend(); ++it)
 			{
 				if (count++ % 1000 == 0)
@@ -222,7 +223,7 @@ namespace Sibelia
 					std::cerr << count << '\t' << bubbleCountVector.size() << std::endl;
 				}
 
-				ExtendSeed(it->second, bubbleCount, distanceKeeper, debugStream);				
+				ExtendSeed(it->second, bubbleCount, currentPath, bestPath, debugStream);				
 			}
 
 			std::cout << "Time: " << time(0) - mark << std::endl;
@@ -368,11 +369,12 @@ namespace Sibelia
 	
 		void ExtendSeed(int64_t vid,
 			const std::map<int64_t, int64_t> & bubbleCount,
-			DistanceKeeper & distanceKeeper,			
+			Path & currentPath,
+			BestPath & bestPath,
 			std::ostream & debugOut)
 		{			
-			BestPath bestPath(vid);			
-			Path currentPath(vid, storage_, distanceKeeper, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
+			bestPath.Init();
+			currentPath.Init(vid);
 			while (true)
 			{				
 				int64_t prevBestScore = bestPath.score_;
@@ -429,6 +431,8 @@ namespace Sibelia
 					}					
 				}
 			}			
+
+			currentPath.Clean();
 		}
 		
 		void ExtendPathForward(Path & currentPath, BestPath & bestPath, int maxDepth)

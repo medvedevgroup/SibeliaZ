@@ -28,17 +28,22 @@ namespace Sibelia
 	struct Path
 	{
 	public:
-		Path(int64_t vid,
-			const JunctionStorage & storage,
-			DistanceKeeper & distanceKeeper,
+		Path(const JunctionStorage & storage,			
 			int64_t maxBranchSize,
 			int64_t minBlockSize,
 			int64_t maxFlankingSize,
 			std::vector<std::vector<Assignment> > & blockId,
 			bool checkConsistency = false) :
-			maxBranchSize_(maxBranchSize), minBlockSize_(minBlockSize), maxFlankingSize_(maxFlankingSize), storage_(&storage), distanceKeeper_(distanceKeeper),
-			minChainSize_(minBlockSize - 2 * maxFlankingSize), blockId_(blockId), checkConsistency_(checkConsistency), origin_(vid)
+			maxBranchSize_(maxBranchSize), minBlockSize_(minBlockSize), maxFlankingSize_(maxFlankingSize), storage_(&storage),
+			distanceKeeper_(storage.GetVerticesNumber()), minChainSize_(minBlockSize - 2 * maxFlankingSize), blockId_(blockId),
+			checkConsistency_(checkConsistency)
 		{
+			
+		}
+
+		void Init(int64_t vid)
+		{
+			origin_ = vid;
 			FillBuffer(vid);
 			distanceKeeper_.Set(vid, 0);
 			for (auto & it : junctionBuffer_)
@@ -47,7 +52,7 @@ namespace Sibelia
 			}
 		}
 
-		~Path()
+		void Clean()
 		{
 			distanceKeeper_.Unset(origin_);
 			for (auto & inst : instance_)
@@ -76,6 +81,10 @@ namespace Sibelia
 				distanceKeeper_.Unset(p.Edge().GetEndVertex());
 				distanceKeeper_.Unset(p.Edge().GetStartVertex());
 			}
+
+			leftBody_.clear();
+			rightBody_.clear();
+			instance_.clear();
 		}
 
 		struct Instance
@@ -437,8 +446,8 @@ namespace Sibelia
 		int64_t maxBranchSize_;
 		int64_t maxFlankingSize_;
 		bool checkConsistency_;
-		const JunctionStorage * storage_;
-		DistanceKeeper & distanceKeeper_;
+		DistanceKeeper distanceKeeper_;
+		const JunctionStorage * storage_;		
 		std::vector<std::vector<Assignment> > & blockId_;
 		std::vector<JunctionStorage::JunctionIterator> junctionBuffer_;
 
@@ -521,9 +530,14 @@ namespace Sibelia
 			std::copy(path.leftBody_.begin() + leftFlank_, path.leftBody_.end(), std::back_inserter(newLeftBody_));
 		}
 
-		BestPath(int64_t vid) : score_(0), leftFlank_(0), rightFlank_(0)
+		BestPath() 
 		{
+			Init();
+		}
 
+		void Init()
+		{
+			score_ = leftFlank_ = rightFlank_ = 0;
 		}
 	};
 }

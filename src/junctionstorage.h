@@ -458,20 +458,16 @@ namespace Sibelia
 			return Edge();
 		}
 		
-		/*
 		Edge RandomBackwardEdge(int64_t vid) const
 		{
 			int64_t adjVid = vid + GetVerticesNumber();
 			if (ingoingEdge_[adjVid].size() > 0)
 			{
-				double coin = double(rand()) / RAND_MAX;
-				size_t it = std::lower_bound(ingoingEdgeProb_[adjVid].begin(), ingoingEdgeProb_[adjVid].end(), coin) - ingoingEdgeProb_[adjVid].begin();
-				return ingoingEdge_[adjVid][it];
+				return ingoingEdge_[adjVid][rand() % ingoingEdge_[adjVid].size()];
 			}
 
 			return Edge();
 		}
-		*/
 
 		JunctionStorage() {}
 		JunctionStorage(const std::string & fileName, const std::string & genomesFileName, uint64_t k) : k_(k)

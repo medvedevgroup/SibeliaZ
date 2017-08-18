@@ -198,32 +198,27 @@ namespace Sibelia
 				blockId_[i].resize(storage_.GetChrVerticesCount(i));
 			}
 
-			std::map<int64_t, int64_t> bubbleCount;
-			for (int64_t vid = -storage_.GetVerticesNumber() + 1; vid < storage_.GetVerticesNumber(); vid++)
-			{
-				CountBubbles(vid, bubbleCount);
-			}
-
-			for (auto it = bubbleCount.rbegin(); it != bubbleCount.rend(); ++it)
-			{
-				bubbleCountVector.push_back(std::make_pair(it->second, it->first));
-			}
-
 			int64_t count = 0;
-			std::sort(bubbleCountVector.begin(), bubbleCountVector.end());
+			std::vector<int64_t> shuffle;
+			for (int64_t v = 1; v < storage_.GetVerticesNumber(); v++)
+			{
+				shuffle.push_back(v);
+			//	shuffle.push_back(-v);
+			}
+
+			std::random_shuffle(shuffle.begin(), shuffle.end());
 			std::ofstream debugStream(debugOut.c_str());
-			storage_.AssignProbabilities(bubbleCount);
 			BestPath bestPath;
 			Path currentPath(storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
 			time_t mark = time(0);
-			for (auto it = bubbleCountVector.rbegin(); it != bubbleCountVector.rend(); ++it)
+			for(auto vid : shuffle)
 			{
 				if (count++ % 1000 == 0)
 				{
-					std::cerr << count << '\t' << bubbleCountVector.size() << std::endl;
+					std::cerr << count << '\t' << shuffle.size() << std::endl;
 				}
 
-				ExtendSeed(it->second, bubbleCount, currentPath, bestPath, debugStream);				
+				ExtendSeed(vid, currentPath, bestPath, debugStream);				
 			}
 
 			std::cout << "Time: " << time(0) - mark << std::endl;
@@ -368,7 +363,6 @@ namespace Sibelia
 		
 	
 		void ExtendSeed(int64_t vid,
-			const std::map<int64_t, int64_t> & bubbleCount,
 			Path & currentPath,
 			BestPath & bestPath,
 			std::ostream & debugOut)
@@ -384,8 +378,18 @@ namespace Sibelia
 					{
 						for (size_t d = 0; ; d++)
 						{
-							Edge e = storage_.RandomForwardEdge(currentPath.GetEndVertex());
-							if (!e.Valid() || d == lookingDepth_ || !currentPath.PointPushBack(e))
+							bool over = true;
+							for (size_t i = 0; i < 4 && d < lookingDepth_; i++)
+							{
+								Edge e = storage_.RandomForwardEdge(currentPath.GetEndVertex());
+								if (e.Valid() && currentPath.PointPushBack(e))
+								{
+									over = false;
+									break;
+								}
+							}
+							
+							if (over)
 							{
 								for (size_t i = 0; i < d; i++)
 								{

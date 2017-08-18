@@ -446,62 +446,13 @@ namespace Sibelia
 			}
 		}
 
-		int Weight(int64_t vid, std::map<int64_t, int64_t> & bubbleCount) const
-		{
-			if (bubbleCount[vid] == 0)
-			{
-				return 1;
-			}
-
-			return bubbleCount[vid];
-		}
-
-		void AssignProbabilities(std::map<int64_t, int64_t> & bubbleCount)
-		{
-			ingoingEdgeProb_.resize(ingoingEdge_.size());
-			outgoingEdgeProb_.resize(outgoingEdge_.size());
-			for (int64_t vid = 0; vid < ingoingEdge_.size(); vid++)
-			{/*
-				if (ingoingEdge_[vid].size() > 0)
-				{
-					double ingoingTotal = 0;
-					for (auto & e : ingoingEdge_[vid])
-					{
-						ingoingTotal += Weight(e.GetStartVertex(), bubbleCount);
-					}
-
-					for (auto & e : ingoingEdge_[vid])
-					{
-						ingoingEdgeProb_[vid].push_back(Weight(e.GetStartVertex(), bubbleCount) / ingoingTotal + (ingoingEdgeProb_[vid].size() > 0 ? ingoingEdgeProb_[vid].back() : 0));
-					}
-
-					ingoingEdgeProb_[vid].back() = 1.01;
-				}
-			*/
-				if (outgoingEdge_[vid].size() > 0)
-				{					
-					for (auto & e : outgoingEdge_[vid])
-					{
-						outgoingEdgeProb_[vid].push_back(Weight(e.GetEndVertex(), bubbleCount) + (outgoingEdgeProb_[vid].size() > 0 ? outgoingEdgeProb_[vid].back() : 0));
-					}				
-				}
-			}
-		}
-
-		
+			
 		Edge RandomForwardEdge(int64_t vid) const
 		{
 			int64_t adjVid = vid + GetVerticesNumber();
 			if (outgoingEdge_[adjVid].size() > 0)
 			{
-				int coin = rand() % (outgoingEdgeProb_[adjVid].back() + 1);
-				for (size_t i = 0; i < outgoingEdge_[adjVid].size(); i++)
-				{
-					if (outgoingEdgeProb_[adjVid][i] >= coin)
-					{
-						return outgoingEdge_[adjVid][i];
-					}
-				}				
+				return outgoingEdge_[adjVid][rand() % outgoingEdge_[adjVid].size()];
 			}
 
 			return Edge();
@@ -540,8 +491,6 @@ namespace Sibelia
 		int64_t k_;
 		std::vector<std::vector<Edge> > ingoingEdge_;
 		std::vector<std::vector<Edge> > outgoingEdge_;
-		std::vector<std::vector<int> > ingoingEdgeProb_;
-		std::vector<std::vector<int> > outgoingEdgeProb_;
 		std::vector<std::string> sequence_;
 		std::vector<std::string> sequenceDescription_;
 		std::vector<VertexVector> posChr_;

@@ -183,9 +183,7 @@ namespace Sibelia
 		}
 
 		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t flankingThreshold, int64_t lookingDepth, int64_t sampleSize, const std::string & debugOut)
-		{
-			time_t mark = time(0);
-
+		{			
 			blocksFound_ = 0;
 			sampleSize_ = sampleSize;
 			lookingDepth_ = lookingDepth;
@@ -217,6 +215,7 @@ namespace Sibelia
 			storage_.AssignProbabilities(bubbleCount);
 			BestPath bestPath;
 			Path currentPath(storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
+			time_t mark = time(0);
 			for (auto it = bubbleCountVector.rbegin(); it != bubbleCountVector.rend(); ++it)
 			{
 				if (count++ % 1000 == 0)

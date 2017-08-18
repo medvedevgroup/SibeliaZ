@@ -419,8 +419,8 @@ namespace Sibelia
 				}
 				else
 				{
-//					ExtendPathBackward(currentPath, bestPath, lookingDepth_);
-//					bestPath.FixBackward(currentPath);					
+					ExtendPathBackward(currentPath, bestPath, lookingDepth_);
+					bestPath.FixBackward(currentPath);					
 					ExtendPathForward(currentPath, bestPath, lookingDepth_);
 					bestPath.FixForward(currentPath);
 				}
@@ -466,8 +466,9 @@ namespace Sibelia
 					}					
 				}
 			}			
-
+			
 			currentPath.Clean();
+			assert(CheckBlockIdIntegrity());
 		}
 		
 		void ExtendPathForward(Path & currentPath, BestPath & bestPath, int maxDepth)
@@ -528,6 +529,22 @@ namespace Sibelia
 			}		
 		}
 		
+		bool CheckBlockIdIntegrity() const
+		{
+			for (auto & bidVector : blockId_)
+			{
+				for (auto a : bidVector)
+				{
+					if (a.block == Assignment::IN_USE)
+					{
+						return false;
+					}
+				}
+			}
+
+			return true;
+		}
+
 		void CountBubbles(int64_t vertexId, std::map<int64_t, int64_t> & bubbleCount)
 		{
 			BubbledBranches bulges;

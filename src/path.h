@@ -107,6 +107,11 @@ namespace Sibelia
 
 			}
 
+			void ChangeFront(const JunctionStorage::JunctionIterator & it)
+			{
+				front_ = it;
+			}
+
 			void ChangeBack(const JunctionStorage::JunctionIterator & it)
 			{
 				back_ = it;
@@ -377,14 +382,116 @@ namespace Sibelia
 		}
 
 		bool PointPushFront(const Edge & e)
-		{
-		
+		{		
+			int64_t vertex = e.GetStartVertex();
+			if (distanceKeeper_.IsSet(vertex))
+			{
+				return false;
+			}
+
+			int64_t endVertexDistance = leftBody_.empty() ? 0 : leftBody_.back().StartDistance();
+			int64_t startVertexDistance = endVertexDistance - e.GetLength();
+			
+			distanceKeeper_.Set(e.GetStartVertex(), startVertexDistance);
+			for (auto & inst : instance_)
+			{
+				int64_t chrId = inst.Back().GetChrId();
+				JunctionStorage::JunctionIterator startIt = inst.Front();
+				JunctionStorage::JunctionIterator nowIt = startIt - 1;
+				if (nowIt.Valid(storage_) && blockId_[chrId][nowIt.GetIndex()].block == Assignment::UNKNOWN_BLOCK)
+				{
+					bool reach = false;
+					if (nowIt.GetVertexId(storage_) == vertex && startIt.GetVertexId(storage_) == e.GetEndVertex() && nowIt.GetChar(storage_) == e.GetChar())
+					{
+						reach = true;
+					}
+					else
+					{
+						if (abs(endVertexDistance - inst.LeftFlankDistance(distanceKeeper_, storage_)) <= maxBranchSize_)
+						{
+							for (; nowIt.Valid(storage_) && blockId_[chrId][nowIt.GetIndex()].block == Assignment::UNKNOWN_BLOCK && abs(nowIt.GetPosition(storage_) - startIt.GetPosition(storage_)) <= maxBranchSize_; --nowIt)
+							{
+								if (nowIt.GetVertexId(storage_) == vertex)
+								{
+									reach = true;
+									break;
+								}
+							}
+						}
+					}
+
+					if (reach)
+					{
+						int64_t nextLength = abs(nowIt.GetPosition(storage_) - inst.Back().GetPosition(storage_));
+						int64_t rightFlankSize = abs(inst.RightFlankDistance(distanceKeeper_, storage_) - (rightBody_.empty() ? 0 : rightBody_.back().EndDistance()));
+						if (nextLength >= minChainSize_ && rightFlankSize > maxFlankingSize_)
+						{
+							leftBody_.push_back(Point(e, startVertexDistance));							
+							PointPopFront();
+							return false;
+						}
+
+						blockId_[nowIt.GetChrId()][nowIt.GetIndex()].block = Assignment::IN_USE;
+						inst.ChangeFront(nowIt);
+					}
+				}
+			}
+
+
+			for (size_t i = 0; i < storage_->GetInstancesCount(vertex); i++)
+			{
+				JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vertex, i);
+				if (blockId_[it.GetChrId()][it.GetIndex()].block == Assignment::UNKNOWN_BLOCK)
+				{
+					instance_.push_back(Instance(it));
+					blockId_[it.GetChrId()][it.GetIndex()].block = Assignment::IN_USE;
+				}
+			}
+
+			leftBody_.push_back(Point(e, startVertexDistance));
 			return true;
 		}
 
 		void PointPopFront()
 		{
-			
+			int64_t lastVertex = leftBody_.back().Edge().GetStartVertex();
+			leftBody_.pop_back();
+			distanceKeeper_.Unset(lastVertex);
+			for (auto it = instance_.rbegin(); it != instance_.rend(); )
+			{
+				if (it->Front().GetVertexId(storage_) == lastVertex)
+				{
+					blockId_[it->Front().GetChrId()][it->Front().GetIndex()].block = Assignment::UNKNOWN_BLOCK;
+					if (it->Front() == it->Back())
+					{
+						assert(it == instance_.rbegin());
+						instance_.pop_back();
+						it = instance_.rbegin();
+					}
+					else
+					{
+						auto jt = it->Front();
+						while (true)
+						{
+							if (distanceKeeper_.IsSet(jt.GetVertexId(storage_)))
+							{
+								it->ChangeFront(jt);
+								break;
+							}
+							else
+							{
+								++jt;
+							}
+						}
+
+						it++;
+					}
+				}
+				else
+				{
+					++it;
+				}
+			}
 		}
 
 		int64_t Score(bool final = false) const

@@ -217,7 +217,7 @@ namespace Sibelia
 					std::cerr << count << '\t' << shuffle.size() << std::endl;
 				}
 
-				ExtendSeed(vid, currentPath, bestPath, debugStream);				
+				ExtendSeed(vid, currentPath, bestPath, debugStream);
 			}
 
 			std::cout << "Time: " << time(0) - mark << std::endl;
@@ -225,6 +225,7 @@ namespace Sibelia
 
 		void Dump(std::ostream & out) const
 		{
+			return;
 			out << "digraph G\n{\nrankdir = LR" << std::endl;
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
@@ -572,7 +573,7 @@ namespace Sibelia
 		{
 			for (auto & bidVector : blockId_)
 			{
-				for (auto a : bidVector)
+				for (auto & a : bidVector)
 				{
 					if (a.block == Assignment::IN_USE)
 					{

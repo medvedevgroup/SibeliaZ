@@ -259,7 +259,7 @@ namespace Sibelia
 				idx_ += IsPositiveStrand() ? -step : +step;
 			}
 
-			JunctionIterator(uint64_t chrId, int64_t idx, bool isPositiveStrand) : idx_(idx), chrId_(isPositiveStrand ? chrId + 1 : -(chrId + 1))
+			JunctionIterator(int64_t chrId, int64_t idx, bool isPositiveStrand) : idx_(idx), chrId_(isPositiveStrand ? chrId + 1 : -(chrId + 1))
 			{
 
 			}

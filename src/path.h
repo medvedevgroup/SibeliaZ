@@ -2,6 +2,7 @@
 #define _PATH_H_
 
 #include <cassert>
+#include <omp.h>
 #include "distancekeeper.h"
 
 namespace Sibelia
@@ -10,8 +11,8 @@ namespace Sibelia
 	{
 		static const int64_t IN_USE;
 		static const int64_t UNKNOWN_BLOCK;
-		int64_t block;
-		int64_t instance;
+		int32_t block;
+		int32_t instance;
 		Assignment() : block(UNKNOWN_BLOCK), instance(UNKNOWN_BLOCK)
 		{
 
@@ -278,9 +279,10 @@ namespace Sibelia
 
 			int64_t startVertexDistance = rightBody_.empty() ? 0 : rightBody_.back().EndDistance();
 			int64_t endVertexDistance = startVertexDistance + e.GetLength();
-			distanceKeeper_.Set(e.GetEndVertex(), endVertexDistance);
-			for (auto & inst : instance_)
+			bool fail = false;			
+			for(int i = 0; i < instance_.size(); i++)
 			{
+				auto & inst = instance_[i];
 				int64_t chrId = inst.Back().GetChrId();
 				JunctionStorage::JunctionIterator startIt = inst.Back();
 				JunctionStorage::JunctionIterator nowIt = startIt + 1;
@@ -312,18 +314,27 @@ namespace Sibelia
 						int64_t leftFlankSize = abs(inst.LeftFlankDistance(distanceKeeper_, storage_) - (leftBody_.empty() ? 0 : leftBody_.back().StartDistance()));
 						if (nextLength >= minChainSize_ && leftFlankSize > maxFlankingSize_)
 						{
-							rightBody_.push_back(Point(e, startVertexDistance));
-							distanceKeeper_.Set(e.GetEndVertex(), endVertexDistance);
-							PointPopBack();
-							return false;
+							fail = true;
+							break;
 						}
 
-						blockId_[nowIt.GetChrId()][nowIt.GetIndex()].block = Assignment::IN_USE;						
-						inst.ChangeBack(nowIt);						
+						if (blockId_[nowIt.GetChrId()][nowIt.GetIndex()].block == Assignment::UNKNOWN_BLOCK)
+						{
+							blockId_[nowIt.GetChrId()][nowIt.GetIndex()].block = Assignment::IN_USE;
+							inst.ChangeBack(nowIt);
+						}												
 					}
 				}
 			}
+			
+			rightBody_.push_back(Point(e, startVertexDistance));
+			distanceKeeper_.Set(e.GetEndVertex(), endVertexDistance);
 
+			if (fail)
+			{
+				PointPopBack();
+				return false;
+			}
 
 			for (size_t i = 0; i < storage_->GetInstancesCount(vertex); i++)
 			{
@@ -335,7 +346,7 @@ namespace Sibelia
 				}
 			}
 
-			rightBody_.push_back(Point(e, startVertexDistance));			
+			
 			return true;
 		}
 

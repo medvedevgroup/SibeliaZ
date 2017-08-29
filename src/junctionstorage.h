@@ -234,6 +234,16 @@ namespace Sibelia
 				Dec();
 				return ret;
 			}
+			
+			bool operator < (const JunctionIterator & arg) const
+			{
+				if (GetChrId() != arg.GetChrId())
+				{
+					return GetChrId() < arg.GetChrId();
+				}
+
+				return GetIndex() < arg.GetIndex();
+			}
 
 			bool operator == (const JunctionIterator & arg) const
 			{

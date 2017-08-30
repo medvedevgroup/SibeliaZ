@@ -200,12 +200,19 @@ namespace Sibelia
 
 			int64_t count = 0;
 			std::vector<int64_t> shuffle;
-			for (int64_t v = 1; v < storage_.GetVerticesNumber(); v++)
+			for (int64_t v = -storage_.GetVerticesNumber() + 1; v < storage_.GetVerticesNumber(); v++)
 			{
-				shuffle.push_back(v);				
+				for (size_t i = 0; i < storage_.GetInstancesCount(v); i++)
+				{
+					if (storage_.GetJunctionInstance(v, i).IsPositiveStrand())
+					{
+						shuffle.push_back(v);
+						break;
+					}
+				}				
 			}
 
-			std::random_shuffle(shuffle.begin(), shuffle.end());
+//			std::random_shuffle(shuffle.begin(), shuffle.end());
 			std::ofstream debugStream(debugOut.c_str());
 			BestPath bestPath;
 			Path currentPath(storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
@@ -225,7 +232,7 @@ namespace Sibelia
 
 		void Dump(std::ostream & out) const
 		{
-			return;
+//			return;
 			out << "digraph G\n{\nrankdir = LR" << std::endl;
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
@@ -431,7 +438,6 @@ namespace Sibelia
 			}			
 			
 			currentPath.Clean();
-			assert(CheckBlockIdIntegrity());
 		}
 
 		void ExtendPathRandom(Path & currentPath, BestPath & bestPath, int maxDepth)
@@ -567,22 +573,6 @@ namespace Sibelia
 					}
 				}
 			}		
-		}
-		
-		bool CheckBlockIdIntegrity() const
-		{
-			for (auto & bidVector : blockId_)
-			{
-				for (auto & a : bidVector)
-				{
-					if (a.block == Assignment::IN_USE)
-					{
-						return false;
-					}
-				}
-			}
-
-			return true;
 		}
 
 		void CountBubbles(int64_t vertexId, std::map<int64_t, int64_t> & bubbleCount)

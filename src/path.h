@@ -425,13 +425,112 @@ namespace Sibelia
 		}
 
 		bool PointPushFront(const Edge & e)
-		{		
-			return false;
+		{
+			int64_t vertex = e.GetStartVertex();
+			if (distanceKeeper_.IsSet(vertex))
+			{
+				return false;
+			}
+
+			bool fail = false;
+			int64_t endVertexDistance = leftBody_.empty() ? 0 : leftBody_.back().StartDistance();
+			int64_t startVertexDistance = endVertexDistance - e.GetLength();
+
+			for (size_t i = 0; i < storage_->GetInstancesCount(vertex); i++)
+			{
+				bool newInstance = true;
+				JunctionStorage::JunctionIterator nowIt = storage_->GetJunctionInstance(vertex, i);
+				if (blockId_[nowIt.GetChrId()][nowIt.GetIndex()].block == Assignment::UNKNOWN_BLOCK)
+				{
+					auto inst = instance_.upper_bound(Instance(nowIt));
+					if (inst != instance_.end() && inst->Within(nowIt))
+					{
+						continue;
+					}
+
+					if (nowIt.IsPositiveStrand())
+					{
+						if (inst != instance_.end() && Compatible(inst->Front(), nowIt, e))
+						{
+							newInstance = false;
+						}
+					}
+					else
+					{
+						if (inst != instance_.begin() && Compatible((--inst)->Front(), nowIt, e))
+						{
+							newInstance = false;
+						}
+					}
+
+					if (!newInstance && inst->Front().GetVertexId(storage_) != vertex)
+					{
+						int64_t nextLength = abs(nowIt.GetPosition(storage_) - inst->Back().GetPosition(storage_));
+						int64_t rightFlankSize = abs(inst->RightFlankDistance(distanceKeeper_, storage_) - (rightBody_.empty() ? 0 : rightBody_.back().EndDistance()));
+						if (nextLength >= minChainSize_ && rightFlankSize > maxFlankingSize_)
+						{
+							fail = true;
+							break;
+						}
+
+						const_cast<Instance&>(*inst).ChangeFront(nowIt);
+					}
+					else
+					{
+						instance_.insert(Instance(nowIt));
+					}
+				}
+			}
+
+			leftBody_.push_back(Point(e, startVertexDistance));
+			distanceKeeper_.Set(e.GetStartVertex(), startVertexDistance);
+			
+			if (fail)
+			{
+				PointPopFront();
+				return false;
+			}
+
+			return true;
 		}
 
 		void PointPopFront()
 		{
-			
+			int64_t lastVertex = leftBody_.back().Edge().GetStartVertex();
+			leftBody_.pop_back();
+			distanceKeeper_.Unset(lastVertex);
+			for (auto it = instance_.begin(); it != instance_.end(); )
+			{
+				if (it->Front().GetVertexId(storage_) == lastVertex)
+				{	
+					if (it->Front() == it->Back())
+					{
+						it = instance_.erase(it);
+					}
+					else
+					{
+						auto jt = it->Front();
+						while (true)
+						{
+							if (distanceKeeper_.IsSet(jt.GetVertexId(storage_)))
+							{
+								const_cast<Instance&>(*it).ChangeFront(jt);
+								break;
+							}
+							else
+							{
+								++jt;
+							}
+						}
+
+						it++;
+					}
+				}
+				else
+				{
+					++it;
+				}
+			}
 		}
 
 		int64_t Score(bool final = false) const

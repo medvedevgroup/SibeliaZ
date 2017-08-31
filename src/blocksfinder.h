@@ -212,7 +212,7 @@ namespace Sibelia
 				}				
 			}
 
-//			std::random_shuffle(shuffle.begin(), shuffle.end());
+			std::random_shuffle(shuffle.begin(), shuffle.end());
 			std::ofstream debugStream(debugOut.c_str());
 			BestPath bestPath;
 			Path currentPath(storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
@@ -232,7 +232,7 @@ namespace Sibelia
 
 		void Dump(std::ostream & out) const
 		{
-//			return;
+			return;
 			out << "digraph G\n{\nrankdir = LR" << std::endl;
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
@@ -403,7 +403,7 @@ namespace Sibelia
 			if (currentPath.Score(true) > 0 && currentPath.MiddlePathLength() >= minBlockSize_ && currentPath.GoodInstances() > 1)
 			{
 				++blocksFound_;
-				debugOut << "Block No." << blocksFound_ << ":"  << std::endl;
+//				debugOut << "Block No." << blocksFound_ << ":"  << std::endl;
 //				currentPath.DebugOut(debugOut, false);
 				syntenyPath_.push_back(std::vector<Edge>());
 				std::vector<Edge> nowPathBody;

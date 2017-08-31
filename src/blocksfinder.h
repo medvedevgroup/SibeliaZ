@@ -526,7 +526,7 @@ namespace Sibelia
 				{
 					Edge e = storage_.OutgoingEdge(prevVertex, idx);
 					if (forbidden_.Notin(e))
-					{
+					{						
 						if (currentPath.PointPushBack(e))
 						{
 #ifdef _DEBUG_OUT

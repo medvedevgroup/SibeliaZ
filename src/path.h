@@ -348,13 +348,13 @@ namespace Sibelia
 					}
 					else
 					{
-						if (inst != instance_.end() && (++inst) != instance_.end() && Compatible(inst->Back(), nowIt, e))
+						if (inst != instance_.end() && Compatible(inst->Back(), nowIt, e))
 						{
 							newInstance = false;
 						}
 					}
-
-					if (!newInstance)
+					
+					if (!newInstance && inst->Back().GetVertexId(storage_) != vertex)
 					{
 						int64_t nextLength = abs(nowIt.GetPosition(storage_) - inst->Front().GetPosition(storage_));
 						int64_t leftFlankSize = abs(inst->LeftFlankDistance(distanceKeeper_, storage_) - (leftBody_.empty() ? 0 : leftBody_.back().StartDistance()));
@@ -399,7 +399,7 @@ namespace Sibelia
 						it = instance_.erase(it);
 					}
 					else
-					{
+					{						
 						auto jt = it->Back();
 						while (true)
 						{

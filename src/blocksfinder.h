@@ -212,7 +212,7 @@ namespace Sibelia
 				}				
 			}
 
-//			std::random_shuffle(shuffle.begin(), shuffle.end());
+			std::random_shuffle(shuffle.begin(), shuffle.end());
 			std::ofstream debugStream(debugOut.c_str());
 			BestPath bestPath;
 			Path currentPath(storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
@@ -224,14 +224,7 @@ namespace Sibelia
 					std::cerr << count << '\t' << shuffle.size() << std::endl;
 				}
 
-				if (sampleSize_ == 0)
-				{
-					ExtendSeed(vid, currentPath, bestPath, debugStream);
-				}
-				else
-				{
-					ExtendSeedRandom(vid, currentPath);
-				}				
+				ExtendSeed(vid, currentPath, bestPath, debugStream);			
 			}
 
 			std::cout << "Time: " << time(0) - mark << std::endl;
@@ -417,6 +410,7 @@ namespace Sibelia
 				{
 					currentPath.Init(vid);
 					bool canExtend = true;
+					int64_t prevScore = 0;
 					while (canExtend)
 					{
 						canExtend = false;
@@ -427,8 +421,15 @@ namespace Sibelia
 								Edge e = storage_.RandomForwardEdge(currentPath.GetEndVertex());
 								if (e.Valid() && currentPath.PointPushBack(e))
 								{
-									canExtend = true;
-									break;
+									if (prevScore < currentPath.Score(scoreFullChains_))
+									{										
+										canExtend = true;
+										break;
+									}
+									else
+									{
+										currentPath.PointPopBack();										
+									}	
 								}
 							}
 						}
@@ -439,11 +440,20 @@ namespace Sibelia
 								Edge e = storage_.RandomBackwardEdge(currentPath.GetStartVertex());
 								if (e.Valid() && currentPath.PointPushFront(e))
 								{
-									canExtend = true;
-									break;
+									if (prevScore < currentPath.Score(scoreFullChains_))
+									{
+										canExtend = true;
+										break;
+									}
+									else
+									{
+										currentPath.PointPopFront();
+									}
 								}
 							}
 						}
+
+						prevScore = currentPath.Score(scoreFullChains_);
 					}
 
 					if (TryFinalizeBlock(currentPath))
@@ -472,14 +482,25 @@ namespace Sibelia
 			while (true)
 			{				
 				int64_t prevBestScore = bestPath.score_;
-				ExtendPathBackward(currentPath, bestPath, lookingDepth_);
-				bestPath.FixBackward(currentPath);					
-				ExtendPathForward(currentPath, bestPath, lookingDepth_);
-				bestPath.FixForward(currentPath);
-				if (bestPath.score_ <= prevBestScore)
+				if (sampleSize_ > 0)
 				{
-					break;					
-				}							
+					ExtendPathRandom(currentPath, bestPath, lookingDepth_);
+					if (bestPath.score_ <= prevBestScore)
+					{
+						break;
+					}
+				}
+				else
+				{
+					ExtendPathBackward(currentPath, bestPath, lookingDepth_);
+					bestPath.FixBackward(currentPath);
+					ExtendPathForward(currentPath, bestPath, lookingDepth_);
+					bestPath.FixForward(currentPath);
+					if (bestPath.score_ <= prevBestScore)
+					{
+						break;
+					}
+				}
 			}
 
 			TryFinalizeBlock(currentPath);
@@ -524,7 +545,7 @@ namespace Sibelia
 			}
 
 			bestPath.FixForward(currentPath);		
-			
+		
 			for (size_t sample = 0; sample < sampleSize_; sample++)
 			{
 				for (size_t d = 0; ; d++)

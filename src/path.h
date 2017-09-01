@@ -535,6 +535,8 @@ namespace Sibelia
 
 		int64_t Score(bool final = false) const
 		{
+//			return MiddlePathLength() * instance_.size();
+
 			int64_t score;
 			int64_t length;
 			int64_t ret = 0;

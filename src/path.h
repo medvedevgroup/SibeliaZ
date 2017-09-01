@@ -450,14 +450,14 @@ namespace Sibelia
 
 					if (nowIt.IsPositiveStrand())
 					{
-						if (inst != instance_.end() && Compatible(inst->Front(), nowIt, e))
+						if (inst != instance_.end() && Compatible(nowIt, inst->Front(), e))
 						{
 							newInstance = false;
 						}
 					}
 					else
 					{
-						if (inst != instance_.begin() && Compatible((--inst)->Front(), nowIt, e))
+						if (inst != instance_.begin() && Compatible(nowIt, (--inst)->Front(), e))
 						{
 							newInstance = false;
 						}

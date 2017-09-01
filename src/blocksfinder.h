@@ -212,7 +212,7 @@ namespace Sibelia
 				}				
 			}
 
-			std::random_shuffle(shuffle.begin(), shuffle.end());
+//			std::random_shuffle(shuffle.begin(), shuffle.end());
 			std::ofstream debugStream(debugOut.c_str());
 			BestPath bestPath;
 			Path currentPath(storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
@@ -224,7 +224,14 @@ namespace Sibelia
 					std::cerr << count << '\t' << shuffle.size() << std::endl;
 				}
 
-				ExtendSeed(vid, currentPath, bestPath, debugStream);
+				if (sampleSize_ == 0)
+				{
+					ExtendSeed(vid, currentPath, bestPath, debugStream);
+				}
+				else
+				{
+					ExtendSeedRandom(vid, currentPath);
+				}				
 			}
 
 			std::cout << "Time: " << time(0) - mark << std::endl;
@@ -232,7 +239,6 @@ namespace Sibelia
 
 		void Dump(std::ostream & out) const
 		{
-			return;
 			out << "digraph G\n{\nrankdir = LR" << std::endl;
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
@@ -359,57 +365,17 @@ namespace Sibelia
 		void ListChromosomesAsPermutations(const BlockList & block, const std::string & fileName) const;
 		void TryOpenFile(const std::string & fileName, std::ofstream & stream) const;
 		void ListChrs(std::ostream & out) const;
-
-		struct BranchData
-		{
-			BranchData() {}
-			std::vector<size_t> branchId;
-		};
-
-		typedef std::vector< std::vector<size_t> > BubbledBranches;
 		
-	
-		void ExtendSeed(int64_t vid,
-			Path & currentPath,
-			BestPath & bestPath,
-			std::ostream & debugOut)
-		{			
-			bestPath.Init();
-			currentPath.Init(vid);
-			while (true)
-			{				
-				int64_t prevBestScore = bestPath.score_;
-				if (sampleSize_ > 0)
-				{
-					ExtendPathRandom(currentPath, bestPath, lookingDepth_);
-					if (bestPath.score_ <= prevBestScore)
-					{
-						break;
-					}
-				}
-				else
-				{
-					ExtendPathBackward(currentPath, bestPath, lookingDepth_);
-					bestPath.FixBackward(currentPath);					
-					ExtendPathForward(currentPath, bestPath, lookingDepth_);
-					bestPath.FixForward(currentPath);
-					if (bestPath.score_ <= prevBestScore)
-					{
-						break;
-					}
-				}							
-			}
-						
+		bool TryFinalizeBlock(Path & currentPath)
+		{
 			if (currentPath.Score(true) > 0 && currentPath.MiddlePathLength() >= minBlockSize_ && currentPath.GoodInstances() > 1)
 			{
 				++blocksFound_;
-//				debugOut << "Block No." << blocksFound_ << ":"  << std::endl;
-//				currentPath.DebugOut(debugOut, false);
 				syntenyPath_.push_back(std::vector<Edge>());
 				std::vector<Edge> nowPathBody;
 				currentPath.DumpPath(nowPathBody);
 				for (auto pt : nowPathBody)
-				{					
+				{
 					syntenyPath_.back().push_back(pt);
 				}
 
@@ -427,16 +393,96 @@ namespace Sibelia
 						for (auto it = instance.Front(); it != end; ++it)
 						{
 							int64_t idx = it.GetIndex();
-							int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());							
+							int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());
 							blockId_[it.GetChrId()][it.GetIndex()].block = it.IsPositiveStrand() ? blocksFound_ : -blocksFound_;
 							blockId_[it.GetChrId()][it.GetIndex()].instance = instanceCount;
 						}
 
 						instanceCount++;
-					}					
+					}
 				}
-			}			
-			
+
+				return true;
+			}
+
+			return false;
+		}
+
+		void ExtendSeedRandom(int64_t vid, Path & currentPath)
+		{			
+			while (true)
+			{
+				bool success = false;				
+				for (size_t it = 0; it < sampleSize_; it++)
+				{
+					currentPath.Init(vid);
+					bool canExtend = true;
+					while (canExtend)
+					{
+						canExtend = false;
+						if (rand() % 2)
+						{
+							for (size_t i = 0; i < 4; i++)
+							{
+								Edge e = storage_.RandomForwardEdge(currentPath.GetEndVertex());
+								if (e.Valid() && currentPath.PointPushBack(e))
+								{
+									canExtend = true;
+									break;
+								}
+							}
+						}
+						else
+						{
+							for (size_t i = 0; i < 4; i++)
+							{
+								Edge e = storage_.RandomBackwardEdge(currentPath.GetStartVertex());
+								if (e.Valid() && currentPath.PointPushFront(e))
+								{
+									canExtend = true;
+									break;
+								}
+							}
+						}
+					}
+
+					if (TryFinalizeBlock(currentPath))
+					{
+						success = true;
+					}
+
+					currentPath.Clean();
+				}
+
+				if (!success)
+				{
+					break;
+				}
+			}
+
+		}
+	
+		void ExtendSeed(int64_t vid,
+			Path & currentPath,
+			BestPath & bestPath,
+			std::ostream & debugOut)
+		{			
+			bestPath.Init();
+			currentPath.Init(vid);
+			while (true)
+			{				
+				int64_t prevBestScore = bestPath.score_;
+				ExtendPathBackward(currentPath, bestPath, lookingDepth_);
+				bestPath.FixBackward(currentPath);					
+				ExtendPathForward(currentPath, bestPath, lookingDepth_);
+				bestPath.FixForward(currentPath);
+				if (bestPath.score_ <= prevBestScore)
+				{
+					break;					
+				}							
+			}
+
+			TryFinalizeBlock(currentPath);
 			currentPath.Clean();
 		}
 
@@ -575,50 +621,6 @@ namespace Sibelia
 			}		
 		}
 
-		void CountBubbles(int64_t vertexId, std::map<int64_t, int64_t> & bubbleCount)
-		{
-			BubbledBranches bulges;
-			std::map<int64_t, BranchData> visit;
-			std::vector<JunctionStorage::JunctionIterator> instance;
-			for (size_t i = 0; i < storage_.GetInstancesCount(vertexId); i++)
-			{				
-				JunctionStorage::JunctionIterator vertex = storage_.GetJunctionInstance(vertexId, i);
-				instance.push_back(vertex);				
-				for (int64_t startPosition = vertex++.GetPosition(&storage_); vertex.Valid(&storage_) && abs(startPosition - vertex.GetPosition(&storage_)) < maxBranchSize_; ++vertex)
-				{					
-					int64_t nowVertexId = vertex.GetVertexId(&storage_);
-					auto point = visit.find(nowVertexId);
-					if (point == visit.end())
-					{
-						BranchData bData;
-						bData.branchId.push_back(i);
-						visit[nowVertexId] = bData;
-					}
-					else
-					{
-						point->second.branchId.push_back(i);
-						break;
-					}
-				}
-			}
-
-			for (auto point = visit.begin(); point != visit.end(); ++point)
-			{
-				if (point->second.branchId.size() > 1)
-				{
-					size_t n = point->second.branchId.size();
-					for (size_t i = 0; i < point->second.branchId.size(); ++i)
-					{
-						auto & edgeIt = instance[point->second.branchId[i]];
-						if (edgeIt.IsPositiveStrand())
-						{
-							bubbleCount[edgeIt.GetVertexId(&storage_)] += n * (n - 1) / 2;
-						}
-					}
-				}
-			}
-		}
-	
 		int64_t k_;
 		int64_t sampleSize_;
 		int64_t blocksFound_;

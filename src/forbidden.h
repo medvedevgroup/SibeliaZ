@@ -10,29 +10,42 @@ namespace Sibelia
 	public:
 		Forbidden(const JunctionStorage & storage): vertices_(storage.GetVerticesNumber()), forbidden_(vertices_ * 2)
 		{
-
+			for (auto it = forbidden_.begin(); it != forbidden_.end(); it++)
+			{
+				std::fill(it->value, it->value + 4, 0);
+			}
 		}
 
 		void Add(const Edge & e)
 		{
-			int64_t v = e.GetStartVertex() + vertices_;
-			if (std::find(forbidden_[v].begin(), forbidden_[v].end(), e.GetChar()) == forbidden_[v].end())
+			if (e.GetChar() != 'N')
 			{
-				forbidden_[v].push_back(e.GetChar());
-				forbidden_[-e.GetEndVertex() + vertices_].push_back(e.GetChar());
-			}
+				Edge er = e.Reverse();				
+				forbidden_[e.GetStartVertex() + vertices_].value[TwoPaCo::DnaChar::MakeUpChar(e.GetChar())] = true;
+				forbidden_[er.GetStartVertex() + vertices_].value[TwoPaCo::DnaChar::MakeUpChar(er.GetChar())] = true;				
+			}			
 		}
 
-		bool Notin(const Edge & e) const
+		bool IsForbidden(const Edge & e) const
 		{
+			if (e.GetChar() == 'N')
+			{
+				return false;
+			}
+
 			int64_t v = e.GetStartVertex() + vertices_;
-			bool ret = std::find(forbidden_[v].begin(), forbidden_[v].end(), e.GetChar()) == forbidden_[v].end();
-			return ret;
+			return forbidden_[v].value[TwoPaCo::DnaChar::MakeUpChar(e.GetChar())];
 		}
 
 	private:
 		int64_t vertices_;
-		std::vector<std::string> forbidden_;
+
+		struct BoolArray
+		{
+			bool value[4];
+		};
+
+		std::vector<BoolArray> forbidden_;
 	};
 }
 #endif // !_FORBIDDEN_H_

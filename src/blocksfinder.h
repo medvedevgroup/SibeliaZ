@@ -517,7 +517,7 @@ namespace Sibelia
 					for (size_t i = 0; i < 4 && d < lookingDepth_; i++)
 					{
 						Edge e = storage_.RandomForwardEdge(currentPath.GetEndVertex());
-						if (e.Valid() && currentPath.PointPushBack(e))
+						if (e.Valid() && !forbidden_.IsForbidden(e) && currentPath.PointPushBack(e))
 						{
 							over = false;
 							break;
@@ -554,7 +554,7 @@ namespace Sibelia
 					for (size_t i = 0; i < 4 && d < lookingDepth_; i++)
 					{
 						Edge e = storage_.RandomBackwardEdge(currentPath.GetStartVertex());
-						if (e.Valid() && currentPath.PointPushFront(e))
+						if (e.Valid() && !forbidden_.IsForbidden(e) && currentPath.PointPushFront(e))
 						{
 							over = false;
 							break;
@@ -592,7 +592,7 @@ namespace Sibelia
 				for (int64_t idx = 0; idx < storage_.OutgoingEdgesNumber(prevVertex); idx++)
 				{
 					Edge e = storage_.OutgoingEdge(prevVertex, idx);
-					if (forbidden_.Notin(e))
+					if (!forbidden_.IsForbidden(e))
 					{						
 						if (currentPath.PointPushBack(e))
 						{
@@ -621,7 +621,7 @@ namespace Sibelia
 				for (int64_t idx = 0; idx < storage_.IngoingEdgesNumber(prevVertex); idx++)
 				{
 					Edge e = storage_.IngoingEdge(prevVertex, idx);
-					if (forbidden_.Notin(e))
+					if (!forbidden_.IsForbidden(e))
 					{	
 						if (currentPath.PointPushFront(e))
 						{

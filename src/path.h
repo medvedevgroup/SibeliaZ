@@ -3,7 +3,9 @@
 
 #include <set>
 #include <cassert>
+#include <algorithm>
 #include "distancekeeper.h"
+
 
 namespace Sibelia
 {
@@ -43,6 +45,11 @@ namespace Sibelia
 
 		void Init(int64_t vid)
 		{
+			leftBody_.clear();
+			rightBody_.clear();
+			instance_.clear();
+			distanceKeeper_.Clear();
+
 			origin_ = vid;			
 			distanceKeeper_.Set(vid, 0);
 			for (size_t i = 0; i < storage_->GetInstancesCount(vid); i++)
@@ -53,27 +60,7 @@ namespace Sibelia
 					instance_.insert(Instance(it));
 				}
 			}
-		}
-
-		void Clean()
-		{
-			distanceKeeper_.Unset(origin_);
-			for (auto & p : leftBody_)
-			{
-				distanceKeeper_.Unset(p.Edge().GetEndVertex());
-				distanceKeeper_.Unset(p.Edge().GetStartVertex());
-			}
-
-			for (auto & p : rightBody_)
-			{
-				distanceKeeper_.Unset(p.Edge().GetEndVertex());
-				distanceKeeper_.Unset(p.Edge().GetStartVertex());
-			}
-
-			leftBody_.clear();
-			rightBody_.clear();
-			instance_.clear();
-		}
+		}		
 
 		struct Instance
 		{	
@@ -131,8 +118,8 @@ namespace Sibelia
 			{
 				if (it.GetChrId() == front_.GetChrId())
 				{
-					int64_t left = std::min(front_.GetIndex(), back_.GetIndex());
-					int64_t right = std::max(front_.GetIndex(), back_.GetIndex());
+					int64_t left = min(front_.GetIndex(), back_.GetIndex());
+					int64_t right = max(front_.GetIndex(), back_.GetIndex());
 					return it.GetIndex() >= left && it.GetIndex() <= right;
 				}
 
@@ -190,48 +177,7 @@ namespace Sibelia
 		int64_t Origin() const
 		{
 			return origin_;
-		}
-
-		/*
-		void PrintInstance(const Instance & inst, std::ostream & out) const
-		{
-			for (auto & it : inst.seq)
-			{
-				out << "{vid:" << it.GetVertexId()
-					<< " str:" << inst.seq.front().IsPositiveStrand()
-					<< " chr:" << inst.seq.front().GetChrId()
-					<< " pos:" << it.GetPosition() << "} ";
-			}
-
-			out << std::endl;
-		}
-		
-		void DebugOut(std::ostream & out, bool all = true) const
-		{
-			out << "Path: ";
-			for (auto it = leftBody_.rbegin(); it != leftBody_.rend(); ++it)
-			{
-				auto & pt = *it;
-				out << "(" << pt.edge.GetStartVertex() << "," << pt.edge.GetEndVertex() << "," << pt.edge.GetChar() << ") ";
-			}
-
-			for (auto it = rightBody_.rbegin(); it != rightBody_.rend(); ++it)
-			{
-				auto & pt = *it;
-				out << "(" << pt.edge.GetStartVertex() << "," << pt.edge.GetEndVertex() << "," << pt.edge.GetChar() << ") ";
-			}
-
-			out << std::endl << "Instances: " << std::endl;
-			for (auto & inst : instance_)
-			{
-				if (all || IsGoodInstance(inst))
-				{
-					PrintInstance(inst, out);
-				}
-			}
-
-			out << std::endl;
-		}*/
+		}		
 
 		const std::multiset<Instance> & Instances() const
 		{
@@ -535,8 +481,6 @@ namespace Sibelia
 
 		int64_t Score(bool final = false) const
 		{
-//			return MiddlePathLength() * instance_.size();
-
 			int64_t score;
 			int64_t length;
 			int64_t ret = 0;

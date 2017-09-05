@@ -1,6 +1,8 @@
 #ifndef _FORBIDDEN_H_
 #define _FORBIDDEN_H_
 
+#include <tbb/spin_rw_mutex.h>
+
 #include "junctionstorage.h"
 
 namespace Sibelia
@@ -17,24 +19,28 @@ namespace Sibelia
 		}
 
 		void Add(const Edge & e)
-		{
+		{			
 			if (e.GetChar() != 'N')
 			{
-				Edge er = e.Reverse();				
+				Edge er = e.Reverse();
+				mutex_.lock();
 				forbidden_[e.GetStartVertex() + vertices_].value[TwoPaCo::DnaChar::MakeUpChar(e.GetChar())] = true;
-				forbidden_[er.GetStartVertex() + vertices_].value[TwoPaCo::DnaChar::MakeUpChar(er.GetChar())] = true;				
+				forbidden_[er.GetStartVertex() + vertices_].value[TwoPaCo::DnaChar::MakeUpChar(er.GetChar())] = true;
+				mutex_.unlock();
 			}			
 		}
 
-		bool IsForbidden(const Edge & e) const
+		bool IsForbidden(const Edge & e)
 		{
 			if (e.GetChar() == 'N')
 			{
 				return false;
 			}
 
-			int64_t v = e.GetStartVertex() + vertices_;
-			return forbidden_[v].value[TwoPaCo::DnaChar::MakeUpChar(e.GetChar())];
+			mutex_.lock_read();			
+			bool ret = forbidden_[e.GetStartVertex() + vertices_].value[TwoPaCo::DnaChar::MakeUpChar(e.GetChar())];
+			mutex_.unlock();
+			return ret;
 		}
 
 	private:
@@ -45,7 +51,9 @@ namespace Sibelia
 			bool value[4];
 		};
 
+		tbb::spin_rw_mutex mutex_;
 		std::vector<BoolArray> forbidden_;
+		
 	};
 }
 #endif // !_FORBIDDEN_H_

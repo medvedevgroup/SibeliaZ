@@ -13,6 +13,11 @@ namespace Sibelia
 		{
 		}
 
+		void Clear()
+		{
+			distance_.clear();
+		}
+
 		bool IsSet(int64_t v) const
 		{
 			return distance_.count(v) > 0;

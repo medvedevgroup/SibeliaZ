@@ -10,6 +10,9 @@
 
 namespace Sibelia
 {	
+	using std::min;
+	using std::max;
+
 	class Edge
 	{
 	public:
@@ -174,7 +177,7 @@ namespace Sibelia
 			{
 				return idx_;
 			}
-
+ 
 			uint64_t GetRelativeIndex(const JunctionStorage * storage_) const
 			{
 				if (IsPositiveStrand())

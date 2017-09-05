@@ -251,3 +251,5 @@ paket-files/
 .idea/
 *.sln.iml
 msvs/sibelia-pp/test/*
+msvs/sibelia-pp/tbb.dll
+msvs/sibelia-pp/tbb_debug.dll

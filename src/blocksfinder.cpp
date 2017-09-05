@@ -105,12 +105,12 @@ namespace Sibelia
 			size_t overlap = 0;
 			if (GetStart() >= instance.GetStart() && GetStart() <= instance.GetEnd())
 			{
-				return std::pair<size_t, size_t>(GetStart(), std::min(GetEnd(), instance.GetEnd()));
+				return std::pair<size_t, size_t>(GetStart(), min(GetEnd(), instance.GetEnd()));
 			}
 
 			if (instance.GetStart() >= GetStart() && instance.GetStart() <= GetEnd())
 			{
-				return std::pair<size_t, size_t>(instance.GetStart(), std::min(GetEnd(), instance.GetEnd()));
+				return std::pair<size_t, size_t>(instance.GetStart(), min(GetEnd(), instance.GetEnd()));
 			}
 		}
 

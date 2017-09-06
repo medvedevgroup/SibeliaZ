@@ -17,6 +17,7 @@
 #include <tbb/mutex.h>
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
+#include <tbb/task_scheduler_init.h>
 
 #include "path.h"
 
@@ -218,7 +219,7 @@ namespace Sibelia
 			}
 		};
 
-		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t flankingThreshold, int64_t lookingDepth, int64_t sampleSize, const std::string & debugOut)
+		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t flankingThreshold, int64_t lookingDepth, int64_t sampleSize, int64_t threads, const std::string & debugOut)
 		{			
 			blocksFound_ = 0;
 			sampleSize_ = sampleSize;
@@ -252,6 +253,7 @@ namespace Sibelia
 			Path currentPath(storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
 			time_t mark = time(0);
 			count_ = 0;			
+			tbb::task_scheduler_init init(threads);
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle, currentPath, bestPath));
 			std::cout << "Time: " << time(0) - mark << std::endl;
 		}

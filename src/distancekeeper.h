@@ -9,7 +9,7 @@ namespace Sibelia
 	class DistanceKeeper
 	{
 	public:
-		DistanceKeeper(int64_t vertices) : vertices_(vertices)
+		DistanceKeeper()
 		{
 		}
 
@@ -41,7 +41,7 @@ namespace Sibelia
 
 	private:
 		int64_t vertices_;
-		std::unordered_map<int64_t, int32_t> distance_;		
+		std::unordered_map<int64_t, int32_t> distance_;
 	};
 }
 

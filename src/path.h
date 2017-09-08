@@ -37,8 +37,7 @@ namespace Sibelia
 			std::vector<std::vector<Assignment> > & blockId,
 			bool checkConsistency = false) :
 			maxBranchSize_(maxBranchSize), minBlockSize_(minBlockSize), maxFlankingSize_(maxFlankingSize), storage_(&storage),
-			distanceKeeper_(storage.GetVerticesNumber()), minChainSize_(minBlockSize - 2 * maxFlankingSize), blockId_(blockId),
-			checkConsistency_(checkConsistency)
+			minChainSize_(minBlockSize - 2 * maxFlankingSize), blockId_(blockId), checkConsistency_(checkConsistency)
 		{
 			
 		}

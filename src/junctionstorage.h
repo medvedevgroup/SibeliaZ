@@ -18,8 +18,8 @@ namespace Sibelia
 	public:
 		Edge() : startVertex_(INT64_MAX), endVertex_(INT64_MAX) {}
 
-		Edge(int64_t startVertex, int64_t endVertex, char ch, char revCh, int64_t length) :
-			startVertex_(startVertex), endVertex_(endVertex), ch_(ch), revCh_(revCh), length_(length)
+		Edge(int64_t startVertex, int64_t endVertex, char ch, char revCh, int32_t length, int32_t capacity) :
+			startVertex_(startVertex), endVertex_(endVertex), ch_(ch), revCh_(revCh), length_(length), capacity_(capacity)
 		{
 
 		}
@@ -44,9 +44,14 @@ namespace Sibelia
 			return length_;
 		}
 
+		int64_t GetCapacity() const
+		{
+			return capacity_;
+		}
+
 		Edge Reverse() const
 		{
-			return Edge(-endVertex_, -startVertex_, revCh_, ch_, length_);
+			return Edge(-endVertex_, -startVertex_, revCh_, ch_, length_, capacity_);
 		}
 
 		char GetRevChar() const
@@ -88,13 +93,19 @@ namespace Sibelia
 		{
 			return !(*this == e);
 		}
+		
+		void Inc()
+		{
+			capacity_++;
+		}
 
 	private:
 		int64_t startVertex_;
 		int64_t endVertex_;
 		char ch_;
-		char revCh_;
-		int64_t length_;
+		char revCh_;		
+		int32_t length_;
+		int32_t capacity_;
 	};
 
 	class JunctionStorage
@@ -136,7 +147,7 @@ namespace Sibelia
 			{
 
 			}
-
+				
 			bool IsPositiveStrand() const
 			{
 				return chrId_ > 0;
@@ -366,7 +377,16 @@ namespace Sibelia
 						const Vertex & prev = posChr_[coord.chr][coord.idx - 1];
 						char ch = sequence_[coord.chr][prev.pos + k_];
 						char revCh = TwoPaCo::DnaChar::ReverseChar(sequence_[coord.chr][now.pos - 1]);
-						list.push_back(Edge(prev.id, now.id, ch, revCh, now.pos - prev.pos));
+						Edge newEdge(prev.id, now.id, ch, revCh, now.pos - prev.pos, 1);
+						auto it = std::find(list.begin(), list.end(), newEdge);
+						if (it == list.end())
+						{
+							list.push_back(newEdge);
+						}
+						else
+						{
+							it->Inc();
+						}
 					}
 				}
 				else
@@ -376,7 +396,16 @@ namespace Sibelia
 						const Vertex & prev = posChr_[coord.chr][coord.idx + 1];
 						char ch = TwoPaCo::DnaChar::ReverseChar(sequence_[coord.chr][prev.pos - 1]);
 						char revCh = sequence_[coord.chr][now.pos + k_];
-						list.push_back(Edge(-prev.id, -now.id, ch, revCh, prev.pos - now.pos));
+						Edge newEdge(-prev.id, -now.id, ch, revCh, prev.pos - now.pos, 1);
+						auto it = std::find(list.begin(), list.end(), newEdge);
+						if (it == list.end())
+						{
+							list.push_back(newEdge);
+						}
+						else
+						{
+							it->Inc();
+						}
 					}					
 				}
 			}
@@ -397,8 +426,18 @@ namespace Sibelia
 					{
 						const Vertex & next = posChr_[coord.chr][coord.idx + 1];
 						char ch = sequence_[coord.chr][now.pos + k_];
-						char revCh = TwoPaCo::DnaChar::ReverseChar(sequence_[coord.chr][next.pos - 1]);
-						list.push_back(Edge(now.id, next.id, ch, revCh, next.pos - now.pos));
+						char revCh = TwoPaCo::DnaChar::ReverseChar(sequence_[coord.chr][next.pos - 1]);						
+						Edge newEdge = Edge(now.id, next.id, ch, revCh, next.pos - now.pos, 1);
+						auto it = std::find(list.begin(), list.end(), newEdge);
+						if (it == list.end())
+						{
+							list.push_back(newEdge);
+						}
+						else
+						{
+							it->Inc();
+						}
+						
 					}
 				}
 				else
@@ -408,7 +447,16 @@ namespace Sibelia
 						const Vertex & next = posChr_[coord.chr][coord.idx - 1];
 						char ch = TwoPaCo::DnaChar::ReverseChar(sequence_[coord.chr][now.pos - 1]);
 						char revCh = sequence_[coord.chr][now.pos + k_];
-						list.push_back(Edge(-now.id, -next.id, ch, revCh, now.pos - next.pos));
+						Edge newEdge(-now.id, -next.id, ch, revCh, now.pos - next.pos, 1);
+						auto it = std::find(list.begin(), list.end(), newEdge);
+						if (it == list.end())
+						{
+							list.push_back(newEdge);
+						}
+						else
+						{
+							it->Inc();
+						}
 					}
 				}
 			}

@@ -289,6 +289,36 @@ namespace Sibelia
 			out << "}" << std::endl;
 		}
 
+		void DumpLight(std::ostream & out) const
+		{
+			out << "digraph G\n{\nrankdir = LR" << std::endl;
+			std::vector<Edge> total;
+			for (int64_t i = -storage_.GetVerticesNumber() + 1; i < storage_.GetVerticesNumber(); i++)
+			{
+				for(size_t j = 0; j < storage_.IngoingEdgesNumber(i); j++)
+				{					
+					Edge e = storage_.IngoingEdge(i, j);
+					total.push_back(e);
+				}
+
+				for (size_t j = 0; j < storage_.OutgoingEdgesNumber(i); j++)
+				{
+					Edge e = storage_.OutgoingEdge(i, j);
+					total.push_back(e);
+				}
+			}
+
+			std::sort(total.begin(), total.end());
+			total.erase(std::unique(total.begin(), total.end()), total.end());
+			
+			for (Edge & e : total)
+			{				
+				out << e.GetStartVertex() << " -> " << e.GetEndVertex() << "[label=\"" << e.GetChar() << ", " << e.GetCapacity() << "\"]" << std::endl;
+			}
+
+			out << "}" << std::endl;
+		}
+
 		void ListBlocksSequences(const BlockList & block, const std::string & fileName) const
 		{
 			std::ofstream out;

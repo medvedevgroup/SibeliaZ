@@ -154,8 +154,7 @@ int main(int argc, char * argv[])
 		finder.GenerateLegacyOutput(outDirName.getValue());
 		std::ofstream dumpStream(outDirName.getValue() + "/graph.dot");
 		std::ofstream lightDumpStream(outDirName.getValue() + "/light_graph.dot");
-		finder.Dump(dumpStream);
-		finder.DumpLight(lightDumpStream);
+		//finder.Dump(dumpStream);
 	}
 	catch (TCLAP::ArgException & e)
 	{

@@ -1,8 +1,6 @@
 #ifndef _FORBIDDEN_H_
 #define _FORBIDDEN_H_
 
-#include <tbb/spin_rw_mutex.h>
-
 #include "junctionstorage.h"
 
 namespace Sibelia
@@ -23,10 +21,8 @@ namespace Sibelia
 			if (e.GetChar() != 'N')
 			{
 				Edge er = e.Reverse();
-				mutex_.lock();
 				forbidden_[e.GetStartVertex() + vertices_].value[TwoPaCo::DnaChar::MakeUpChar(e.GetChar())] = true;
 				forbidden_[er.GetStartVertex() + vertices_].value[TwoPaCo::DnaChar::MakeUpChar(er.GetChar())] = true;
-				mutex_.unlock();
 			}			
 		}
 
@@ -37,9 +33,8 @@ namespace Sibelia
 				return false;
 			}
 
-			mutex_.lock_read();			
+	
 			bool ret = forbidden_[e.GetStartVertex() + vertices_].value[TwoPaCo::DnaChar::MakeUpChar(e.GetChar())];
-			mutex_.unlock();
 			return ret;
 		}
 
@@ -51,7 +46,6 @@ namespace Sibelia
 			bool value[4];
 		};
 
-		tbb::spin_rw_mutex mutex_;
 		std::vector<BoolArray> forbidden_;
 		
 	};

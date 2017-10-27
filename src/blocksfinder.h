@@ -14,10 +14,7 @@
 #include <sstream>
 #include <iostream>
 
-#include <tbb/mutex.h>
-#include <tbb/parallel_for.h>
-#include <tbb/blocked_range.h>
-#include <tbb/task_scheduler_init.h>
+
 
 #include "path.h"
 
@@ -204,18 +201,18 @@ namespace Sibelia
 			{				
 				for (size_t i = range.begin(); i != range.end(); i++)
 				{
-					finder.outMutex_.lock();
-
 					if (finder.count_++ % 1000 == 0)
 					{
 						std::cerr << finder.count_ << '\t' << shuffle.size() << std::endl;
 					}
 
-					finder.outMutex_.unlock();
+					if (i == 500000)
+					{
+						break;
+					}
 
-					finder.ExtendSeed(shuffle[i], const_cast<Path&>(currentPath), const_cast<BestPath&>(bestPath));
+					finder.ExtendSeed(shuffle[i], const_cast<Path&>(currentPath), const_cast<BestPath&>(bestPath));					
 				}
-				
 			}
 		};
 
@@ -248,14 +245,15 @@ namespace Sibelia
 				}				
 			}
 
-			std::random_shuffle(shuffle.begin(), shuffle.end());		
+//			std::random_shuffle(shuffle.begin(), shuffle.end());		
 			BestPath bestPath;
 			Path currentPath(storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
 			time_t mark = time(0);
-			count_ = 0;			
+			count_ = 0;
 			tbb::task_scheduler_init init(threads);
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle, currentPath, bestPath));
-			std::cout << "Time: " << time(0) - mark << std::endl;
+			ProcessVertex process(*this, shuffle, currentPath, bestPath);
+			process(tbb::blocked_range<size_t>(0, shuffle.size()));
+			std::cerr << "Time: " << time(0) - mark << std::endl;
 		}
 
 		void Dump(std::ostream & out) const
@@ -422,42 +420,37 @@ namespace Sibelia
 			if (currentPath.Score(true) > 0 && currentPath.MiddlePathLength() >= minBlockSize_ && currentPath.GoodInstances() > 1)
 			{
 				std::vector<Edge> nowPathBody;
-				if (mutex_.try_lock())
+				++blocksFound_;
+				syntenyPath_.push_back(std::vector<Edge>());
+				currentPath.DumpPath(nowPathBody);
+				for (auto pt : nowPathBody)
 				{
-					++blocksFound_;
-					syntenyPath_.push_back(std::vector<Edge>());
-					currentPath.DumpPath(nowPathBody);
-					for (auto pt : nowPathBody)
-					{
-						syntenyPath_.back().push_back(pt);
-					}
-
-					for (size_t i = 0; i < syntenyPath_.back().size() - 1; i++)
-					{
-						forbidden_.Add(syntenyPath_.back()[i]);
-					}
-
-					int64_t instanceCount = 0;
-					for (auto & instance : currentPath.Instances())
-					{
-						if (currentPath.IsGoodInstance(instance))
-						{
-							auto end = instance.Back() + 1;
-							for (auto it = instance.Front(); it != end; ++it)
-							{
-								int64_t idx = it.GetIndex();
-								int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());
-								blockId_[it.GetChrId()][it.GetIndex()].block = it.IsPositiveStrand() ? blocksFound_ : -blocksFound_;
-								blockId_[it.GetChrId()][it.GetIndex()].instance = instanceCount;
-							}
-
-							instanceCount++;
-						}
-					}
-
-					mutex_.unlock();
+					syntenyPath_.back().push_back(pt);
 				}
-				
+
+				for (size_t i = 0; i < syntenyPath_.back().size() - 1; i++)
+				{
+					forbidden_.Add(syntenyPath_.back()[i]);
+				}
+
+				int64_t instanceCount = 0;
+				for (auto & instance : currentPath.Instances())
+				{
+					if (currentPath.IsGoodInstance(instance))
+					{
+						auto end = instance.Back() + 1;
+						for (auto it = instance.Front(); it != end; ++it)
+						{
+							int64_t idx = it.GetIndex();
+							int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());
+							blockId_[it.GetChrId()][it.GetIndex()].block = it.IsPositiveStrand() ? blocksFound_ : -blocksFound_;
+							blockId_[it.GetChrId()][it.GetIndex()].instance = instanceCount;
+						}
+
+						instanceCount++;
+					}
+				}
+
 				return true;
 			}
 
@@ -500,6 +493,8 @@ namespace Sibelia
 				{
 					break;
 				}
+
+				currentPath.Clear();
 			}			
 		}
 
@@ -649,8 +644,6 @@ namespace Sibelia
 		int64_t maxBranchSize_;
 		int64_t flankingThreshold_;
 		JunctionStorage & storage_;
-		tbb::mutex outMutex_;
-		tbb::spin_rw_mutex mutex_;
 		std::vector<std::vector<Edge> > syntenyPath_;
 		std::vector<std::vector<Assignment> > blockId_;	
 	};

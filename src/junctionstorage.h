@@ -5,8 +5,11 @@
 #include <vector>
 #include <cstdint>
 
+#include <tbb/spin_rw_mutex.h>
+
 #include "junctionapi.h"
 #include "streamfastaparser.h"
+
 
 namespace Sibelia
 {	
@@ -114,9 +117,10 @@ namespace Sibelia
 		struct Vertex
 		{
 			int64_t id;
-			uint64_t pos;
+			int64_t pos;
+			bool used;
 
-			Vertex(const TwoPaCo::JunctionPosition & junction) : id(junction.GetId()), pos(junction.GetPos())
+			Vertex(const TwoPaCo::JunctionPosition & junction) : id(junction.GetId()), pos(junction.GetPos()), used(false)
 			{
 
 			}
@@ -209,6 +213,26 @@ namespace Sibelia
 				return idx_ >= 0 && idx_ < storage_->posChr_[GetChrId()].size();
 			}
 
+			bool IsUsed(const JunctionStorage * storage_) const
+			{
+				size_t mutexIdx_ = idx_ % storage_->MutexNumber();
+				const_cast<JunctionStorage*>(storage_)->mutex_[GetChrId()][mutexIdx_].lock_read();
+				bool ret = storage_->posChr_[GetChrId()][idx_].used;
+				const_cast<JunctionStorage*>(storage_)->mutex_[GetChrId()][mutexIdx_].unlock();
+				return ret;
+			}
+
+			bool IsUsedUnlocked(const JunctionStorage * storage_) const
+			{				
+				bool ret = storage_->posChr_[GetChrId()][idx_].used;
+				return ret;
+			}
+
+			void MarkUsed(JunctionStorage * storage_) const
+			{
+				storage_->posChr_[GetChrId()][idx_].used = true;
+			}
+
 			JunctionIterator& operator++ ()
 			{
 				Inc();
@@ -292,6 +316,36 @@ namespace Sibelia
 			int64_t chrId_;
 			int64_t idx_;
 		};
+
+		void LockRange(JunctionIterator start, JunctionIterator end, std::vector<std::vector<char > > & mutexAcquired)
+		{
+			do
+			{
+				size_t idx = start.GetIndex() % MutexNumber();
+				if (!mutexAcquired[start.GetChrId()][idx])
+				{
+					mutex_[start.GetChrId()][idx].lock();
+					mutexAcquired[start.GetChrId()][idx] = true;
+				}
+				
+				
+			} while (start++ != end);
+		}
+
+		void UnlockRange(JunctionIterator start, JunctionIterator end, std::vector<std::vector<char > > & mutexAcquired)
+		{
+			do
+			{
+				size_t idx = start.GetIndex() % MutexNumber();
+				if (mutexAcquired[start.GetChrId()][idx])
+				{
+					mutex_[start.GetChrId()][idx].unlock();
+					mutexAcquired[start.GetChrId()][idx] = false;
+				}
+				
+
+			} while (start++ != end);
+		}
 
 		int64_t GetChrNumber() const
 		{
@@ -414,6 +468,11 @@ namespace Sibelia
 			list.erase(std::unique(list.begin(), list.end()), list.end());
 		}
 
+		size_t MutexNumber() const
+		{
+			return 1 << scalingFactor_;
+		}
+
 		void OutgoingEdges(int64_t vertexId, std::vector<Edge> & list) const
 		{
 			list.clear();
@@ -465,7 +524,7 @@ namespace Sibelia
 			list.erase(std::unique(list.begin(), list.end()), list.end());
 		}
 
-		void Init(const std::string & inFileName, const std::string & genomesFileName)
+		void Init(const std::string & inFileName, const std::string & genomesFileName, int64_t threads)
 		{
 			TwoPaCo::JunctionPositionReader reader(inFileName);
 			for (TwoPaCo::JunctionPosition junction; reader.NextJunctionPosition(junction);)
@@ -494,7 +553,14 @@ namespace Sibelia
 				for (char ch; parser.GetChar(ch); )
 				{
 					sequence_[record].push_back(ch);
-				}
+				}				
+			}
+			
+			mutex_.resize(GetChrNumber());
+			for (scalingFactor_ = 1; (1 << scalingFactor_) <= threads * 8; scalingFactor_++);
+			for (size_t i = 0; i < mutex_.size(); i++) 
+			{
+				mutex_[i].reset(new tbb::spin_rw_mutex[1 << scalingFactor_]);
 			}
 
 			int64_t vertices = GetVerticesNumber();
@@ -531,9 +597,9 @@ namespace Sibelia
 		}
 
 		JunctionStorage() {}
-		JunctionStorage(const std::string & fileName, const std::string & genomesFileName, uint64_t k) : k_(k)
+		JunctionStorage(const std::string & fileName, const std::string & genomesFileName, uint64_t k, int64_t threads) : k_(k)
 		{
-			Init(fileName, genomesFileName);
+			Init(fileName, genomesFileName, threads);
 		}
 
 
@@ -546,12 +612,14 @@ namespace Sibelia
 		};
 
 		int64_t k_;
+		int64_t scalingFactor_;
 		std::vector<std::vector<Edge> > ingoingEdge_;
 		std::vector<std::vector<Edge> > outgoingEdge_;
 		std::vector<std::string> sequence_;
 		std::vector<std::string> sequenceDescription_;
 		std::vector<VertexVector> posChr_;
 		std::vector<CoordinateVector> coordinate_;
+		std::vector<std::unique_ptr<tbb::spin_rw_mutex[]> > mutex_;
 	};
 }
 

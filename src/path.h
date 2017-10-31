@@ -18,10 +18,9 @@ namespace Sibelia
 {
 	struct Assignment
 	{
-		static const int64_t UNKNOWN_BLOCK;
 		int32_t block;
 		int32_t instance;
-		Assignment() : block(UNKNOWN_BLOCK), instance(UNKNOWN_BLOCK)
+		Assignment()
 		{
 
 		}
@@ -51,16 +50,12 @@ namespace Sibelia
 
 		void Init(int64_t vid)
 		{
-			leftBody_.clear();
-			rightBody_.clear();
-			instance_.clear();
-
 			origin_ = vid;			
 			distanceKeeper_.Set(vid, 0);
 			for (size_t i = 0; i < storage_->GetInstancesCount(vid); i++)
 			{
 				JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vid, i);
-				if (blockId_[it.GetChrId()][it.GetIndex()].block == Assignment::UNKNOWN_BLOCK)
+				if (!it.IsUsed(storage_))
 				{
 					instance_.insert(Instance(it));
 				}
@@ -285,7 +280,7 @@ namespace Sibelia
 				{
 					bool newInstance = true;
 					JunctionStorage::JunctionIterator nowIt = path->storage_->GetJunctionInstance(vertex, i);
-					if (path->blockId_[nowIt.GetChrId()][nowIt.GetIndex()].block == Assignment::UNKNOWN_BLOCK)
+					if (!nowIt.IsUsed(path->storage_))
 					{
 						auto inst = path->instance_.upper_bound(Instance(nowIt));
 						if (inst != path->instance_.end() && inst->Within(nowIt))
@@ -349,7 +344,7 @@ namespace Sibelia
 				{
 					bool newInstance = true;
 					JunctionStorage::JunctionIterator nowIt = path->storage_->GetJunctionInstance(vertex, i);
-					if (path->blockId_[nowIt.GetChrId()][nowIt.GetIndex()].block == Assignment::UNKNOWN_BLOCK)
+					if (!nowIt.IsUsed(path->storage_))
 					{
 						auto inst = path->instance_.upper_bound(Instance(nowIt));
 						if (inst != path->instance_.end() && inst->Within(nowIt))
@@ -405,8 +400,7 @@ namespace Sibelia
 			std::atomic<bool> failFlag = false;
 			int64_t startVertexDistance = rightBody_.empty() ? 0 : rightBody_.back().EndDistance();
 			int64_t endVertexDistance = startVertexDistance + e.GetLength();
-
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, storage_->GetInstancesCount(vertex)), PointPushBackWorker(this, vertex, e, failFlag));
+			PointPushBackWorker(this, vertex, e, failFlag)(tbb::blocked_range<size_t>(0, storage_->GetInstancesCount(vertex)));
 			rightBody_.push_back(Point(e, startVertexDistance));
 			distanceKeeper_.Set(e.GetEndVertex(), endVertexDistance);
 
@@ -476,8 +470,7 @@ namespace Sibelia
 			std::atomic<bool> failFlag = false;
 			int64_t endVertexDistance = leftBody_.empty() ? 0 : leftBody_.back().StartDistance();
 			int64_t startVertexDistance = endVertexDistance - e.GetLength();
-			
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, storage_->GetInstancesCount(vertex)), PointPushFrontWorker(this, vertex, e, failFlag));
+			PointPushFrontWorker(this, vertex, e, failFlag)(tbb::blocked_range<size_t>(0, storage_->GetInstancesCount(vertex)));
 			leftBody_.push_back(Point(e, startVertexDistance));
 			distanceKeeper_.Set(e.GetStartVertex(), startVertexDistance);
 
@@ -585,7 +578,26 @@ namespace Sibelia
 
 		void Clear()
 		{
-			distanceKeeper_.Unset(origin_);
+			for (auto pt : leftBody_)
+			{
+				distanceKeeper_.Unset(pt.Edge().GetStartVertex());
+			}
+
+			for (auto pt : rightBody_)
+			{
+				distanceKeeper_.Unset(pt.Edge().GetEndVertex());
+			}
+
+			leftBody_.clear();
+			rightBody_.clear();
+			instance_.clear();
+			distanceKeeper_.Unset(origin_);			
+			for (int64_t v1 = -storage_->GetVerticesNumber() + 1; v1 < storage_->GetVerticesNumber(); v1++)
+			{
+				assert(!distanceKeeper_.IsSet(v1));
+			}
+
+			instance_.clear();
 		}
 
 	private:

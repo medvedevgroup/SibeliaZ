@@ -10,8 +10,6 @@ size_t Atoi(const char * str)
 	return ret;
 }
 
-const int64_t Sibelia::Assignment::UNKNOWN_BLOCK = INT32_MAX;
-
 class OddConstraint : public TCLAP::Constraint < unsigned int >
 {
 public:
@@ -142,7 +140,7 @@ int main(int argc, char * argv[])
 
 		cmd.parse(argc, argv);
 
-		Sibelia::JunctionStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue());
+		Sibelia::JunctionStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue(), threads.getValue());
 		Sibelia::BlocksFinder finder(storage, kvalue.getValue());		
 		finder.FindBlocks(minBlockSize.getValue(),
 			maxBranchSize.getValue(),
@@ -153,7 +151,6 @@ int main(int argc, char * argv[])
 			outDirName.getValue() + "/paths.txt");
 		finder.GenerateLegacyOutput(outDirName.getValue());
 		std::ofstream dumpStream(outDirName.getValue() + "/graph.dot");
-		std::ofstream lightDumpStream(outDirName.getValue() + "/light_graph.dot");
 		//finder.Dump(dumpStream);
 	}
 	catch (TCLAP::ArgException & e)

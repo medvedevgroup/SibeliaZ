@@ -156,7 +156,6 @@
   <ItemGroup>
     <ClInclude Include="..\..\src\distancekeeper.h" />
     <ClInclude Include="..\..\src\dnachar.h" />
-    <ClInclude Include="..\..\src\forbidden.h" />
     <ClInclude Include="..\..\src\junctionapi.h" />
     <ClInclude Include="..\..\src\outputgenerator.h" />
     <ClInclude Include="..\..\src\blocksfinder.h" />

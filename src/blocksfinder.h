@@ -14,8 +14,6 @@
 #include <sstream>
 #include <iostream>
 
-
-
 #include "path.h"
 
 namespace Sibelia
@@ -179,7 +177,7 @@ namespace Sibelia
 	{
 	public:
 
-		BlocksFinder(JunctionStorage & storage, size_t k) : storage_(storage), k_(k), forbidden_(storage)
+		BlocksFinder(JunctionStorage & storage, size_t k) : storage_(storage), k_(k)
 		{
 			scoreFullChains_ = false;
 		}
@@ -191,10 +189,12 @@ namespace Sibelia
 			BestPath bestPath;
 			BlocksFinder & finder;			
 			std::vector<int64_t> & shuffle;
+			std::vector<std::vector<char > > mutexAcquired;
 			
 			ProcessVertex(BlocksFinder & finder, std::vector<int64_t> & shuffle, Path & currentPath, BestPath & bestPath) :
 				finder(finder), shuffle(shuffle), currentPath(currentPath), bestPath(bestPath)
 			{
+				mutexAcquired.resize(finder.storage_.GetChrNumber(), std::vector<char>(finder.storage_.MutexNumber(), 0));
 			}
 
 			void operator()(tbb::blocked_range<size_t> & range) const
@@ -205,31 +205,24 @@ namespace Sibelia
 					{
 						std::cerr << finder.count_ << '\t' << shuffle.size() << std::endl;
 					}
-
-					if (i == 500000)
-					{
-						break;
-					}
-
-					finder.ExtendSeed(shuffle[i], const_cast<Path&>(currentPath), const_cast<BestPath&>(bestPath));					
+					
+					finder.ExtendSeed(shuffle[i], const_cast<Path&>(currentPath), const_cast<BestPath&>(bestPath), const_cast<std::vector<std::vector<char > > & >(mutexAcquired));
 				}
 			}
 		};
 
 		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t flankingThreshold, int64_t lookingDepth, int64_t sampleSize, int64_t threads, const std::string & debugOut)
-		{			
+		{
 			blocksFound_ = 0;
 			sampleSize_ = sampleSize;
 			lookingDepth_ = lookingDepth;
 			minBlockSize_ = minBlockSize;
 			maxBranchSize_ = maxBranchSize;
 			flankingThreshold_ = flankingThreshold;
-			std::vector<std::vector<bool> > junctionInWork;
-			std::vector<std::pair<int64_t, int64_t> > bubbleCountVector;
 			blockId_.resize(storage_.GetChrNumber());
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
-				blockId_[i].resize(storage_.GetChrVerticesCount(i));
+				blockId_[i].resize(storage_.GetChrVerticesCount(i));				
 			}
 			
 			std::vector<int64_t> shuffle;
@@ -250,9 +243,8 @@ namespace Sibelia
 			Path currentPath(storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
 			time_t mark = time(0);
 			count_ = 0;
-			tbb::task_scheduler_init init(threads);
-			ProcessVertex process(*this, shuffle, currentPath, bestPath);
-			process(tbb::blocked_range<size_t>(0, shuffle.size()));
+			tbb::task_scheduler_init init(threads);			
+			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle, currentPath, bestPath));
 			std::cerr << "Time: " << time(0) - mark << std::endl;
 		}
 
@@ -364,7 +356,7 @@ namespace Sibelia
 			{
 				for (size_t i = 0; i < blockId_[chr].size();)
 				{
-					if (blockId_[chr][i].block != Assignment::UNKNOWN_BLOCK)
+					if (storage_.GetIterator(chr, i).IsUsed(&storage_))
 					{
 						int64_t bid = blockId_[chr][i].block;
 						size_t j = i;
@@ -415,53 +407,95 @@ namespace Sibelia
 		void TryOpenFile(const std::string & fileName, std::ofstream & stream) const;
 		void ListChrs(std::ostream & out) const;
 		
-		bool TryFinalizeBlock(Path & currentPath)
+		bool TryFinalizeBlock(Path & currentPath, std::vector<std::vector<char > > & mutexAcquired)
 		{
+			bool ret = false;
 			if (currentPath.Score(true) > 0 && currentPath.MiddlePathLength() >= minBlockSize_ && currentPath.GoodInstances() > 1)
 			{
-				std::vector<Edge> nowPathBody;
-				++blocksFound_;
-				syntenyPath_.push_back(std::vector<Edge>());
-				currentPath.DumpPath(nowPathBody);
-				for (auto pt : nowPathBody)
-				{
-					syntenyPath_.back().push_back(pt);
-				}
-
-				for (size_t i = 0; i < syntenyPath_.back().size() - 1; i++)
-				{
-					forbidden_.Add(syntenyPath_.back()[i]);
-				}
-
-				int64_t instanceCount = 0;
 				for (auto & instance : currentPath.Instances())
 				{
 					if (currentPath.IsGoodInstance(instance))
 					{
-						auto end = instance.Back() + 1;
-						for (auto it = instance.Front(); it != end; ++it)
+						storage_.LockRange(instance.Front(), instance.Back(), mutexAcquired);
+					}
+				}
+
+				std::vector<std::pair<JunctionStorage::JunctionIterator, JunctionStorage::JunctionIterator> > result;
+				for (auto & instance : currentPath.Instances())
+				{
+					if (currentPath.IsGoodInstance(instance))
+					{
+						bool whole = true;
+						auto start = instance.Front();
+						auto end = instance.Back();						
+						for (; start != end && start.IsUsedUnlocked(&storage_); ++start);
+						for (; start != end && end.IsUsedUnlocked(&storage_); --end);
+						for (auto it = start; it != end + 1; it++)
 						{
+							if (it.IsUsedUnlocked(&storage_))
+							{
+								whole = false;
+								break;
+							}
+						}
+
+						if (whole && abs(start.GetPosition(&storage_) - end.GetPosition(&storage_)) + k_ >= minBlockSize_)
+						{
+							result.push_back(std::make_pair(start, end));
+						}
+					}
+				}
+
+				
+				if (result.size() > 1)
+				{
+					ret = true;
+					tbb::mutex::scoped_lock lock(globalMutex_);
+					std::vector<Edge> nowPathBody;			
+					currentPath.DumpPath(nowPathBody);
+
+					++blocksFound_;
+					syntenyPath_.push_back(std::vector<Edge>());					
+					for (auto pt : nowPathBody)
+					{
+						syntenyPath_.back().push_back(pt);
+					}
+
+					int64_t instanceCount = 0;
+					for (auto & instance : result)
+					{
+						auto end = instance.second;
+						for (auto it = instance.first; it != end; ++it)
+						{
+							it.MarkUsed(&storage_);
 							int64_t idx = it.GetIndex();
 							int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());
 							blockId_[it.GetChrId()][it.GetIndex()].block = it.IsPositiveStrand() ? blocksFound_ : -blocksFound_;
 							blockId_[it.GetChrId()][it.GetIndex()].instance = instanceCount;
 						}
-
-						instanceCount++;
 					}
 				}
 
-				return true;
+				for (auto & instance : currentPath.Instances())
+				{
+					if (currentPath.IsGoodInstance(instance))
+					{
+						storage_.UnlockRange(instance.Front(), instance.Back(), mutexAcquired);
+					}
+				}				
+				
+				return ret;
 			}
 
-			return false;
+			return ret;
 		}
 		
 		void ExtendSeed(int64_t vid,
 			Path & currentPath,
-			BestPath & bestPath)
+			BestPath & bestPath,
+			std::vector<std::vector<char > > & mutexAcquired)
 		{						
-			while (true)
+			for(bool explore = true; explore;)
 			{
 				bestPath.Init();
 				currentPath.Init(vid);
@@ -489,9 +523,9 @@ namespace Sibelia
 					}
 				}
 
-				if (!TryFinalizeBlock(currentPath))
+				if (!TryFinalizeBlock(currentPath, mutexAcquired))
 				{
-					break;
+					explore = false;
 				}
 
 				currentPath.Clear();
@@ -508,7 +542,7 @@ namespace Sibelia
 					for (size_t i = 0; i < 4 && d < lookingDepth_; i++)
 					{
 						Edge e = storage_.RandomForwardEdge(currentPath.GetEndVertex());
-						if (e.Valid() && !forbidden_.IsForbidden(e) && currentPath.PointPushBack(e))
+						if (e.Valid() && currentPath.PointPushBack(e))
 						{
 							over = false;
 							break;
@@ -545,7 +579,7 @@ namespace Sibelia
 					for (size_t i = 0; i < 4 && d < lookingDepth_; i++)
 					{
 						Edge e = storage_.RandomBackwardEdge(currentPath.GetStartVertex());
-						if (e.Valid() && !forbidden_.IsForbidden(e) && currentPath.PointPushFront(e))
+						if (e.Valid() && currentPath.PointPushFront(e))
 						{
 							over = false;
 							break;
@@ -583,7 +617,6 @@ namespace Sibelia
 				for (int64_t idx = 0; idx < storage_.OutgoingEdgesNumber(prevVertex); idx++)
 				{
 					Edge e = storage_.OutgoingEdge(prevVertex, idx);
-					if (!forbidden_.IsForbidden(e))
 					{						
 						if (currentPath.PointPushBack(e))
 						{
@@ -612,7 +645,6 @@ namespace Sibelia
 				for (int64_t idx = 0; idx < storage_.IngoingEdgesNumber(prevVertex); idx++)
 				{
 					Edge e = storage_.IngoingEdge(prevVertex, idx);
-					if (!forbidden_.IsForbidden(e))
 					{	
 						if (currentPath.PointPushFront(e))
 						{
@@ -634,16 +666,17 @@ namespace Sibelia
 		}
 
 		int64_t k_;
-		int64_t count_;
+		int64_t count_;		
 		int64_t sampleSize_;
-		int64_t blocksFound_;
-		Forbidden forbidden_;
-		bool scoreFullChains_;		
+		int64_t scalingFactor_;
+		bool scoreFullChains_;
 		int64_t lookingDepth_;		
 		int64_t minBlockSize_;
 		int64_t maxBranchSize_;
+		int64_t blocksFound_;
 		int64_t flankingThreshold_;
 		JunctionStorage & storage_;
+		tbb::mutex globalMutex_;
 		std::vector<std::vector<Edge> > syntenyPath_;
 		std::vector<std::vector<Assignment> > blockId_;	
 	};

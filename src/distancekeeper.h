@@ -1,7 +1,7 @@
 #ifndef _DISTANCE_KEEPER_H_
 #define _DISTANCE_KEEPER_H_
 
-#include "forbidden.h"
+#include "junctionstorage.h"
 
 namespace Sibelia
 {

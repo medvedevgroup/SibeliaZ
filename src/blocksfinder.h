@@ -408,7 +408,7 @@ namespace Sibelia
 			bool ret = false;
 			if (currentPath.Score(true) > 0 && currentPath.MiddlePathLength() >= minBlockSize_ && currentPath.GoodInstances() > 1)
 			{
-				if(false)
+				if (false)
 				{
 					log << "Path " << &currentPath << " locks:" << std::endl;
 					currentPath.DumpInstances(log);
@@ -418,10 +418,11 @@ namespace Sibelia
 				for (auto & instance : currentPath.Instances())
 				{
 					if (currentPath.IsGoodInstance(instance))
-					{
+					{						
+
 						if (instance.Front().IsPositiveStrand())
 						{
-							storage_.LockRange(instance.Front(), instance.Back(), mutexAcquired);
+							storage_.LockRange(instance.Front(), instance.Back(), mutexAcquired);							
 						}
 						else
 						{
@@ -486,7 +487,7 @@ namespace Sibelia
 					}
 				}
 
-				if (false)
+				if(false)
 				{
 					log << "Path " << &currentPath << " unlocks:" << std::endl;
 					currentPath.DumpInstances(log);
@@ -691,6 +692,7 @@ namespace Sibelia
 		}
 
 		int64_t k_;
+		std::atomic<uint64_t> trash_;
 		std::atomic<int64_t> count_;		
 		int64_t sampleSize_;
 		int64_t scalingFactor_;

@@ -215,7 +215,7 @@ namespace Sibelia
 
 			bool IsUsed(const JunctionStorage * storage_) const
 			{
-				size_t mutexIdx_ = idx_ % storage_->MutexNumber();
+				size_t mutexIdx_ = storage_->MutexIdx(GetChrId(), idx_);
 				const_cast<JunctionStorage*>(storage_)->mutex_[GetChrId()][mutexIdx_].lock_read();
 				bool ret = storage_->posChr_[GetChrId()][idx_].used;
 				const_cast<JunctionStorage*>(storage_)->mutex_[GetChrId()][mutexIdx_].unlock();
@@ -321,7 +321,7 @@ namespace Sibelia
 		{
 			do
 			{
-				size_t idx = start.GetIndex() % MutexNumber();
+				size_t idx = MutexIdx(start.GetChrId(), start.GetIndex());
 				if (!mutexAcquired[start.GetChrId()][idx])
 				{
 					mutex_[start.GetChrId()][idx].lock();
@@ -336,7 +336,7 @@ namespace Sibelia
 		{
 			do
 			{
-				size_t idx = start.GetIndex() % MutexNumber();
+				size_t idx = MutexIdx(start.GetChrId(), start.GetIndex());
 				if (mutexAcquired[start.GetChrId()][idx])
 				{
 					mutex_[start.GetChrId()][idx].unlock();
@@ -470,7 +470,7 @@ namespace Sibelia
 
 		size_t MutexNumber() const
 		{
-			return 1 << scalingFactor_;
+			return scalingFactor_ + 1;
 		}
 
 		void OutgoingEdges(int64_t vertexId, std::vector<Edge> & list) const
@@ -557,10 +557,10 @@ namespace Sibelia
 			}
 			
 			mutex_.resize(GetChrNumber());
-			for (scalingFactor_ = 1; (1 << scalingFactor_) <= threads * 8; scalingFactor_++);
+			scalingFactor_ = threads * 8;
 			for (size_t i = 0; i < mutex_.size(); i++) 
 			{
-				mutex_[i].reset(new tbb::spin_rw_mutex[1 << scalingFactor_]);
+				mutex_[i].reset(new tbb::spin_rw_mutex[scalingFactor_ + 1]);
 			}
 
 			int64_t vertices = GetVerticesNumber();
@@ -610,6 +610,13 @@ namespace Sibelia
 			int64_t vertex;
 			char ch;
 		};
+
+		size_t MutexIdx(size_t chrId, size_t idx) const
+		{
+			size_t ret = idx / (posChr_[chrId].size() / scalingFactor_ + 1);
+			assert(ret <= scalingFactor_);
+			return ret;
+		}
 
 		int64_t k_;
 		int64_t scalingFactor_;

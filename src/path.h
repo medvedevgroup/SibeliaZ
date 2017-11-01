@@ -209,6 +209,14 @@ namespace Sibelia
 			return origin_;
 		}
 
+		void DumpInstances(std::ostream & out) const
+		{
+			for (auto inst : instance_)
+			{
+				out << "(" << (inst.Front().IsPositiveStrand() ? '+' : '-') << inst.Front().GetChrId() << ' ' << inst.Front().GetIndex() << ' ' << inst.Back().GetIndex() << ')' << std::endl;
+			}
+		}
+
 		void DumpPath(std::vector<Edge> & ret) const
 		{
 			ret.clear();

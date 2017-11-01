@@ -185,20 +185,18 @@ namespace Sibelia
 		struct ProcessVertex
 		{
 		public:
-			Path currentPath;
-			BestPath bestPath;
-			BlocksFinder & finder;			
-			std::vector<int64_t> & shuffle;
-			std::vector<std::vector<char > > mutexAcquired;
+			BlocksFinder & finder;
+			std::vector<int64_t> & shuffle;			
 			
-			ProcessVertex(BlocksFinder & finder, std::vector<int64_t> & shuffle, Path & currentPath, BestPath & bestPath) :
-				finder(finder), shuffle(shuffle), currentPath(currentPath), bestPath(bestPath)
+			ProcessVertex(BlocksFinder & finder, std::vector<int64_t> & shuffle) : finder(finder), shuffle(shuffle)
 			{
-				mutexAcquired.resize(finder.storage_.GetChrNumber(), std::vector<char>(finder.storage_.MutexNumber(), 0));
 			}
-
+			
 			void operator()(tbb::blocked_range<size_t> & range) const
-			{				
+			{
+				BestPath bestPath;
+				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.flankingThreshold_, finder.blockId_);
+				std::vector<std::vector<char > > mutexAcquired(finder.storage_.GetChrNumber(), std::vector<char>(finder.storage_.MutexNumber(), 0));
 				for (size_t i = range.begin(); i != range.end(); i++)
 				{
 					if (finder.count_++ % 1000 == 0)
@@ -206,7 +204,7 @@ namespace Sibelia
 						std::cerr << finder.count_ << '\t' << shuffle.size() << std::endl;
 					}
 					
-					finder.ExtendSeed(shuffle[i], const_cast<Path&>(currentPath), const_cast<BestPath&>(bestPath), const_cast<std::vector<std::vector<char > > & >(mutexAcquired));
+					finder.ExtendSeed(shuffle[i], currentPath, bestPath, mutexAcquired, std::cerr);
 				}
 			}
 		};
@@ -238,13 +236,11 @@ namespace Sibelia
 				}				
 			}
 
-//			std::random_shuffle(shuffle.begin(), shuffle.end());		
-			BestPath bestPath;
-			Path currentPath(storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
+//			std::random_shuffle(shuffle.begin(), shuffle.end());				
 			time_t mark = time(0);
 			count_ = 0;
 			tbb::task_scheduler_init init(threads);			
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle, currentPath, bestPath));
+			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle));
 			std::cerr << "Time: " << time(0) - mark << std::endl;
 		}
 
@@ -407,16 +403,30 @@ namespace Sibelia
 		void TryOpenFile(const std::string & fileName, std::ofstream & stream) const;
 		void ListChrs(std::ostream & out) const;
 		
-		bool TryFinalizeBlock(Path & currentPath, std::vector<std::vector<char > > & mutexAcquired)
+		bool TryFinalizeBlock(Path & currentPath, std::vector<std::vector<char > > & mutexAcquired, std::ostream & log)
 		{
 			bool ret = false;
 			if (currentPath.Score(true) > 0 && currentPath.MiddlePathLength() >= minBlockSize_ && currentPath.GoodInstances() > 1)
 			{
+				if(false)
+				{
+					log << "Path " << &currentPath << " locks:" << std::endl;
+					currentPath.DumpInstances(log);
+					log << std::endl;
+				}
+
 				for (auto & instance : currentPath.Instances())
 				{
 					if (currentPath.IsGoodInstance(instance))
 					{
-						storage_.LockRange(instance.Front(), instance.Back(), mutexAcquired);
+						if (instance.Front().IsPositiveStrand())
+						{
+							storage_.LockRange(instance.Front(), instance.Back(), mutexAcquired);
+						}
+						else
+						{
+							storage_.LockRange(instance.Back().Reverse(), instance.Front().Reverse(), mutexAcquired);
+						}
 					}
 				}
 
@@ -476,11 +486,25 @@ namespace Sibelia
 					}
 				}
 
+				if (false)
+				{
+					log << "Path " << &currentPath << " unlocks:" << std::endl;
+					currentPath.DumpInstances(log);
+					log << std::endl;
+				}
+
 				for (auto & instance : currentPath.Instances())
 				{
 					if (currentPath.IsGoodInstance(instance))
 					{
-						storage_.UnlockRange(instance.Front(), instance.Back(), mutexAcquired);
+						if (instance.Front().IsPositiveStrand())
+						{
+							storage_.UnlockRange(instance.Front(), instance.Back(), mutexAcquired);
+						}
+						else
+						{
+							storage_.UnlockRange(instance.Back().Reverse(), instance.Front().Reverse(), mutexAcquired);
+						}
 					}
 				}				
 				
@@ -493,7 +517,8 @@ namespace Sibelia
 		void ExtendSeed(int64_t vid,
 			Path & currentPath,
 			BestPath & bestPath,
-			std::vector<std::vector<char > > & mutexAcquired)
+			std::vector<std::vector<char > > & mutexAcquired,
+			std::ostream & log)
 		{						
 			for(bool explore = true; explore;)
 			{
@@ -523,7 +548,7 @@ namespace Sibelia
 					}
 				}
 
-				if (!TryFinalizeBlock(currentPath, mutexAcquired))
+				if (!TryFinalizeBlock(currentPath, mutexAcquired, log))
 				{
 					explore = false;
 				}
@@ -666,7 +691,7 @@ namespace Sibelia
 		}
 
 		int64_t k_;
-		int64_t count_;		
+		std::atomic<int64_t> count_;		
 		int64_t sampleSize_;
 		int64_t scalingFactor_;
 		bool scoreFullChains_;

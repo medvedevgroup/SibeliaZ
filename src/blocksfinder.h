@@ -173,16 +173,16 @@ namespace Sibelia
 	bool compareByStart(const BlockInstance & a, const BlockInstance & b);
 	
 	void CreateOutDirectory(const std::string & path);
-
+	
 	class BlocksFinder
 	{
 	public:
 
-		BlocksFinder(const JunctionStorage & storage, size_t k) : storage_(storage), k_(k)
+		BlocksFinder(const JunctionStorage & storage, size_t k) : storage_(storage), k_(k), forbidden_(storage)
 		{
 			scoreFullChains_ = false;
 		}
-
+		
 		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t flankingThreshold, int64_t lookingDepth, int64_t sampleSize, const std::string & debugOut)
 		{
 			time_t mark = time(0);
@@ -200,7 +200,7 @@ namespace Sibelia
 			{
 				blockId_[i].resize(storage_.GetChrVerticesCount(i));
 			}
-						
+			
 			std::map<int64_t, int64_t> bubbleCount;
 			for (int64_t vid = -storage_.GetVerticesNumber() + 1; vid < storage_.GetVerticesNumber(); vid++)
 			{
@@ -222,7 +222,10 @@ namespace Sibelia
 					std::cerr << count << '\t' << bubbleCountVector.size() << std::endl;
 				}
 
-				ExtendSeed(it->second, bubbleCount, debugStream);
+				for (int64_t idx = 0; idx < storage_.OutgoingEdgesNumber(it->second); ++idx)
+				{
+					ExtendSeed(storage_.OutgoingEdge(it->second, idx), bubbleCount, debugStream);
+				}				
 			}
 
 			std::cout << "Time: " << time(0) - mark << std::endl;
@@ -245,16 +248,20 @@ namespace Sibelia
 
 			for (size_t i = 0; i < syntenyPath_.size(); i++)
 			{
-				for (size_t j = 0; j < syntenyPath_[i].size() - 1; j++)
+				for (size_t j = 0; j < syntenyPath_[i].size(); j++)
 				{
-					out << syntenyPath_[i][j] << " -> " << syntenyPath_[i][j + 1] << "[label=\"" << i + 1 << "\" color=green]" << std::endl;
-					out << -syntenyPath_[i][j + 1] << " -> " << -syntenyPath_[i][j] << "[label=\"" << -int64_t(i + 1) << "\" color=green]" << std::endl;
+					Edge e = syntenyPath_[i][j];
+					out << e.GetStartVertex() << " -> " << e.GetEndVertex() <<
+						"[label=\"" << e.GetChar() << ", " << i + 1 << "\" color=green]" << std::endl;
+					e = e.Reverse();
+					out << e.GetStartVertex() << " -> " << e.GetEndVertex() <<
+						"[label=\"" << e.GetChar() << ", " << -(int64_t(i + 1)) << "\" color=green]" << std::endl;					
 				}
 			}
 
 			out << "}" << std::endl;
 		}
-
+		
 		void ListBlocksSequences(const BlockList & block, const std::string & fileName) const
 		{
 			std::ofstream out;
@@ -328,9 +335,9 @@ namespace Sibelia
 			ListBlocksSequences(instance, outDir + "/" + "blocks_sequences.fasta");
 		}
 
-
+		
 	private:
-
+		
 		template<class Iterator>
 		void OutputLines(Iterator start, size_t length, std::ostream & out) const
 		{
@@ -362,50 +369,51 @@ namespace Sibelia
 		typedef std::vector< std::vector<size_t> > BubbledBranches;
 
 	
-		void ExtendSeed(int64_t vertex, const std::map<int64_t, int64_t> & bubbleCount, std::ostream & debugOut)
+		void ExtendSeed(const Edge & e, const std::map<int64_t, int64_t> & bubbleCount, std::ostream & debugOut)
 		{
-			Path bestPath(vertex, storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
+///			bool x = e.GetStartVertex() == 21387;
+			BestPath bestPath(e);
+			Path currentPath(e, storage_, maxBranchSize_, minBlockSize_, flankingThreshold_, blockId_);
 			while (true)
-			{
-				Path currentPath = bestPath;
-				int64_t prevBestScore = bestPath.Score(scoreFullChains_);
+			{				
+				int64_t prevBestScore = bestPath.score;
 				if (sampleSize_ > 0)
 				{
-					ExtendPathRandom(currentPath, bestPath, sampleSize_, lookingDepth_, bubbleCount);
+//					ExtendPathRandom(currentPath, bestPath, sampleSize_, lookingDepth_, bubbleCount);
 				}
 				else
 				{
 					ExtendPathBackward(currentPath, bestPath, lookingDepth_);
-					currentPath = bestPath;
+					bestPath.FixBackward(currentPath);					
 					ExtendPathForward(currentPath, bestPath, lookingDepth_);
+					bestPath.FixForward(currentPath);
 				}
 				
-				if (bestPath.Score(scoreFullChains_) <= prevBestScore)
+				if (bestPath.score <= prevBestScore)
 				{
 					break;
 				}
 			}
-
-			if (bestPath.Score(true) > 0 && bestPath.MiddlePathLength() >= minBlockSize_ && bestPath.GoodInstances() > 1)
+			
+			if (currentPath.Score(true) > 0 && currentPath.MiddlePathLength() >= minBlockSize_ && currentPath.GoodInstances() > 1)
 			{					
 				debugOut << "Block No." << ++blocksFound_ << ":"  << std::endl;
-				bestPath.DebugOut(debugOut, false);
-				syntenyPath_.push_back(std::vector<int64_t>());
-				for (auto pt : bestPath.PathBody())
+				currentPath.DebugOut(debugOut, false);
+				syntenyPath_.push_back(std::vector<Edge>());
+				for (auto pt : currentPath.PathBody())
 				{					
-					syntenyPath_.back().push_back(pt.vertex);
+					syntenyPath_.back().push_back(pt.edge);
 				}
 
 				for (size_t i = 0; i < syntenyPath_.back().size() - 1; i++)
 				{
-					forbidden_.insert(LightEdge(syntenyPath_.back()[i], syntenyPath_.back()[i + 1]));
-					forbidden_.insert(LightEdge(-syntenyPath_.back()[i + 1], -syntenyPath_.back()[i]));
+					forbidden_.Add(syntenyPath_.back()[i]);
 				}
 
 				int64_t instanceCount = 0;
-				for (auto & instance : bestPath.Instances())
+				for (auto & instance : currentPath.Instances())
 				{
-					if (bestPath.IsGoodInstance(instance))
+					if (currentPath.IsGoodInstance(instance))
 					{
 						auto end = instance.seq.back() + 1;
 						for (auto it = instance.seq.front(); it != end; ++it)
@@ -421,27 +429,26 @@ namespace Sibelia
 				}
 			}
 		}
-
-		void ExtendPathForward(Path & currentPath, Path & bestPath, int maxDepth)
+		
+		void ExtendPathForward(Path & currentPath, BestPath & bestPath, int maxDepth)
 		{
 			if (maxDepth > 0)
 			{
-				int64_t prevVertex = currentPath.PathBody().back().vertex;
+				int64_t prevVertex = currentPath.PathBody().back().edge.GetEndVertex();
 				for (int64_t idx = 0; idx < storage_.OutgoingEdgesNumber(prevVertex); idx++)
 				{
 					Edge e = storage_.OutgoingEdge(prevVertex, idx);
-					if (forbidden_.count(e.GetLightEdge()) == 0)
+					if (forbidden_.Notin(e))
 					{
 						if (currentPath.PointPushBack(e))
 						{
 #ifdef _DEBUG_OUT
 							currentPath.DebugOut(std::cerr);
 #endif
-							int64_t currentScore = currentPath.Score(scoreFullChains_);
-							int64_t prevBestScore = bestPath.Score(scoreFullChains_);
-							if (currentScore > prevBestScore && currentPath.Instances().size() > 1)
+							int64_t currentScore = currentPath.Score(scoreFullChains_);							
+							if (currentScore > bestPath.score && currentPath.Instances().size() > 1)
 							{
-								bestPath = currentPath;
+								bestPath.UpdateForward(currentPath, currentScore);
 							}
 
 							ExtendPathForward(currentPath, bestPath, maxDepth - 1);
@@ -451,26 +458,27 @@ namespace Sibelia
 				}
 			}
 		}
-
-		void ExtendPathBackward(Path & currentPath, Path & bestPath, int maxDepth)
+		
+		void ExtendPathBackward(Path & currentPath, BestPath & bestPath, int maxDepth)
 		{
 			if (maxDepth > 0)
 			{
-				int64_t prevVertex = currentPath.PathBody().front().vertex;				
+				int64_t prevVertex = currentPath.PathBody().front().edge.GetStartVertex();
 				for (int64_t idx = 0; idx < storage_.IngoingEdgesNumber(prevVertex); idx++)
 				{
 					Edge e = storage_.IngoingEdge(prevVertex, idx);
-					if (forbidden_.count(e.GetLightEdge()) == 0)
-					{
+					if (forbidden_.Notin(e))
+					{	
 						if (currentPath.PointPushFront(e))
 						{
 #ifdef _DEBUG_OUT
 							currentPath.DebugOut(std::cerr);
 #endif
-							if (currentPath.Score(scoreFullChains_) > bestPath.Score(scoreFullChains_) && currentPath.Instances().size() > 1)
+							int64_t currentScore = currentPath.Score(scoreFullChains_);
+							if (currentScore > bestPath.score && currentPath.Instances().size() > 1)
 							{
-								bestPath = currentPath;
-							}
+								bestPath.UpdateBackward(currentPath, currentScore);
+							}					
 
 							ExtendPathBackward(currentPath, bestPath, maxDepth - 1);
 							currentPath.PointPopFront();
@@ -478,97 +486,9 @@ namespace Sibelia
 					}
 				}
 			}
-		}
-		
-		double EdgeWeight(const std::map<int64_t, int64_t> & bubbleCount, const Edge & e) const
-		{
-			if (bubbleCount.count(e.GetEndVertex()) > 0)
-			{
-				return bubbleCount.find(e.GetEndVertex())->second;
-			}
-
-			if (bubbleCount.count(e.Reverse().GetEndVertex()) > 0)
-			{
-				return bubbleCount.find(e.Reverse().GetEndVertex())->second;
-			}
-
-			return .5;
-		}
-		
-		bool RandomChoice(Path & currentPath, const std::map<int64_t, int64_t> & bubbleCount)
-		{			
-			std::vector<double> probability;
-			std::vector<double> weight;			
-			std::vector<Edge> adjForwardList;
-			std::vector<Edge> adjBackwardList;
-			storage_.IngoingEdges(currentPath.GetVertex(0), adjBackwardList);
-			storage_.OutgoingEdges(currentPath.GetVertex(currentPath.PathLength() - 1), adjForwardList);
 			
-			for (auto & e : adjForwardList)
-			{								
-				weight.push_back(EdgeWeight(bubbleCount, e));
-			}
-
-			for (auto & e : adjBackwardList)
-			{			
-				weight.push_back(EdgeWeight(bubbleCount, e));			
-			}
-
-			if (weight.size() > 0)
-			{
-				double total = std::accumulate(weight.begin(), weight.end(), 0.0);
-				for (size_t i = 0; i < weight.size(); i++)
-				{
-					probability.push_back(weight[i] / total + (i > 0 ? probability[i - 1] : 0));
-				}
-
-				probability.back() = 1.01;
-				double coin = double(rand()) / RAND_MAX;
-				for (size_t t = 0; t < probability.size(); t++)
-				{
-					size_t it = std::lower_bound(probability.begin(), probability.end(), coin) - probability.begin();
-					if (it < adjForwardList.size())
-					{
-						if (currentPath.PointPushBack(adjForwardList[it]))
-						{
-							return true;
-						}										
-					}
-					else
-					{
-						if (currentPath.PointPushFront(adjBackwardList[it - adjForwardList.size()]))
-						{
-							return true;
-						}
-					}
-				}								
-			}			
-
-			return false;
-		}	
-
-		void ExtendPathRandom(const Path & startPath, Path & bestPath, int64_t sampleSize, int64_t maxDepth, const std::map<int64_t, int64_t> & bubbleCount)		
-		{
-			for (size_t it = 0; it < sampleSize; it++)
-			{
-				Path currentPath = startPath;
-				for (size_t i = 0; i < maxDepth; i++)
-				{
-					if (RandomChoice(currentPath, bubbleCount))
-					{
-						if (currentPath.Score(scoreFullChains_) > bestPath.Score(scoreFullChains_))
-						{
-							bestPath = currentPath;
-						}
-					}
-					else
-					{
-						break;
-					}
-				}
-			}						
-		}	
-
+		}
+		
 		void CountBubbles(int64_t vertexId, std::map<int64_t, int64_t> & bubbleCount)
 		{
 			BubbledBranches bulges;
@@ -612,9 +532,7 @@ namespace Sibelia
 				}
 			}
 		}
-
-		
-
+	
 		int64_t k_;
 		int64_t sampleSize_;
 		bool scoreFullChains_;
@@ -624,10 +542,10 @@ namespace Sibelia
 		int64_t maxBranchSize_;
 		int64_t flankingThreshold_;		
 		const JunctionStorage & storage_;
-		std::set<LightEdge> forbidden_;
+		Forbidden forbidden_;
 		std::vector<Edge> adjList_;
 		std::vector<std::vector<Assignment> > blockId_;
-		std::vector<std::vector<int64_t> > syntenyPath_;		
+		std::vector<std::vector<Edge> > syntenyPath_;		
 
 	};
 }

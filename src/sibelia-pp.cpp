@@ -141,7 +141,7 @@ int main(int argc, char * argv[])
 			cmd);
 
 		cmd.parse(argc, argv);
-	
+
 		Sibelia::JunctionStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue());
 		Sibelia::BlocksFinder finder(storage, kvalue.getValue());		
 		finder.FindBlocks(minBlockSize.getValue(),

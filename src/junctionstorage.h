@@ -9,23 +9,16 @@
 #include "streamfastaparser.h"
 
 namespace Sibelia
-{
-	typedef std::pair<int64_t, int64_t> LightEdge;
-
+{	
 	class Edge
 	{
 	public:
 		Edge() {}
 
-		Edge(int64_t startVertex, int64_t endVertex, char ch, int64_t length) :
-			startVertex_(startVertex), endVertex_(endVertex), ch_(ch), length_(length)
+		Edge(int64_t startVertex, int64_t endVertex, char ch, char revCh, int64_t length) :
+			startVertex_(startVertex), endVertex_(endVertex), ch_(ch), revCh_(revCh), length_(length)
 		{
 
-		}
-
-		LightEdge GetLightEdge() const
-		{
-			return LightEdge(startVertex_, endVertex_);
 		}
 
 		int64_t GetStartVertex() const
@@ -50,7 +43,12 @@ namespace Sibelia
 
 		Edge Reverse() const
 		{
-			return Edge(-endVertex_, -startVertex_, TwoPaCo::DnaChar::ReverseChar(ch_), length_);
+			return Edge(-endVertex_, -startVertex_, revCh_, ch_, length_);
+		}
+
+		char GetRevChar() const
+		{
+			return revCh_;
 		}
 
 		bool operator < (const Edge & e) const
@@ -85,6 +83,7 @@ namespace Sibelia
 
 	private:
 		char ch_;
+		char revCh_;
 		int64_t length_;
 		int64_t startVertex_;
 		int64_t endVertex_;
@@ -343,8 +342,10 @@ namespace Sibelia
 				{
 					if (coord.idx > 0)
 					{
-						const Vertex & prev = posChr_[coord.chr][coord.idx - 1];				
-						list.push_back(Edge(prev.id, now.id, sequence_[coord.chr][prev.pos + k_], now.pos - prev.pos));
+						const Vertex & prev = posChr_[coord.chr][coord.idx - 1];
+						char ch = sequence_[coord.chr][prev.pos + k_];
+						char revCh = TwoPaCo::DnaChar::ReverseChar(sequence_[coord.chr][now.pos - 1]);
+						list.push_back(Edge(prev.id, now.id, ch, revCh, now.pos - prev.pos));
 					}
 				}
 				else
@@ -353,7 +354,8 @@ namespace Sibelia
 					{
 						const Vertex & prev = posChr_[coord.chr][coord.idx + 1];
 						char ch = TwoPaCo::DnaChar::ReverseChar(sequence_[coord.chr][prev.pos - 1]);
-						list.push_back(Edge(-prev.id, -now.id, ch, prev.pos - now.pos));
+						char revCh = sequence_[coord.chr][now.pos + k_];
+						list.push_back(Edge(-prev.id, -now.id, ch, revCh, prev.pos - now.pos));
 					}					
 				}
 			}
@@ -373,7 +375,9 @@ namespace Sibelia
 					if (coord.idx + 1 < posChr_[coord.chr].size())
 					{
 						const Vertex & next = posChr_[coord.chr][coord.idx + 1];
-						list.push_back(Edge(now.id, next.id, sequence_[coord.chr][now.pos + k_], next.pos - now.pos));
+						char ch = sequence_[coord.chr][now.pos + k_];
+						char revCh = TwoPaCo::DnaChar::ReverseChar(sequence_[coord.chr][next.pos - 1]);
+						list.push_back(Edge(now.id, next.id, ch, revCh, next.pos - now.pos));
 					}
 				}
 				else
@@ -382,7 +386,8 @@ namespace Sibelia
 					{
 						const Vertex & next = posChr_[coord.chr][coord.idx - 1];
 						char ch = TwoPaCo::DnaChar::ReverseChar(sequence_[coord.chr][now.pos - 1]);
-						list.push_back(Edge(-now.id, -next.id, ch, now.pos - next.pos));
+						char revCh = sequence_[coord.chr][now.pos + k_];
+						list.push_back(Edge(-now.id, -next.id, ch, revCh, now.pos - next.pos));
 					}
 				}
 			}

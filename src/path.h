@@ -148,7 +148,7 @@ namespace Sibelia
 			Point() {}
 			Point(Edge edge, int64_t startDistance) : edge(edge), startDistance(startDistance) {}
 
-			Edge Edge() const
+			Edge GetEdge() const
 			{
 				return edge;
 			}
@@ -193,7 +193,7 @@ namespace Sibelia
 		{
 			if (rightBody_.size() > 0)
 			{
-				return rightBody_.back().Edge().GetEndVertex();
+				return rightBody_.back().GetEdge().GetEndVertex();
 			}
 
 			return origin_;
@@ -203,7 +203,7 @@ namespace Sibelia
 		{
 			if (leftBody_.size() > 0)
 			{
-				return leftBody_.back().Edge().GetStartVertex();
+				return leftBody_.back().GetEdge().GetStartVertex();
 			}
 
 			return origin_;
@@ -222,12 +222,12 @@ namespace Sibelia
 			ret.clear();
 			for (auto it = leftBody_.rbegin(); it != leftBody_.rend(); ++it)
 			{
-				ret.push_back(it->Edge());
+				ret.push_back(it->GetEdge());
 			}
 
 			for (auto it = rightBody_.rbegin(); it != rightBody_.rend(); ++it)
 			{
-				ret.push_back(it->Edge());
+				ret.push_back(it->GetEdge());
 			}
 		}
 
@@ -282,7 +282,7 @@ namespace Sibelia
 
 			}
 
-			void operator()(tbb::blocked_range<size_t> & range) const
+			void operator()(const tbb::blocked_range<size_t> & range) const
 			{
 				for (size_t i = range.begin(); i != range.end() && !failFlag; i++)
 				{
@@ -346,7 +346,7 @@ namespace Sibelia
 
 			}
 
-			void operator()(tbb::blocked_range<size_t> & range) const
+			void operator()(const tbb::blocked_range<size_t> & range) const
 			{
 				for (size_t i = range.begin(); i < range.end() && !failFlag; i++)
 				{
@@ -405,7 +405,8 @@ namespace Sibelia
 				return false;
 			}
 
-			std::atomic<bool> failFlag = false;
+			std::atomic<bool> failFlag;
+			failFlag = false;
 			int64_t startVertexDistance = rightBody_.empty() ? 0 : rightBody_.back().EndDistance();
 			int64_t endVertexDistance = startVertexDistance + e.GetLength();
 			PointPushBackWorker(this, vertex, e, failFlag)(tbb::blocked_range<size_t>(0, storage_->GetInstancesCount(vertex)));
@@ -430,7 +431,7 @@ namespace Sibelia
 
 		void PointPopBack()
 		{
-			int64_t lastVertex = rightBody_.back().Edge().GetEndVertex();
+			int64_t lastVertex = rightBody_.back().GetEdge().GetEndVertex();
 			rightBody_.pop_back();
 			distanceKeeper_.Unset(lastVertex);
 			for (auto it = instance_.begin(); it != instance_.end(); )
@@ -475,7 +476,8 @@ namespace Sibelia
 				return false;
 			}
 
-			std::atomic<bool> failFlag = false;
+			std::atomic<bool> failFlag;
+			failFlag = false;
 			int64_t endVertexDistance = leftBody_.empty() ? 0 : leftBody_.back().StartDistance();
 			int64_t startVertexDistance = endVertexDistance - e.GetLength();
 			PointPushFrontWorker(this, vertex, e, failFlag)(tbb::blocked_range<size_t>(0, storage_->GetInstancesCount(vertex)));
@@ -500,7 +502,7 @@ namespace Sibelia
 
 		void PointPopFront()
 		{
-			int64_t lastVertex = leftBody_.back().Edge().GetStartVertex();
+			int64_t lastVertex = leftBody_.back().GetEdge().GetStartVertex();
 			leftBody_.pop_back();
 			distanceKeeper_.Unset(lastVertex);
 			for (auto it = instance_.begin(); it != instance_.end(); )
@@ -588,12 +590,12 @@ namespace Sibelia
 		{
 			for (auto pt : leftBody_)
 			{
-				distanceKeeper_.Unset(pt.Edge().GetStartVertex());
+				distanceKeeper_.Unset(pt.GetEdge().GetStartVertex());
 			}
 
 			for (auto pt : rightBody_)
 			{
-				distanceKeeper_.Unset(pt.Edge().GetEndVertex());
+				distanceKeeper_.Unset(pt.GetEdge().GetEndVertex());
 			}
 
 			leftBody_.clear();
@@ -641,7 +643,7 @@ namespace Sibelia
 		{
 			for (auto & pt : newRightBody_)
 			{
-				bool ret = path.PointPushBack(pt.Edge());
+				bool ret = path.PointPushBack(pt.GetEdge());
 				assert(ret);
 			}
 
@@ -653,7 +655,7 @@ namespace Sibelia
 		{
 			for (auto & pt : newLeftBody_)
 			{
-				bool ret = path.PointPushFront(pt.Edge());
+				bool ret = path.PointPushFront(pt.GetEdge());
 				assert(ret);
 			}
 

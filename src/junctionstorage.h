@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <memory>
+#include <stdexcept>
 
 #include <tbb/spin_rw_mutex.h>
 

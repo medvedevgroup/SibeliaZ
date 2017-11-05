@@ -1,0 +1,13 @@
+project(graphdump CXX)
+cmake_minimum_required(VERSION 2.8)
+
+set(CMAKE_PROJECT_NAME sibelia-pp)
+if(CMAKE_COMPILER_IS_GNUCXX)
+	list(APPEND "CMAKE_CXX_FLAGS" "-std=c++0x")
+endif()
+
+add_executable(sibelia-pp sibelia-pp.cpp blocksfinder.cpp dnachar.cpp streamfastaparser.cpp)
+link_directories(${TBB_LIB_DIR})
+include_directories(${twopaco_SOURCE_DIR} ${TBB_INCLUDE_DIR} ${CMAKE_SOURCE_DIR})
+target_link_libraries(sibelia-pp "tbb")
+

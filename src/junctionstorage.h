@@ -472,7 +472,7 @@ namespace Sibelia
 
 		size_t MutexNumber() const
 		{
-			return scalingFactor_ + 1;
+			return 1 << mutexBits_;
 		}
 
 		void OutgoingEdges(int64_t vertexId, std::vector<Edge> & list) const
@@ -559,10 +559,13 @@ namespace Sibelia
 			}
 			
 			mutex_.resize(GetChrNumber());
-			scalingFactor_ = threads * 8;
+			chrSizeBits_.resize(GetChrNumber(), 1);
+			for (mutexBits_ = 3; (1 << mutexBits_) < threads * 8; mutexBits_++);
 			for (size_t i = 0; i < mutex_.size(); i++) 
 			{
-				mutex_[i].reset(new tbb::spin_rw_mutex[scalingFactor_ + 1]);
+				mutex_[i].reset(new tbb::spin_rw_mutex[1 << mutexBits_]);
+				for (; (int64_t(1) << chrSizeBits_[i]) <= posChr_[i].size(); chrSizeBits_[i]++);
+				chrSizeBits_[i] = std::max(int64_t(0), chrSizeBits_[i] - mutexBits_);
 			}
 
 			int64_t vertices = GetVerticesNumber();
@@ -615,18 +618,19 @@ namespace Sibelia
 
 		size_t MutexIdx(size_t chrId, size_t idx) const
 		{
-			size_t ret = idx / (posChr_[chrId].size() / scalingFactor_ + 1);
-			assert(ret <= scalingFactor_);
+			size_t ret = idx >> chrSizeBits_[chrId];
+			assert(ret < MutexNumber());
 			return ret;
 		}
 
 		int64_t k_;
-		int64_t scalingFactor_;
+		int64_t mutexBits_;
 		std::vector<std::vector<Edge> > ingoingEdge_;
 		std::vector<std::vector<Edge> > outgoingEdge_;
 		std::vector<std::string> sequence_;
 		std::vector<std::string> sequenceDescription_;
 		std::vector<VertexVector> posChr_;
+		std::vector<int64_t> chrSizeBits_;
 		std::vector<CoordinateVector> coordinate_;
 		std::vector<std::unique_ptr<tbb::spin_rw_mutex[]> > mutex_;
 	};

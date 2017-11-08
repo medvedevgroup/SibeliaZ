@@ -60,7 +60,12 @@ namespace Sibelia
 					instance_.insert(Instance(it));
 				}
 			}
-		}		
+		}
+
+		bool IsInPath(int64_t vertex) const
+		{
+			return distanceKeeper_.IsSet(vertex);
+		}
 
 		struct Instance
 		{	

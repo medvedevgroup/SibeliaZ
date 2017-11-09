@@ -182,13 +182,13 @@ namespace Sibelia
 			scoreFullChains_ = false;
 		}
 
-		struct ProcessVertex
+		struct ProcessVertexBruteForce
 		{
 		public:
 			BlocksFinder & finder;
 			std::vector<int64_t> & shuffle;
 
-			ProcessVertex(BlocksFinder & finder, std::vector<int64_t> & shuffle) : finder(finder), shuffle(shuffle)
+			ProcessVertexBruteForce(BlocksFinder & finder, std::vector<int64_t> & shuffle) : finder(finder), shuffle(shuffle)
 			{
 			}
 
@@ -204,7 +204,85 @@ namespace Sibelia
 						std::cerr << finder.count_ << '\t' << shuffle.size() << std::endl;
 					}
 
-					finder.ExtendSeed(shuffle[i], currentPath, bestPath, mutexAcquired, std::cerr);
+					int64_t vid = shuffle[i];
+					for (bool explore = true; explore;)
+					{
+						bestPath.Init();
+						currentPath.Init(vid);
+						while (true)
+						{
+							int64_t prevBestScore = bestPath.score_;							
+							finder.ExtendPathBackward(currentPath, bestPath, finder.lookingDepth_);
+							bestPath.FixBackward(currentPath);
+							finder.ExtendPathForward(currentPath, bestPath, finder.lookingDepth_);
+							bestPath.FixForward(currentPath);
+							if (bestPath.score_ <= prevBestScore)
+							{
+								break;
+							}
+
+						}
+
+						if (!finder.TryFinalizeBlock(currentPath, mutexAcquired, std::cerr))
+						{
+							explore = false;
+						}
+
+						currentPath.Clear();
+					}
+				}
+			}
+		};
+
+		struct RandomExtend
+		{
+		public:
+		};
+
+		struct ProcessVertexSampling
+		{
+		public:
+			BlocksFinder & finder;
+			std::vector<int64_t> & shuffle;
+
+			ProcessVertexSampling(BlocksFinder & finder, std::vector<int64_t> & shuffle) : finder(finder), shuffle(shuffle)
+			{
+			}
+
+			void operator()(tbb::blocked_range<size_t> & range) const
+			{
+				BestPath bestPath;
+				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.flankingThreshold_, finder.blockId_);
+				std::vector<std::vector<char > > mutexAcquired(finder.storage_.GetChrNumber(), std::vector<char>(finder.storage_.MutexNumber(), 0));
+				for (size_t i = range.begin(); i != range.end(); i++)
+				{
+					if (finder.count_++ % 1000 == 0)
+					{
+						std::cerr << finder.count_ << '\t' << shuffle.size() << std::endl;
+					}
+
+					int64_t vid = shuffle[i];
+					for (bool explore = true; explore;)
+					{
+						bestPath.Init();
+						currentPath.Init(vid);
+						while (true)
+						{
+							int64_t prevBestScore = bestPath.score_;
+							finder.ExtendPathRandom(currentPath, bestPath);
+							if (bestPath.score_ <= prevBestScore)
+							{
+								break;
+							}
+						}
+
+						if (!finder.TryFinalizeBlock(currentPath, mutexAcquired, std::cerr))
+						{
+							explore = false;
+						}
+
+						currentPath.Clear();
+					}
 				}
 			}
 		};
@@ -236,11 +314,20 @@ namespace Sibelia
 				}
 			}
 
-			//			std::random_shuffle(shuffle.begin(), shuffle.end());				
+			//std::random_shuffle(shuffle.begin(), shuffle.end());				
 			time_t mark = time(0);
 			count_ = 0;
 			tbb::task_scheduler_init init(threads);
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle));
+			if (sampleSize_ == 0)
+			{
+				tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexBruteForce(*this, shuffle));
+			}
+			else
+			{
+
+				tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexSampling(*this, shuffle));
+			}
+
 			std::cerr << "Time: " << time(0) - mark << std::endl;
 		}
 
@@ -408,13 +495,6 @@ namespace Sibelia
 			bool ret = false;
 			if (currentPath.Score(true) > 0 && currentPath.MiddlePathLength() >= minBlockSize_ && currentPath.GoodInstances() > 1)
 			{
-				if (false)
-				{
-					log << "Path " << &currentPath << " locks:" << std::endl;
-					currentPath.DumpInstances(log);
-					log << std::endl;
-				}
-
 				for (auto & instance : currentPath.Instances())
 				{
 					if (currentPath.IsGoodInstance(instance))
@@ -487,13 +567,6 @@ namespace Sibelia
 					}
 				}
 
-				if (false)
-				{
-					log << "Path " << &currentPath << " unlocks:" << std::endl;
-					currentPath.DumpInstances(log);
-					log << std::endl;
-				}
-
 				for (auto & instance : currentPath.Instances())
 				{
 					if (currentPath.IsGoodInstance(instance))
@@ -515,50 +588,7 @@ namespace Sibelia
 			return ret;
 		}
 
-		void ExtendSeed(int64_t vid,
-			Path & currentPath,
-			BestPath & bestPath,
-			std::vector<std::vector<char > > & mutexAcquired,
-			std::ostream & log)
-		{
-			for (bool explore = true; explore;)
-			{
-				bestPath.Init();
-				currentPath.Init(vid);
-				while (true)
-				{
-					int64_t prevBestScore = bestPath.score_;
-					if (sampleSize_ > 0)
-					{
-						ExtendPathRandom(currentPath, bestPath, lookingDepth_);
-						if (bestPath.score_ <= prevBestScore)
-						{
-							break;
-						}
-					}
-					else
-					{
-						ExtendPathBackward(currentPath, bestPath, lookingDepth_);
-						bestPath.FixBackward(currentPath);
-						ExtendPathForward(currentPath, bestPath, lookingDepth_);
-						bestPath.FixForward(currentPath);
-						if (bestPath.score_ <= prevBestScore)
-						{
-							break;
-						}
-					}
-				}
-
-				if (!TryFinalizeBlock(currentPath, mutexAcquired, log))
-				{
-					explore = false;
-				}
-
-				currentPath.Clear();
-			}
-		}
-
-		void ExtendPathRandom(Path & currentPath, BestPath & bestPath, int maxDepth)
+		void ExtendPathRandom(Path & currentPath, BestPath & bestPath)
 		{
 			int64_t startLength = currentPath.MiddlePathLength();
 			for (size_t sample = 0; sample < sampleSize_; sample++)

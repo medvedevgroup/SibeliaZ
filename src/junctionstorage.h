@@ -3,11 +3,12 @@
 
 #include <string>
 #include <vector>
-#include <cstdint>
 #include <memory>
+#include <cstdint>
 #include <stdexcept>
+#include <algorithm>
 
-#include <tbb/spin_rw_mutex.h>
+#include <tbb/mutex.h>
 
 #include "junctionapi.h"
 #include "streamfastaparser.h"
@@ -120,9 +121,8 @@ namespace Sibelia
 		{
 			int64_t id;
 			int64_t pos;
-			bool used;
 
-			Vertex(const TwoPaCo::JunctionPosition & junction) : id(junction.GetId()), pos(junction.GetPos()), used(false)
+			Vertex(const TwoPaCo::JunctionPosition & junction) : id(junction.GetId()), pos(junction.GetPos())
 			{
 
 			}
@@ -217,22 +217,13 @@ namespace Sibelia
 
 			bool IsUsed(const JunctionStorage * storage_) const
 			{
-				size_t mutexIdx_ = storage_->MutexIdx(GetChrId(), idx_);
-				const_cast<JunctionStorage*>(storage_)->mutex_[GetChrId()][mutexIdx_].lock_read();
-				bool ret = storage_->posChr_[GetChrId()][idx_].used;
-				const_cast<JunctionStorage*>(storage_)->mutex_[GetChrId()][mutexIdx_].unlock();
+				bool ret = storage_->used_[GetChrId()][idx_];
 				return ret;
-			}
-
-			bool IsUsedUnlocked(const JunctionStorage * storage_) const
-			{				
-				bool ret = storage_->posChr_[GetChrId()][idx_].used;
-				return ret;
-			}
+			}			
 
 			void MarkUsed(JunctionStorage * storage_) const
 			{
-				storage_->posChr_[GetChrId()][idx_].used = true;
+				storage_->used_[GetChrId()][idx_] = true;
 			}
 
 			JunctionIterator& operator++ ()
@@ -549,6 +540,13 @@ namespace Sibelia
 
 			size_t record = 0;
 			sequence_.resize(posChr_.size());
+			used_.resize(posChr_.size());
+			for (size_t i = 0; i < posChr_.size(); i++)
+			{
+				used_[i].reset(new std::atomic<bool>[posChr_[i].size()]);
+				std::fill(used_[i].get(), used_[i].get() + posChr_[i].size(), false);
+			}
+
 			for (TwoPaCo::StreamFastaParser parser(genomesFileName); parser.ReadRecord(); record++)
 			{
 				sequenceDescription_.push_back(parser.GetCurrentHeader());
@@ -563,9 +561,9 @@ namespace Sibelia
 			for (mutexBits_ = 3; (1 << mutexBits_) < threads * 8; mutexBits_++);
 			for (size_t i = 0; i < mutex_.size(); i++) 
 			{
-				mutex_[i].reset(new tbb::spin_rw_mutex[1 << mutexBits_]);
+				mutex_[i].reset(new tbb::mutex[1 << mutexBits_]);
 				for (; (int64_t(1) << chrSizeBits_[i]) <= posChr_[i].size(); chrSizeBits_[i]++);
-				chrSizeBits_[i] = std::max(int64_t(0), chrSizeBits_[i] - mutexBits_);
+				chrSizeBits_[i] = max(int64_t(0), chrSizeBits_[i] - mutexBits_);
 			}
 
 			int64_t vertices = GetVerticesNumber();
@@ -632,7 +630,8 @@ namespace Sibelia
 		std::vector<VertexVector> posChr_;
 		std::vector<int64_t> chrSizeBits_;
 		std::vector<CoordinateVector> coordinate_;
-		std::vector<std::unique_ptr<tbb::spin_rw_mutex[]> > mutex_;
+		std::vector<std::unique_ptr<std::atomic<bool>[] > > used_;
+		std::vector<std::unique_ptr<tbb::mutex[]> > mutex_;
 	};
 }
 

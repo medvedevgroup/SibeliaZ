@@ -560,12 +560,13 @@ namespace Sibelia
 
 		void ExtendPathRandom(Path & currentPath, BestPath & bestPath, int maxDepth)
 		{
+			int64_t startLength = currentPath.MiddlePathLength();
 			for (size_t sample = 0; sample < sampleSize_; sample++)
 			{
 				for (size_t d = 0; ; d++)
 				{
 					bool over = true;
-					for (size_t i = 0; i < 4 && d < lookingDepth_; i++)
+					for (size_t i = 0; i < 4 && d < (lookingDepth_ || currentPath.MiddlePathLength() - startLength < maxBranchSize_); i++)
 					{
 						Edge e = storage_.RandomForwardEdge(currentPath.GetEndVertex());
 						if (e.Valid() && currentPath.PointPushBack(e))
@@ -596,13 +597,13 @@ namespace Sibelia
 			}
 
 			bestPath.FixForward(currentPath);
-
+			startLength = currentPath.MiddlePathLength();
 			for (size_t sample = 0; sample < sampleSize_; sample++)
 			{
 				for (size_t d = 0; ; d++)
 				{
 					bool over = true;
-					for (size_t i = 0; i < 4 && d < lookingDepth_; i++)
+					for (size_t i = 0; i < 4 && (lookingDepth_ || currentPath.MiddlePathLength() - startLength < maxBranchSize_); i++)
 					{
 						Edge e = storage_.RandomBackwardEdge(currentPath.GetStartVertex());
 						if (e.Valid() && currentPath.PointPushFront(e))

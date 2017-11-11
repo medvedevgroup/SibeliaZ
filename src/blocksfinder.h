@@ -499,7 +499,8 @@ namespace Sibelia
 		void TryOpenFile(const std::string & fileName, std::ofstream & stream) const;
 		void ListChrs(std::ostream & out) const;
 
-		bool TryFinalizeBlock(Path & currentPath, std::vector<std::vector<char > > & mutexAcquired, std::ostream & log)
+		template<class P>
+		bool TryFinalizeBlock(P & currentPath, std::vector<std::vector<char > > & mutexAcquired, std::ostream & log)
 		{
 			bool ret = false;
 			if (currentPath.Score(true) > 0 && currentPath.MiddlePathLength() >= minBlockSize_ && currentPath.GoodInstances() > 1)

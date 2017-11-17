@@ -14,6 +14,8 @@
 #include <sstream>
 #include <iostream>
 
+#include <tbb/parallel_for.h>
+
 #include "path.h"
 
 namespace Sibelia
@@ -245,30 +247,7 @@ namespace Sibelia
 
 			void operator()(tbb::blocked_range<size_t> & range) const
 			{
-				BestPath bestPath;
-				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.flankingThreshold_);
-				std::vector<std::vector<char > > mutexAcquired(finder.storage_.GetChrNumber(), std::vector<char>(finder.storage_.MutexNumber(), 0));
-				for (bool explore = true; explore;)
-				{
-					bestPath.Init();
-					currentPath.Init(vid);
-					while (true)
-					{
-						int64_t prevBestScore = bestPath.score_;
-						finder.ExtendPathRandom(currentPath, bestPath);
-						if (bestPath.score_ <= prevBestScore)
-						{
-							break;
-						}
-					}
-
-					if (!finder.TryFinalizeBlock(currentPath, mutexAcquired, std::cerr))
-					{
-						explore = false;
-					}
-
-					currentPath.Clear();
-				}
+				
 			}
 		};
 
@@ -283,7 +262,10 @@ namespace Sibelia
 			}
 
 			void operator()(tbb::blocked_range<size_t> & range) const
-			{								
+			{	
+				BestPath bestPath;
+				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.flankingThreshold_);
+				std::vector<std::vector<char > > mutexAcquired(finder.storage_.GetChrNumber(), std::vector<char>(finder.storage_.MutexNumber(), 0));				
 				for (size_t i = range.begin(); i != range.end(); i++)
 				{
 					if (finder.count_++ % 1000 == 0)
@@ -291,7 +273,28 @@ namespace Sibelia
 						std::cerr << finder.count_ << '\t' << shuffle.size() << std::endl;
 					}
 
-					tbb::parallel_for(tbb::blocked_range<size_t>(0, finder.sampleSize_), RandomExtend(finder, shuffle[i]));
+					int64_t vid = shuffle[i];
+					for (bool explore = true; explore;)
+					{
+						bestPath.Init();
+						currentPath.Init(vid);
+						while (true)
+						{
+							int64_t prevBestScore = bestPath.score_;
+							finder.ExtendPathRandom(currentPath, bestPath, finder.lookingDepth_);
+							if (bestPath.score_ <= prevBestScore)
+							{
+								break;
+							}
+						}
+
+						if (!finder.TryFinalizeBlock(currentPath, mutexAcquired, std::cerr))
+						{
+							explore = false;
+						}
+
+						currentPath.Clear();
+					}
 				}
 			}
 		};
@@ -334,7 +337,8 @@ namespace Sibelia
 			else
 			{
 
-				tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexSampling(*this, shuffle));
+//				tbb::serial::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexSampling(*this, shuffle));
+				ProcessVertexSampling(*this, shuffle)(tbb::blocked_range<size_t>(0, shuffle.size()));
 			}
 
 			std::cerr << "Time: " << time(0) - mark << std::endl;
@@ -598,78 +602,83 @@ namespace Sibelia
 			return ret;
 		}
 
-		void ExtendPathRandom(Path & currentPath, BestPath & bestPath)
+		void ExtendPathRandom(Path & currentPath, BestPath & bestPath, int maxDepth)
 		{
 			int64_t startLength = currentPath.MiddlePathLength();
-
-			for (size_t d = 0; ; d++)
+			for (size_t sample = 0; sample < sampleSize_; sample++)
 			{
-				bool over = true;
-				for (size_t i = 0; i < 4 && (d < lookingDepth_ || currentPath.MiddlePathLength() - startLength < maxBranchSize_); i++)
+				for (size_t d = 0; ; d++)
 				{
-					Edge e = storage_.RandomForwardEdge(currentPath.GetEndVertex());
-					if (e.Valid() && currentPath.PointPushBack(e))
+					bool over = true;
+					for (size_t i = 0; i < 4 && (d < lookingDepth_ || currentPath.MiddlePathLength() - startLength < maxBranchSize_); i++)
 					{
-						over = false;
+						Edge e = storage_.RandomForwardEdge(currentPath.GetEndVertex());
+						if (e.Valid() && currentPath.PointPushBack(e))
+						{
+							over = false;
+							break;
+						}
+					}
+
+					if (over)
+					{
+						for (size_t i = 0; i < d; i++)
+						{
+							currentPath.PointPopBack();
+						}
+
 						break;
 					}
-				}
-
-				if (over)
-				{
-					for (size_t i = 0; i < d; i++)
+					else
 					{
-						currentPath.PointPopBack();
-					}
-
-					break;
-				}
-				else
-				{
-					int64_t currentScore = currentPath.Score(scoreFullChains_);
-					if (currentScore > bestPath.score_ && currentPath.Instances().size() > 1)
-					{
-						bestPath.UpdateForward(currentPath, currentScore);
+						int64_t currentScore = currentPath.Score(scoreFullChains_);
+						if (currentScore > bestPath.score_ && currentPath.Instances().size() > 1)
+						{
+							bestPath.UpdateForward(currentPath, currentScore);
+						}
 					}
 				}
 			}
 
 			bestPath.FixForward(currentPath);
 			startLength = currentPath.MiddlePathLength();
-			for (size_t d = 0; ; d++)
+			for (size_t sample = 0; sample < sampleSize_; sample++)
 			{
-				bool over = true;
-				for (size_t i = 0; i < 4 && (d < lookingDepth_ || currentPath.MiddlePathLength() - startLength < maxBranchSize_); i++)
+				for (size_t d = 0; ; d++)
 				{
-					Edge e = storage_.RandomBackwardEdge(currentPath.GetStartVertex());
-					if (e.Valid() && currentPath.PointPushFront(e))
+					bool over = true;
+					for (size_t i = 0; i < 4 && (d < lookingDepth_ || currentPath.MiddlePathLength() - startLength < maxBranchSize_); i++)
 					{
-						over = false;
+						Edge e = storage_.RandomBackwardEdge(currentPath.GetStartVertex());
+						if (e.Valid() && currentPath.PointPushFront(e))
+						{
+							over = false;
+							break;
+						}
+					}
+
+					if (over)
+					{
+						for (size_t i = 0; i < d; i++)
+						{
+							currentPath.PointPopFront();
+						}
+
 						break;
 					}
-				}
-
-				if (over)
-				{
-					for (size_t i = 0; i < d; i++)
+					else
 					{
-						currentPath.PointPopFront();
-					}
-
-					break;
-				}
-				else
-				{
-					int64_t currentScore = currentPath.Score(scoreFullChains_);
-					if (currentScore > bestPath.score_ && currentPath.Instances().size() > 1)
-					{
-						bestPath.UpdateBackward(currentPath, currentScore);
+						int64_t currentScore = currentPath.Score(scoreFullChains_);
+						if (currentScore > bestPath.score_ && currentPath.Instances().size() > 1)
+						{
+							bestPath.UpdateBackward(currentPath, currentScore);
+						}
 					}
 				}
 			}
 
 			bestPath.FixBackward(currentPath);
-		}
+		}				
 
 		void ExtendPathForward(Path & currentPath, BestPath & bestPath, int maxDepth)
 		{

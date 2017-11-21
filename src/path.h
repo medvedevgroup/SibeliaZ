@@ -192,6 +192,16 @@ namespace Sibelia
 			return instance_;
 		}
 
+		int64_t LeftDistance() const
+		{
+			return leftBody_.size() > 0 ? leftBody_.back().StartDistance() : 0;
+		}
+
+		int64_t RightDistance() const
+		{
+			return rightBody_.size() > 0 ? rightBody_.back().EndDistance() : 0;
+		}
+
 		int64_t MiddlePathLength() const
 		{
 			return (rightBody_.size() > 0 ? rightBody_.back().EndDistance() : 0) - (leftBody_.size() > 0 ? leftBody_.back().StartDistance() : 0);

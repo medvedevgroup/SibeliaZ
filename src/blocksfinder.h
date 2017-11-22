@@ -335,8 +335,7 @@ namespace Sibelia
 			else
 			{
 
-//				tbb::serial::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexSampling(*this, shuffle));
-				ProcessVertexSampling(*this, shuffle)(tbb::blocked_range<size_t>(0, shuffle.size()));
+				tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexSampling(*this, shuffle));
 			}
 
 			visit_.release();

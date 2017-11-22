@@ -302,6 +302,7 @@ namespace Sibelia
 			minBlockSize_ = minBlockSize;
 			maxBranchSize_ = maxBranchSize;
 			flankingThreshold_ = flankingThreshold;
+			finishingProximity_ = 5 * k_;
 			blockId_.resize(storage_.GetChrNumber());
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
@@ -596,7 +597,8 @@ namespace Sibelia
 			{
 				for (size_t d = 0; ; d++)
 				{
-					if (currentPath.RightDistance() < maxBranchSize_ / 2)
+					int64_t dist = currentPath.RightDistance();
+					if (dist < finishingProximity_)
 					{
 						visit_[currentPath.GetEndVertex() + storage_.GetVerticesNumber()] = true;
 					}
@@ -639,7 +641,8 @@ namespace Sibelia
 			{
 				for (size_t d = 0; ; d++)
 				{
-					if (currentPath.LeftDistance() < maxBranchSize_ / 2)
+					int64_t dist = currentPath.LeftDistance();
+					if (dist < finishingProximity_)
 					{
 						visit_[currentPath.GetStartVertex() + storage_.GetVerticesNumber()] = true;
 					}
@@ -684,7 +687,7 @@ namespace Sibelia
 			if (maxDepth > 0)
 			{
 				int64_t prevVertex = currentPath.GetEndVertex();				
-				if (currentPath.RightDistance() < maxBranchSize_)
+				if (currentPath.RightDistance() < finishingProximity_)
 				{
 					visit_[prevVertex + storage_.GetVerticesNumber()] = true;
 				}
@@ -717,7 +720,7 @@ namespace Sibelia
 			if (maxDepth > 0)
 			{
 				int64_t prevVertex = currentPath.GetStartVertex();
-				if (currentPath.LeftDistance() < maxBranchSize_)
+				if (currentPath.LeftDistance() < finishingProximity_)
 				{
 					visit_[prevVertex + storage_.GetVerticesNumber()] = true;
 				}
@@ -753,7 +756,8 @@ namespace Sibelia
 		bool scoreFullChains_;
 		int64_t lookingDepth_;
 		int64_t minBlockSize_;
-		int64_t maxBranchSize_;		
+		int64_t maxBranchSize_;
+		int64_t finishingProximity_;
 		int64_t flankingThreshold_;
 		JunctionStorage & storage_;
 		std::unique_ptr<std::atomic<bool>[] > visit_;

@@ -194,7 +194,7 @@ namespace Sibelia
 
 		int64_t LeftDistance() const
 		{
-			return leftBody_.size() > 0 ? leftBody_.back().StartDistance() : 0;
+			return leftBody_.size() > 0 ? -leftBody_.back().StartDistance() : 0;
 		}
 
 		int64_t RightDistance() const

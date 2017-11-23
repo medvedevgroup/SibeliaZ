@@ -40,7 +40,7 @@ namespace Sibelia
 			int64_t maxBranchSize,
 			int64_t minBlockSize,
 			int64_t maxFlankingSize) :
-			maxBranchSize_(maxBranchSize), minBlockSize_(minBlockSize), maxFlankingSize_(maxFlankingSize), storage_(&storage), minChainSize_(minBlockSize - 2 * maxFlankingSize)
+			maxBranchSize_(maxBranchSize), minBlockSize_(minBlockSize), maxFlankingSize_(maxFlankingSize), storage_(&storage), minChainSize_(minBlockSize)
 		{
 
 		}

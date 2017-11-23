@@ -548,9 +548,10 @@ namespace Sibelia
 			int64_t score;
 			int64_t length;
 			int64_t ret = 0;
+			int64_t middlePath = MiddlePathLength();
 			for (auto & inst : instance_)
 			{
-				InstanceScore(inst, length, score);
+				InstanceScore(inst, length, score, middlePath);
 				if (!final || length >= minChainSize_)
 				{
 					ret += score;
@@ -578,16 +579,14 @@ namespace Sibelia
 		{
 			int64_t score;
 			int64_t length;
-			InstanceScore(it, length, score);
+			InstanceScore(it, length, score, MiddlePathLength());
 			return length >= minChainSize_;
 		}
 
-		void InstanceScore(const Instance & inst, int64_t & length, int64_t & score) const
-		{
-			int64_t leftFlank = abs(inst.LeftFlankDistance() - (leftBody_.size() > 0 ? leftBody_.back().StartDistance() : 0));
-			int64_t rightFlank = abs(inst.RightFlankDistance() - (rightBody_.size() > 0 ? rightBody_.back().EndDistance() : 0));
+		void InstanceScore(const Instance & inst, int64_t & length, int64_t & score, int64_t middlePath) const
+		{			
 			length = abs(inst.Front().GetPosition(storage_) - inst.Back().GetPosition(storage_));
-			score = length - leftFlank - rightFlank;
+			score = length - (middlePath - length);
 		}
 
 		void Clear()

@@ -333,7 +333,8 @@ namespace Sibelia
 						if (!newInstance && inst->Front().GetVertexId(path->storage_) != vertex)
 						{
 							int64_t nextLength = abs(nowIt.GetPosition(path->storage_) - inst->Back().GetPosition(path->storage_));
-							int64_t rightFlankSize = abs(inst->RightFlankDistance() - (path->rightBody_.empty() ? 0 : path->rightBody_.back().EndDistance()));
+							int64_t rightFlankSize = (path->rightBody_.empty() ? 0 : path->rightBody_.back().EndDistance()) - inst->RightFlankDistance();
+							assert(rightFlankSize >= 0);
 							if (nextLength >= path->minChainSize_ && rightFlankSize > path->maxFlankingSize_)
 							{
 								failFlag = true;
@@ -398,7 +399,7 @@ namespace Sibelia
 						if (!newInstance && inst->Back().GetVertexId(path->storage_) != vertex)
 						{
 							int64_t nextLength = abs(nowIt.GetPosition(path->storage_) - inst->Front().GetPosition(path->storage_));
-							int64_t leftFlankSize = abs(inst->LeftFlankDistance() - (path->leftBody_.empty() ? 0 : path->leftBody_.back().StartDistance()));
+							int64_t leftFlankSize = -((path->leftBody_.empty() ? 0 : path->leftBody_.back().StartDistance()) - inst->LeftFlankDistance());
 							if (nextLength >= path->minChainSize_ && leftFlankSize > path->maxFlankingSize_)
 							{
 								failFlag = true;

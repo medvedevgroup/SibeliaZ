@@ -51,6 +51,7 @@ namespace Sibelia
 		{
 			origin_ = vid;			
 			distanceKeeper_.Set(vid, 0);
+			leftBodyFlank_ = rightBodyFlank_ = 0;
 			for (size_t i = 0; i < storage_->GetInstancesCount(vid); i++)
 			{
 				JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vid, i);
@@ -194,17 +195,17 @@ namespace Sibelia
 
 		int64_t LeftDistance() const
 		{
-			return leftBody_.size() > 0 ? -leftBody_.back().StartDistance() : 0;
+			return -leftBodyFlank_;
 		}
 
 		int64_t RightDistance() const
 		{
-			return rightBody_.size() > 0 ? rightBody_.back().EndDistance() : 0;
+			return rightBodyFlank_;
 		}
 
 		int64_t MiddlePathLength() const
 		{
-			return (rightBody_.size() > 0 ? rightBody_.back().EndDistance() : 0) - (leftBody_.size() > 0 ? leftBody_.back().StartDistance() : 0);
+			return LeftDistance() + RightDistance();
 		}
 
 		int64_t GetEndVertex() const
@@ -333,7 +334,7 @@ namespace Sibelia
 						if (!newInstance && inst->Front().GetVertexId(path->storage_) != vertex)
 						{
 							int64_t nextLength = abs(nowIt.GetPosition(path->storage_) - inst->Back().GetPosition(path->storage_));
-							int64_t rightFlankSize = (path->rightBody_.empty() ? 0 : path->rightBody_.back().EndDistance()) - inst->RightFlankDistance();
+							int64_t rightFlankSize = path->rightBodyFlank_ - inst->RightFlankDistance();
 							assert(rightFlankSize >= 0);
 							if (nextLength >= path->minChainSize_ && rightFlankSize > path->maxFlankingSize_)
 							{
@@ -399,7 +400,8 @@ namespace Sibelia
 						if (!newInstance && inst->Back().GetVertexId(path->storage_) != vertex)
 						{
 							int64_t nextLength = abs(nowIt.GetPosition(path->storage_) - inst->Front().GetPosition(path->storage_));
-							int64_t leftFlankSize = -((path->leftBody_.empty() ? 0 : path->leftBody_.back().StartDistance()) - inst->LeftFlankDistance());
+							int64_t leftFlankSize = -(path->leftBodyFlank_ - inst->LeftFlankDistance());
+							assert(leftFlankSize >= 0);
 							if (nextLength >= path->minChainSize_ && leftFlankSize > path->maxFlankingSize_)
 							{
 								failFlag = true;
@@ -428,11 +430,12 @@ namespace Sibelia
 
 			std::atomic<bool> failFlag;
 			failFlag = false;
-			int64_t startVertexDistance = rightBody_.empty() ? 0 : rightBody_.back().EndDistance();
+			int64_t startVertexDistance = rightBodyFlank_;
 			int64_t endVertexDistance = startVertexDistance + e.GetLength();
 			PointPushBackWorker(this, vertex, endVertexDistance, e, failFlag)(tbb::blocked_range<size_t>(0, storage_->GetInstancesCount(vertex)));
 			rightBody_.push_back(Point(e, startVertexDistance));
 			distanceKeeper_.Set(e.GetEndVertex(), endVertexDistance);
+			rightBodyFlank_ = rightBody_.back().EndDistance();
 
 			if (failFlag)
 			{
@@ -445,8 +448,9 @@ namespace Sibelia
 		void PointPopBack()
 		{
 			int64_t lastVertex = rightBody_.back().GetEdge().GetEndVertex();
-			rightBody_.pop_back();
+			rightBody_.pop_back();			
 			distanceKeeper_.Unset(lastVertex);
+			rightBodyFlank_ = rightBody_.empty() ? 0 : rightBody_.back().EndDistance();
 			for (auto it = instance_.begin(); it != instance_.end(); )
 			{
 				if (it->Back().GetVertexId(storage_) == lastVertex)
@@ -491,11 +495,12 @@ namespace Sibelia
 
 			std::atomic<bool> failFlag;
 			failFlag = false;
-			int64_t endVertexDistance = leftBody_.empty() ? 0 : leftBody_.back().StartDistance();
+			int64_t endVertexDistance = leftBodyFlank_;
 			int64_t startVertexDistance = endVertexDistance - e.GetLength();
 			PointPushFrontWorker(this, vertex, startVertexDistance, e, failFlag)(tbb::blocked_range<size_t>(0, storage_->GetInstancesCount(vertex)));
 			leftBody_.push_back(Point(e, startVertexDistance));
 			distanceKeeper_.Set(e.GetStartVertex(), startVertexDistance);
+			leftBodyFlank_ = leftBody_.back().StartDistance();
 
 			if (failFlag)
 			{
@@ -510,6 +515,7 @@ namespace Sibelia
 			int64_t lastVertex = leftBody_.back().GetEdge().GetStartVertex();
 			leftBody_.pop_back();
 			distanceKeeper_.Unset(lastVertex);
+			leftBodyFlank_ = leftBody_.empty() ? 0 : leftBody_.back().StartDistance();
 			for (auto it = instance_.begin(); it != instance_.end(); )
 			{
 				if (it->Front().GetVertexId(storage_) == lastVertex)
@@ -628,6 +634,8 @@ namespace Sibelia
 		int64_t minBlockSize_;
 		int64_t maxBranchSize_;
 		int64_t maxFlankingSize_;
+		int64_t leftBodyFlank_;
+		int64_t rightBodyFlank_;
 		DistanceKeeper distanceKeeper_;
 		const JunctionStorage * storage_;
 	};

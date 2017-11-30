@@ -14,6 +14,8 @@
 #include <tbb/task_scheduler_init.h>
 #include <tbb/concurrent_vector.h>
 
+#include <boost/pool/pool_alloc.hpp>
+
 namespace Sibelia
 {
 	struct Assignment
@@ -148,6 +150,9 @@ namespace Sibelia
 			}
 		};
 
+		typedef boost::fast_pool_allocator<Instance, boost::default_user_allocator_new_delete, boost::details::pool::default_mutex, 1 << 20> allocator;
+		typedef std::multiset<Instance, std::less<Instance>, allocator> InstanceSet;
+
 		struct Point
 		{
 		private:
@@ -188,7 +193,7 @@ namespace Sibelia
 			return origin_;
 		}		
 
-		const std::multiset<Instance> & Instances() const
+		const InstanceSet & Instances() const
 		{
 			return instance_;
 		}
@@ -295,9 +300,9 @@ namespace Sibelia
 			Path * path;
 			int64_t vertex;
 			int64_t distance;
-			std::atomic<bool> & failFlag;
+			bool & failFlag;
 
-			PointPushFrontWorker(Path * path, int64_t vertex, int64_t distance, Edge e, std::atomic<bool> & failFlag) : path(path), vertex(vertex), e(e), failFlag(failFlag), distance(distance)
+			PointPushFrontWorker(Path * path, int64_t vertex, int64_t distance, Edge e, bool & failFlag) : path(path), vertex(vertex), e(e), failFlag(failFlag), distance(distance)
 			{
 
 			}
@@ -361,9 +366,9 @@ namespace Sibelia
 			Path * path;
 			int64_t vertex;
 			int64_t distance;
-			std::atomic<bool> & failFlag;
+			bool & failFlag;
 
-			PointPushBackWorker(Path * path, int64_t vertex, int64_t distance, Edge e, std::atomic<bool> & failFlag) : path(path), vertex(vertex), e(e), failFlag(failFlag), distance(distance)
+			PointPushBackWorker(Path * path, int64_t vertex, int64_t distance, Edge e, bool & failFlag) : path(path), vertex(vertex), e(e), failFlag(failFlag), distance(distance)
 			{
 
 			}
@@ -428,8 +433,7 @@ namespace Sibelia
 				return false;
 			}
 
-			std::atomic<bool> failFlag;
-			failFlag = false;
+			bool failFlag = false;
 			int64_t startVertexDistance = rightBodyFlank_;
 			int64_t endVertexDistance = startVertexDistance + e.GetLength();
 			PointPushBackWorker(this, vertex, endVertexDistance, e, failFlag)(tbb::blocked_range<size_t>(0, storage_->GetInstancesCount(vertex)));
@@ -493,8 +497,7 @@ namespace Sibelia
 				return false;
 			}
 
-			std::atomic<bool> failFlag;
-			failFlag = false;
+			bool failFlag = false;
 			int64_t endVertexDistance = leftBodyFlank_;
 			int64_t startVertexDistance = endVertexDistance - e.GetLength();
 			PointPushFrontWorker(this, vertex, startVertexDistance, e, failFlag)(tbb::blocked_range<size_t>(0, storage_->GetInstancesCount(vertex)));
@@ -627,7 +630,7 @@ namespace Sibelia
 
 		std::vector<Point> leftBody_;
 		std::vector<Point> rightBody_;
-		std::multiset<Instance> instance_;
+		InstanceSet instance_;
 
 		int64_t origin_;
 		int64_t minChainSize_;

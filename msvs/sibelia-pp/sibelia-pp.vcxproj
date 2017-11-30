@@ -73,8 +73,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\Soft\Dev\tbb2017_20170412oss\include;C:\Projects\Sibelia-pp\src;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Soft\Dev\tbb2017_20170412oss\lib\intel64\vc14;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\Soft\Dev\boost_1_65_1;C:\Soft\Dev\tbb2017_20170412oss\include;C:\Projects\Sibelia-pp\src;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Soft\Dev\boost_1_65_1\lib64-msvc-14.1;C:\Soft\Dev\tbb2017_20170412oss\lib\intel64\vc14;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -82,8 +82,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\Soft\Dev\tbb2017_20170412oss\include;C:\Projects\Sibelia-pp\src;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Soft\Dev\tbb2017_20170412oss\lib\intel64\vc14;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\Soft\Dev\boost_1_65_1;C:\Soft\Dev\tbb2017_20170412oss\include;C:\Projects\Sibelia-pp\src;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Soft\Dev\boost_1_65_1\lib64-msvc-14.1;C:\Soft\Dev\tbb2017_20170412oss\lib\intel64\vc14;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

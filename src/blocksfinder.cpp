@@ -25,6 +25,7 @@ namespace Sibelia
 		}
 	}
 
+	JunctionStorage * JunctionStorage::this_;
 
 	bool compareById(const BlockInstance & a, const BlockInstance & b)
 	{

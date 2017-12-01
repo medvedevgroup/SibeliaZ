@@ -350,10 +350,8 @@ namespace Sibelia
 				for (auto it = storage_.Begin(i); it != storage_.End(i) - 1; ++it)
 				{
 					auto jt = it + 1;
-					out << it.GetVertexId(&storage_) << " -> " << jt.GetVertexId(&storage_)
-						<< "[label=\"" << it.GetChar(&storage_) << ", " << it.GetChrId() << ", " << it.GetPosition(&storage_) << "\" color=blue]\n";
-					out << jt.Reverse().GetVertexId(&storage_) << " -> " << it.Reverse().GetVertexId(&storage_)
-						<< "[label=\"" << it.GetChar(&storage_) << ", " << it.GetChrId() << ", " << it.GetPosition(&storage_) << "\" color=red]\n";
+					out << it.GetVertexId() << " -> " << jt.GetVertexId() << "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "\" color=blue]\n";
+					out << jt.Reverse().GetVertexId() << " -> " << it.Reverse().GetVertexId() << "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "\" color=red]\n";
 				}
 			}
 
@@ -450,14 +448,14 @@ namespace Sibelia
 			{
 				for (size_t i = 0; i < blockId_[chr].size();)
 				{
-					if (storage_.GetIterator(chr, i).IsUsed(&storage_))
+					if (storage_.GetIterator(chr, i).IsUsed())
 					{
 						int64_t bid = blockId_[chr][i].block;
 						size_t j = i;
 						for (; j < blockId_[chr].size() && blockId_[chr][i] == blockId_[chr][j]; j++);
 						j--;
-						int64_t cstart = storage_.GetIterator(chr, i, bid > 0).GetPosition(&storage_);
-						int64_t cend = storage_.GetIterator(chr, j, bid > 0).GetPosition(&storage_) + (bid > 0 ? k_ : -k_);
+						int64_t cstart = storage_.GetIterator(chr, i, bid > 0).GetPosition();
+						int64_t cend = storage_.GetIterator(chr, j, bid > 0).GetPosition() + (bid > 0 ? k_ : -k_);
 						int64_t start = min(cstart, cend);
 						int64_t end = max(cstart, cend);
 						instance.push_back(BlockInstance(bid, chr, start, end));
@@ -530,18 +528,18 @@ namespace Sibelia
 						bool whole = true;
 						auto start = instance.Front();
 						auto end = instance.Back();
-						for (; start != end && start.IsUsed(&storage_); ++start);
-						for (; start != end && end.IsUsed(&storage_); --end);
+						for (; start != end && start.IsUsed(); ++start);
+						for (; start != end && end.IsUsed(); --end);
 						for (auto it = start; it != end + 1; it++)
 						{
-							if (it.IsUsed(&storage_))
+							if (it.IsUsed())
 							{
 								whole = false;
 								break;
 							}
 						}
 
-						if (whole && abs(start.GetPosition(&storage_) - end.GetPosition(&storage_)) + k_ >= minBlockSize_)
+						if (whole && abs(start.GetPosition() - end.GetPosition()) + k_ >= minBlockSize_)
 						{
 							result.push_back(std::make_pair(start, end));
 						}
@@ -559,7 +557,7 @@ namespace Sibelia
 						auto end = instance.second;
 						for (auto it = instance.first; it != end; ++it)
 						{
-							it.MarkUsed(&storage_);
+							it.MarkUsed();
 							int64_t idx = it.GetIndex();
 							int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());
 							blockId_[it.GetChrId()][it.GetIndex()].block = it.IsPositiveStrand() ? +currentBlock : -currentBlock;

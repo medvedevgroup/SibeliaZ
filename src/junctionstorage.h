@@ -1,6 +1,7 @@
 #ifndef _JUNCTION_STORAGE_H_
 #define _JUNCTION_STORAGE_H_
 
+#include <atomic>
 #include <string>
 #include <vector>
 #include <memory>
@@ -159,19 +160,19 @@ namespace Sibelia
 				return chrId_ > 0;
 			}
 
-			int64_t GetVertexId(const JunctionStorage * storage_) const
+			int64_t GetVertexId() const
 			{
-				return IsPositiveStrand() ? storage_->posChr_[GetChrId()][idx_].id : -storage_->posChr_[GetChrId()][idx_].id;
+				return IsPositiveStrand() ? JunctionStorage::this_->posChr_[GetChrId()][idx_].id : -JunctionStorage::this_->posChr_[GetChrId()][idx_].id;
 			}
 
-			int64_t GetPosition(const JunctionStorage * storage_) const
+			int64_t GetPosition() const
 			{
 				if (IsPositiveStrand())
 				{
-					return storage_->posChr_[GetChrId()][idx_].pos;
+					return JunctionStorage::this_->posChr_[GetChrId()][idx_].pos;
 				}
 
-				return storage_->posChr_[GetChrId()][idx_].pos + storage_->k_;
+				return JunctionStorage::this_->posChr_[GetChrId()][idx_].pos + JunctionStorage::this_->k_;
 			}
 
 			JunctionIterator Reverse()
@@ -179,15 +180,15 @@ namespace Sibelia
 				return JunctionIterator(GetChrId(), idx_, !IsPositiveStrand());
 			}
 
-			char GetChar(const JunctionStorage * storage_) const
+			char GetChar() const
 			{
-				int64_t pos = storage_->posChr_[GetChrId()][idx_].pos;
+				int64_t pos = JunctionStorage::this_->posChr_[GetChrId()][idx_].pos;
 				if (IsPositiveStrand())
 				{
-					return storage_->sequence_[GetChrId()][pos + storage_->k_];
+					return JunctionStorage::this_->sequence_[GetChrId()][pos + JunctionStorage::this_->k_];
 				}
 
-				return TwoPaCo::DnaChar::ReverseChar(storage_->sequence_[GetChrId()][pos - 1]);
+				return TwoPaCo::DnaChar::ReverseChar(JunctionStorage::this_->sequence_[GetChrId()][pos - 1]);
 			}
 
 			uint64_t GetIndex() const
@@ -195,14 +196,14 @@ namespace Sibelia
 				return idx_;
 			}
  
-			uint64_t GetRelativeIndex(const JunctionStorage * storage_) const
+			uint64_t GetRelativeIndex() const
 			{
 				if (IsPositiveStrand())
 				{
 					return idx_;
 				}
 
-				return storage_->posChr_[GetChrId()].size() - idx_ - 1;
+				return JunctionStorage::this_->posChr_[GetChrId()].size() - idx_ - 1;
 			}
 
 			uint64_t GetChrId() const
@@ -210,20 +211,20 @@ namespace Sibelia
 				return abs(chrId_) - 1;
 			}
 
-			bool Valid(const JunctionStorage * storage_) const
+			bool Valid() const
 			{
-				return idx_ >= 0 && idx_ < storage_->posChr_[GetChrId()].size();
+				return idx_ >= 0 && idx_ < JunctionStorage::this_->posChr_[GetChrId()].size();
 			}
 
-			bool IsUsed(const JunctionStorage * storage_) const
+			bool IsUsed() const
 			{
-				bool ret = storage_->used_[GetChrId()][idx_];
+				bool ret = JunctionStorage::this_->used_[GetChrId()][idx_];
 				return ret;
 			}			
 
-			void MarkUsed(JunctionStorage * storage_) const
+			void MarkUsed() const
 			{
-				storage_->used_[GetChrId()][idx_] = true;
+				JunctionStorage::this_->used_[GetChrId()][idx_] = true;
 			}
 
 			JunctionIterator& operator++ ()
@@ -519,6 +520,7 @@ namespace Sibelia
 
 		void Init(const std::string & inFileName, const std::string & genomesFileName, int64_t threads)
 		{
+			this_ = this;
 			TwoPaCo::JunctionPositionReader reader(inFileName);
 			for (TwoPaCo::JunctionPosition junction; reader.NextJunctionPosition(junction);)
 			{
@@ -632,6 +634,7 @@ namespace Sibelia
 		std::vector<CoordinateVector> coordinate_;
 		std::vector<std::unique_ptr<std::atomic<bool>[] > > used_;
 		std::vector<std::unique_ptr<tbb::mutex[]> > mutex_;
+		static JunctionStorage * this_;
 	};
 }
 

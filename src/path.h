@@ -2,7 +2,6 @@
 #define _PATH_H_
 
 #include <set>
-#include <atomic>
 #include <cassert>
 #include <algorithm>
 #include "distancekeeper.h"
@@ -12,9 +11,6 @@
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
 #include <tbb/task_scheduler_init.h>
-#include <tbb/concurrent_vector.h>
-
-#include <boost/pool/pool_alloc.hpp>
 
 namespace Sibelia
 {
@@ -57,7 +53,7 @@ namespace Sibelia
 			for (size_t i = 0; i < storage_->GetInstancesCount(vid); i++)
 			{
 				JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vid, i);
-				if (!it.IsUsed(storage_))
+				if (!it.IsUsed())
 				{
 					instance_.insert(Instance(it, 0));
 				}
@@ -150,8 +146,7 @@ namespace Sibelia
 			}
 		};
 
-		typedef boost::fast_pool_allocator<Instance, boost::default_user_allocator_new_delete, boost::details::pool::default_mutex, 1 << 20> allocator;
-		typedef std::multiset<Instance, std::less<Instance>, allocator> InstanceSet;
+		typedef std::multiset<Instance> InstanceSet;
 
 		struct Point
 		{
@@ -262,7 +257,7 @@ namespace Sibelia
 				return false;
 			}
 
-			int64_t diff = end.GetPosition(storage_) - start.GetPosition(storage_);
+			int64_t diff = end.GetPosition() - start.GetPosition();
 			if (start.IsPositiveStrand())
 			{
 				if (diff < 0)
@@ -271,7 +266,7 @@ namespace Sibelia
 				}
 
 				auto start1 = start + 1;
-				if (diff > maxBranchSize_ && (start.GetChar(storage_) != e.GetChar() || end != start1 || start1.GetVertexId(storage_) != e.GetEndVertex()))
+				if (diff > maxBranchSize_ && (start.GetChar() != e.GetChar() || end != start1 || start1.GetVertexId() != e.GetEndVertex()))
 				{
 					return false;
 				}
@@ -284,7 +279,7 @@ namespace Sibelia
 				}
 
 				auto start1 = start + 1;
-				if (-diff > maxBranchSize_ && (start.GetChar(storage_) != e.GetChar() || end != start1 || start1.GetVertexId(storage_) != e.GetEndVertex()))
+				if (-diff > maxBranchSize_ && (start.GetChar() != e.GetChar() || end != start1 || start1.GetVertexId() != e.GetEndVertex()))
 				{
 					return false;
 				}
@@ -313,7 +308,7 @@ namespace Sibelia
 				{
 					bool newInstance = true;
 					JunctionStorage::JunctionIterator nowIt = path->storage_->GetJunctionInstance(vertex, i);
-					if (!nowIt.IsUsed(path->storage_))
+					if (!nowIt.IsUsed())
 					{
 						auto inst = path->instance_.upper_bound(Instance(nowIt, 0));
 						if (inst != path->instance_.end() && inst->Within(nowIt))
@@ -336,9 +331,9 @@ namespace Sibelia
 							}
 						}
 
-						if (!newInstance && inst->Front().GetVertexId(path->storage_) != vertex)
+						if (!newInstance && inst->Front().GetVertexId() != vertex)
 						{
-							int64_t nextLength = abs(nowIt.GetPosition(path->storage_) - inst->Back().GetPosition(path->storage_));
+							int64_t nextLength = abs(nowIt.GetPosition() - inst->Back().GetPosition());
 							int64_t rightFlankSize = path->rightBodyFlank_ - inst->RightFlankDistance();
 							assert(rightFlankSize >= 0);
 							if (nextLength >= path->minChainSize_ && rightFlankSize > path->maxFlankingSize_)
@@ -379,7 +374,7 @@ namespace Sibelia
 				{
 					bool newInstance = true;
 					JunctionStorage::JunctionIterator nowIt = path->storage_->GetJunctionInstance(vertex, i);
-					if (!nowIt.IsUsed(path->storage_))
+					if (!nowIt.IsUsed())
 					{
 						auto inst = path->instance_.upper_bound(Instance(nowIt, 0));
 						if (inst != path->instance_.end() && inst->Within(nowIt))
@@ -402,9 +397,9 @@ namespace Sibelia
 							}
 						}
 
-						if (!newInstance && inst->Back().GetVertexId(path->storage_) != vertex)
+						if (!newInstance && inst->Back().GetVertexId() != vertex)
 						{
-							int64_t nextLength = abs(nowIt.GetPosition(path->storage_) - inst->Front().GetPosition(path->storage_));
+							int64_t nextLength = abs(nowIt.GetPosition() - inst->Front().GetPosition());
 							int64_t leftFlankSize = -(path->leftBodyFlank_ - inst->LeftFlankDistance());
 							assert(leftFlankSize >= 0);
 							if (nextLength >= path->minChainSize_ && leftFlankSize > path->maxFlankingSize_)
@@ -457,7 +452,7 @@ namespace Sibelia
 			rightBodyFlank_ = rightBody_.empty() ? 0 : rightBody_.back().EndDistance();
 			for (auto it = instance_.begin(); it != instance_.end(); )
 			{
-				if (it->Back().GetVertexId(storage_) == lastVertex)
+				if (it->Back().GetVertexId() == lastVertex)
 				{
 					if (it->Front() == it->Back())
 					{
@@ -468,9 +463,9 @@ namespace Sibelia
 						auto jt = it->Back();
 						while (true)
 						{
-							if (distanceKeeper_.IsSet(jt.GetVertexId(storage_)))
+							if (distanceKeeper_.IsSet(jt.GetVertexId()))
 							{
-								const_cast<Instance&>(*it).ChangeBack(jt, distanceKeeper_.Get(jt.GetVertexId(storage_)));
+								const_cast<Instance&>(*it).ChangeBack(jt, distanceKeeper_.Get(jt.GetVertexId()));
 								break;
 							}
 							else
@@ -521,7 +516,7 @@ namespace Sibelia
 			leftBodyFlank_ = leftBody_.empty() ? 0 : leftBody_.back().StartDistance();
 			for (auto it = instance_.begin(); it != instance_.end(); )
 			{
-				if (it->Front().GetVertexId(storage_) == lastVertex)
+				if (it->Front().GetVertexId() == lastVertex)
 				{	
 					if (it->Front() == it->Back())
 					{
@@ -532,9 +527,9 @@ namespace Sibelia
 						auto jt = it->Front();
 						while (true)
 						{
-							if (distanceKeeper_.IsSet(jt.GetVertexId(storage_)))
+							if (distanceKeeper_.IsSet(jt.GetVertexId()))
 							{
-								const_cast<Instance&>(*it).ChangeFront(jt, distanceKeeper_.Get(jt.GetVertexId(storage_)));
+								const_cast<Instance&>(*it).ChangeFront(jt, distanceKeeper_.Get(jt.GetVertexId()));
 								break;
 							}
 							else
@@ -595,7 +590,7 @@ namespace Sibelia
 
 		void InstanceScore(const Instance & inst, int64_t & length, int64_t & score, int64_t middlePath) const
 		{			
-			length = abs(inst.Front().GetPosition(storage_) - inst.Back().GetPosition(storage_));
+			length = abs(inst.Front().GetPosition() - inst.Back().GetPosition());
 			score = length - (middlePath - length);
 		}
 

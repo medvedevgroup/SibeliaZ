@@ -122,6 +122,8 @@ namespace Sibelia
 		{
 			int64_t id;
 			int64_t pos;
+			char ch_;
+			char revCh_;
 
 			Vertex(const TwoPaCo::JunctionPosition & junction) : id(junction.GetId()), pos(junction.GetPos())
 			{
@@ -303,14 +305,13 @@ namespace Sibelia
 				{
 					vid_ = JunctionStorage::this_->posChr_[GetChrId()][idx_].id;
 					pos_ = JunctionStorage::this_->posChr_[GetChrId()][idx_].pos;
-					ch_ = JunctionStorage::this_->sequence_[GetChrId()][pos_ + JunctionStorage::this_->k_];
+					ch_ = JunctionStorage::this_->posChr_[GetChrId()][idx_].ch_;
 				}
 				else
 				{
 					vid_ = -JunctionStorage::this_->posChr_[GetChrId()][idx_].id;
-					pos_ = JunctionStorage::this_->posChr_[GetChrId()][idx_].pos;
-					ch_ = pos_ > 0 ? TwoPaCo::DnaChar::ReverseChar(JunctionStorage::this_->sequence_[GetChrId()][pos_ - 1]) : 'N';
-					pos_ += JunctionStorage::this_->k_;
+					pos_ = JunctionStorage::this_->posChr_[GetChrId()][idx_].pos + JunctionStorage::this_->k_;
+					ch_ = JunctionStorage::this_->posChr_[GetChrId()][idx_].revCh_;
 				}
 			}
 
@@ -568,6 +569,16 @@ namespace Sibelia
 				{
 					sequence_[record].push_back(ch);
 				}				
+			}
+
+			for (size_t i = 0; i < posChr_.size(); i++)
+			{
+				for (size_t j = 0; j < posChr_[i].size(); j++)
+				{
+					int64_t pos_ = posChr_[i][j].pos;
+					posChr_[i][j].ch_ = sequence_[i][pos_ + JunctionStorage::this_->k_];
+					posChr_[i][j].revCh_ = pos_ > 0 ? TwoPaCo::DnaChar::ReverseChar(sequence_[i][pos_ - 1]) : 'N';
+				}
 			}
 			
 			mutex_.resize(GetChrNumber());

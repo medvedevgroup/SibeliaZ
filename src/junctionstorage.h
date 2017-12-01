@@ -296,38 +296,22 @@ namespace Sibelia
 			{
 				Init();
 			}
-
-			char GetCharI() const
-			{
-				int64_t pos = JunctionStorage::this_->posChr_[GetChrId()][idx_].pos;
-				if (IsPositiveStrand())
-				{
-					return JunctionStorage::this_->sequence_[GetChrId()][pos + JunctionStorage::this_->k_];
-				}
-
-				return pos > 0 ? TwoPaCo::DnaChar::ReverseChar(JunctionStorage::this_->sequence_[GetChrId()][pos - 1]) : 'N';
-			}
-
-			int64_t GetPositionI() const
-			{
-				if (IsPositiveStrand())
-				{
-					return JunctionStorage::this_->posChr_[GetChrId()][idx_].pos;
-				}
-
-				return JunctionStorage::this_->posChr_[GetChrId()][idx_].pos + JunctionStorage::this_->k_;
-			}
-
-			int64_t GetVertexIdI() const
-			{
-				return IsPositiveStrand() ? JunctionStorage::this_->posChr_[GetChrId()][idx_].id : -JunctionStorage::this_->posChr_[GetChrId()][idx_].id;
-			}
-
+			
 			void Init()
 			{
-				ch_ = GetCharI();
-				pos_ = GetPositionI();
-				vid_ = GetVertexIdI();
+				if (IsPositiveStrand()) 
+				{
+					vid_ = JunctionStorage::this_->posChr_[GetChrId()][idx_].id;
+					pos_ = JunctionStorage::this_->posChr_[GetChrId()][idx_].pos;
+					ch_ = JunctionStorage::this_->sequence_[GetChrId()][pos_ + JunctionStorage::this_->k_];
+				}
+				else
+				{
+					vid_ = -JunctionStorage::this_->posChr_[GetChrId()][idx_].id;
+					pos_ = JunctionStorage::this_->posChr_[GetChrId()][idx_].pos;
+					ch_ = pos_ > 0 ? TwoPaCo::DnaChar::ReverseChar(JunctionStorage::this_->sequence_[GetChrId()][pos_ - 1]) : 'N';
+					pos_ += JunctionStorage::this_->k_;
+				}
 			}
 
 			friend class JunctionStorage;

@@ -162,17 +162,12 @@ namespace Sibelia
 
 			int64_t GetVertexId() const
 			{
-				return IsPositiveStrand() ? JunctionStorage::this_->posChr_[GetChrId()][idx_].id : -JunctionStorage::this_->posChr_[GetChrId()][idx_].id;
+				return vid_;
 			}
 
 			int64_t GetPosition() const
 			{
-				if (IsPositiveStrand())
-				{
-					return JunctionStorage::this_->posChr_[GetChrId()][idx_].pos;
-				}
-
-				return JunctionStorage::this_->posChr_[GetChrId()][idx_].pos + JunctionStorage::this_->k_;
+				return pos_;
 			}
 
 			JunctionIterator Reverse()
@@ -182,13 +177,7 @@ namespace Sibelia
 
 			char GetChar() const
 			{
-				int64_t pos = JunctionStorage::this_->posChr_[GetChrId()][idx_].pos;
-				if (IsPositiveStrand())
-				{
-					return JunctionStorage::this_->sequence_[GetChrId()][pos + JunctionStorage::this_->k_];
-				}
-
-				return TwoPaCo::DnaChar::ReverseChar(JunctionStorage::this_->sequence_[GetChrId()][pos - 1]);
+				return ch_;
 			}
 
 			uint64_t GetIndex() const
@@ -293,22 +282,61 @@ namespace Sibelia
 			{
 
 				idx_ += IsPositiveStrand() ? +step : -step;
+				Init();
 			}
 
 			void Dec(int64_t step = 1)
 			{
 
 				idx_ += IsPositiveStrand() ? -step : +step;
+				Init();
 			}
 
 			JunctionIterator(int64_t chrId, int64_t idx, bool isPositiveStrand) : idx_(idx), chrId_(isPositiveStrand ? chrId + 1 : -(chrId + 1))
 			{
+				Init();
+			}
 
+			char GetCharI() const
+			{
+				int64_t pos = JunctionStorage::this_->posChr_[GetChrId()][idx_].pos;
+				if (IsPositiveStrand())
+				{
+					return JunctionStorage::this_->sequence_[GetChrId()][pos + JunctionStorage::this_->k_];
+				}
+
+				return pos > 0 ? TwoPaCo::DnaChar::ReverseChar(JunctionStorage::this_->sequence_[GetChrId()][pos - 1]) : 'N';
+			}
+
+			int64_t GetPositionI() const
+			{
+				if (IsPositiveStrand())
+				{
+					return JunctionStorage::this_->posChr_[GetChrId()][idx_].pos;
+				}
+
+				return JunctionStorage::this_->posChr_[GetChrId()][idx_].pos + JunctionStorage::this_->k_;
+			}
+
+			int64_t GetVertexIdI() const
+			{
+				return IsPositiveStrand() ? JunctionStorage::this_->posChr_[GetChrId()][idx_].id : -JunctionStorage::this_->posChr_[GetChrId()][idx_].id;
+			}
+
+			void Init()
+			{
+				ch_ = GetCharI();
+				pos_ = GetPositionI();
+				vid_ = GetVertexIdI();
 			}
 
 			friend class JunctionStorage;
 			int64_t chrId_;
 			int64_t idx_;
+			int64_t vid_;
+			int64_t pos_;
+			char ch_;
+
 		};
 
 		void LockRange(JunctionIterator start, JunctionIterator end, std::vector<std::vector<char > > & mutexAcquired)

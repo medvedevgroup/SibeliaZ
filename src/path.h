@@ -39,8 +39,7 @@ namespace Sibelia
 			int64_t minBlockSize,
 			int64_t maxFlankingSize,
 			bool checkConsistency = false) :
-			maxBranchSize_(maxBranchSize), minBlockSize_(minBlockSize), maxFlankingSize_(maxFlankingSize), storage_(&storage),
-			minChainSize_(minBlockSize - 2 * maxFlankingSize), distanceKeeper_(storage.GetVerticesNumber())
+			maxBranchSize_(maxBranchSize), minBlockSize_(minBlockSize), maxFlankingSize_(maxFlankingSize), storage_(&storage), distanceKeeper_(storage.GetVerticesNumber())
 		{
 			
 		}
@@ -336,7 +335,7 @@ namespace Sibelia
 							int64_t nextLength = abs(nowIt.GetPosition() - inst->Back().GetPosition());
 							int64_t rightFlankSize = path->rightBodyFlank_ - inst->RightFlankDistance();
 							assert(rightFlankSize >= 0);
-							if (nextLength >= path->minChainSize_ && rightFlankSize > path->maxFlankingSize_)
+							if (nextLength >= path->minBlockSize_ && rightFlankSize > path->maxFlankingSize_)
 							{
 								failFlag = true;
 								break;
@@ -402,7 +401,7 @@ namespace Sibelia
 							int64_t nextLength = abs(nowIt.GetPosition() - inst->Front().GetPosition());
 							int64_t leftFlankSize = -(path->leftBodyFlank_ - inst->LeftFlankDistance());
 							assert(leftFlankSize >= 0);
-							if (nextLength >= path->minChainSize_ && leftFlankSize > path->maxFlankingSize_)
+							if (nextLength >= path->minBlockSize_ && leftFlankSize > path->maxFlankingSize_)
 							{
 								failFlag = true;
 								break;
@@ -557,7 +556,7 @@ namespace Sibelia
 			for (auto & inst : instance_)
 			{
 				InstanceScore(inst, length, score, middlePath);
-				if (!final || length >= minChainSize_)
+				if (!final || length >= minBlockSize_)
 				{
 					ret += score;
 				}
@@ -585,7 +584,7 @@ namespace Sibelia
 			int64_t score;
 			int64_t length;
 			InstanceScore(it, length, score, MiddlePathLength());
-			return length >= minChainSize_;
+			return length >= minBlockSize_;
 		}
 
 		void InstanceScore(const Instance & inst, int64_t & length, int64_t & score, int64_t middlePath) const
@@ -628,12 +627,11 @@ namespace Sibelia
 		InstanceSet instance_;
 
 		int64_t origin_;
-		int64_t minChainSize_;
 		int64_t minBlockSize_;
 		int64_t maxBranchSize_;
 		int64_t maxFlankingSize_;
 		int64_t leftBodyFlank_;
-		int64_t rightBodyFlank_;
+		int64_t rightBodyFlank_;		
 		DistanceKeeper distanceKeeper_;
 		const JunctionStorage * storage_;
 	};

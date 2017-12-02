@@ -347,9 +347,10 @@ namespace Sibelia
 			out << "digraph G\n{\nrankdir = LR" << std::endl;
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
-				for (auto it = storage_.Begin(i); it != storage_.End(i) - 1; ++it)
+				auto end = storage_.End(i).Prev();
+				for (auto it = storage_.Begin(i); it != end; ++it)
 				{
-					auto jt = it + 1;
+					auto jt = it.Next();
 					out << it.GetVertexId() << " -> " << jt.GetVertexId() << "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "\" color=blue]\n";
 					out << jt.Reverse().GetVertexId() << " -> " << it.Reverse().GetVertexId() << "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "\" color=red]\n";
 				}
@@ -530,7 +531,7 @@ namespace Sibelia
 						auto end = instance.Back();
 						for (; start != end && start.IsUsed(); ++start);
 						for (; start != end && end.IsUsed(); --end);
-						for (auto it = start; it != end + 1; it++)
+						for (auto it = start; it != end.Next(); it++)
 						{
 							if (it.IsUsed())
 							{

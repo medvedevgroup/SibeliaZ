@@ -93,7 +93,7 @@ namespace Sibelia
 			{
 				back_ = it;
 				backDistance_ = distance;
-			}			
+			}
 
 			bool SinglePoint() const
 			{
@@ -264,7 +264,7 @@ namespace Sibelia
 					return false;
 				}
 
-				auto start1 = start + 1;
+				auto start1 = start.Next();
 				if (diff > maxBranchSize_ && (start.GetChar() != e.GetChar() || end != start1 || start1.GetVertexId() != e.GetEndVertex()))
 				{
 					return false;
@@ -277,7 +277,7 @@ namespace Sibelia
 					return false;
 				}
 
-				auto start1 = start + 1;
+				auto start1 = start.Next();
 				if (-diff > maxBranchSize_ && (start.GetChar() != e.GetChar() || end != start1 || start1.GetVertexId() != e.GetEndVertex()))
 				{
 					return false;

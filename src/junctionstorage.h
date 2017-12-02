@@ -202,6 +202,18 @@ namespace Sibelia
 				return abs(chrId_) - 1;
 			}
 
+			JunctionIterator Next() const
+			{
+				JunctionIterator ret(*this);
+				return ++ret;
+			}
+
+			JunctionIterator Prev() const
+			{
+				JunctionIterator ret(*this);
+				return --ret;
+			}
+
 			bool Valid() const
 			{
 				return idx_ >= 0 && idx_ < JunctionStorage::this_->posChr_[GetChrId()].size();
@@ -230,21 +242,7 @@ namespace Sibelia
 				Inc();
 				return ret;
 			}
-
-			JunctionIterator operator + (size_t step) const
-			{
-				JunctionIterator ret(*this);
-				ret.Inc(step);
-				return ret;
-			}
-
-			JunctionIterator operator - (size_t step) const
-			{
-				JunctionIterator ret(*this);
-				ret.Dec(step);
-				return ret;
-			}
-
+			
 			JunctionIterator& operator-- ()
 			{
 				Dec();

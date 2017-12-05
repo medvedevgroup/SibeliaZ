@@ -280,16 +280,20 @@ namespace Sibelia
 
 			void Inc(int64_t step = 1)
 			{
-
 				idx_ += IsPositiveStrand() ? +step : -step;
-				Init();
+				if (Valid())
+				{
+					Init();
+				}
 			}
 
 			void Dec(int64_t step = 1)
 			{
-
 				idx_ += IsPositiveStrand() ? -step : +step;
-				Init();
+				if (Valid())
+				{
+					Init();
+				}				
 			}
 
 			JunctionIterator(int64_t chrId, int64_t idx, bool isPositiveStrand) : idx_(idx), chrId_(isPositiveStrand ? chrId + 1 : -(chrId + 1))

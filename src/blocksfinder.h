@@ -8,11 +8,13 @@
 #include <map>
 #include <list>
 #include <ctime>
+#include <queue>
 #include <iterator>
 #include <cassert>
 #include <numeric>
 #include <sstream>
 #include <iostream>
+#include <unordered_map>
 
 #include <tbb/parallel_for.h>
 
@@ -203,7 +205,7 @@ namespace Sibelia
 				{
 					if (finder.count_++ % 1000 == 0)
 					{
-						std::cerr << finder.count_ << '\t' << shuffle.size() << std::endl;
+						std::cout << finder.count_ << '\t' << shuffle.size() << std::endl;
 					}
 
 					int64_t vid = shuffle[i];
@@ -235,11 +237,65 @@ namespace Sibelia
 							explore = false;
 						}
 
+						std::cerr << std::endl;
 						currentPath.Clear();
 					}
 				}
 			}
 		};		
+
+		struct ProcessVertexDijkstra
+		{
+		public:
+			BlocksFinder & finder;
+			std::vector<int64_t> & shuffle;
+
+			ProcessVertexDijkstra(BlocksFinder & finder, std::vector<int64_t> & shuffle) : finder(finder), shuffle(shuffle)
+			{
+			}
+
+			void operator()(tbb::blocked_range<size_t> & range) const
+			{
+				BestPath bestPath;
+				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.flankingThreshold_);
+				std::vector<std::vector<char > > mutexAcquired(finder.storage_.GetChrNumber(), std::vector<char>(finder.storage_.MutexNumber(), 0));
+				for (size_t i = range.begin(); i != range.end(); i++)
+				{
+					if (finder.count_++ % 1000 == 0)
+					{
+						std::cout << finder.count_ << '\t' << shuffle.size() << std::endl;
+					}
+
+					int64_t vid = shuffle[i];
+					if (finder.visit_[vid + finder.storage_.GetVerticesNumber()])
+					{
+						continue;
+					}
+
+					for (bool explore = true; explore;)
+					{
+						bestPath.Init();
+						currentPath.Init(vid);
+						while (true)
+						{
+							int64_t prevBestScore = bestPath.score_;
+							finder.ExtendPathDijkstra(currentPath, bestPath, finder.lookingDepth_);
+							if (bestPath.score_ <= prevBestScore)
+							{
+								break;
+							}
+						}
+
+						if (!finder.TryFinalizeBlock(currentPath, mutexAcquired, std::cerr))
+						{
+							explore = false;
+						}
+
+						currentPath.Clear();
+					}
+				}
+			}
+		};
 
 		struct ProcessVertexSampling
 		{
@@ -260,7 +316,7 @@ namespace Sibelia
 				{
 					if (finder.count_++ % 1000 == 0)
 					{
-						std::cerr << finder.count_ << '\t' << shuffle.size() << std::endl;
+						std::cout << finder.count_ << '\t' << shuffle.size() << std::endl;
 					}
 
 					int64_t vid = shuffle[i];
@@ -322,12 +378,13 @@ namespace Sibelia
 				}
 			}
 
-			//std::random_shuffle(shuffle.begin(), shuffle.end());				
+			std::random_shuffle(shuffle.begin(), shuffle.end());				
 			time_t mark = time(0);
 			count_ = 0;
 			tbb::task_scheduler_init init(threads);
 			visit_.reset(new std::atomic<bool>[storage_.GetVerticesNumber() * 2]);
 			std::fill(visit_.get(), visit_.get() + storage_.GetVerticesNumber() * 2, false);
+			/*
 			if (sampleSize_ == 0)
 			{
 				tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexBruteForce(*this, shuffle));
@@ -336,10 +393,11 @@ namespace Sibelia
 			{
 
 				tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexSampling(*this, shuffle));
-			}
+			}*/
 
+			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexDijkstra(*this, shuffle));
 			visit_.release();
-			std::cerr << "Time: " << time(0) - mark << std::endl;
+			std::cout << "Time: " << time(0) - mark << std::endl;
 		}
 
 		void Dump(std::ostream & out) const
@@ -566,6 +624,18 @@ namespace Sibelia
 						}
 					}
 				}
+				
+				/*
+				std::vector<Edge> epath;
+				currentPath.DumpPath(epath);				
+				std::cerr << "Winner: " << std::endl;
+				for (auto e : epath)
+				{
+					std::cerr << "(" << e.GetEndVertex() << ", " << storage_.GetInstancesCount(e.GetEndVertex()) << ") ";
+				}
+
+				std::cerr << std::endl;
+				*/
 
 				for (auto & instance : currentPath.Instances())
 				{
@@ -581,11 +651,179 @@ namespace Sibelia
 						}
 					}
 				}
-
-				return ret;
 			}
 
 			return ret;
+		}
+
+		struct DijkstraState
+		{
+			int64_t prevIdx;
+			int64_t vertex;
+			int64_t distance;
+			Edge e;
+			DijkstraState(int64_t vertex, int64_t distance, int64_t prevIdx, Edge e) : vertex(vertex), distance(distance), prevIdx(prevIdx), e(e)
+			{
+			}
+
+			bool operator < (const DijkstraState & state) const
+			{
+				return distance > state.distance;
+			}
+		};
+
+		void ExtendPathDijkstra(Path & currentPath, BestPath & bestPath, int maxDepth)
+		{
+			int64_t startLength = currentPath.MiddlePathLength();
+			std::vector<int64_t> popularVid;
+			for (auto inst : currentPath.Instances())
+			{
+				auto it = inst.Back().Next();
+				for (size_t d = 0; it.Valid() && (d < lookingDepth_ || abs(it.GetPosition() - inst.Back().GetPosition()) < maxBranchSize_); d++)
+				{
+					popularVid.push_back(it.GetVertexId());
+					++it;
+				}
+			}
+
+			int64_t fVid = 0;
+			int64_t fcount = 0;			
+			std::sort(popularVid.begin(), popularVid.end());
+			for (size_t i = 0; i < popularVid.size(); )
+			{
+				size_t j = i + 1;
+				for (; j < popularVid.size() && popularVid[j] == popularVid[i]; ++j);
+				if(j - i > fcount)
+				{
+					fcount = j - i;
+					fVid = popularVid[i];
+				}
+
+				i = j;
+			}
+
+			if (fcount > 0)
+			{
+				std::priority_queue<DijkstraState> q;
+				std::unordered_map<int64_t, int64_t> vertexIdx;
+				std::vector<int64_t> distance;
+				std::vector<int64_t> prevIdx;
+				std::vector<Edge> nextEdge;				
+				int64_t prevVertex = currentPath.GetEndVertex();
+				q.push(DijkstraState(prevVertex, 0, -1, Edge()));
+
+				while (q.size() > 0)
+				{
+					DijkstraState state = q.top();
+					q.pop();
+					int64_t nowIdx;
+					auto it = vertexIdx.find(state.vertex);
+					if (it == vertexIdx.end())
+					{
+						nowIdx = vertexIdx.size();
+						vertexIdx[state.vertex] = nowIdx;
+						distance.push_back(INT64_MAX);
+						nextEdge.push_back(Edge());
+						prevIdx.push_back(-1);						
+					}
+					else
+					{
+						nowIdx = it->second;
+					}
+
+					if (state.distance < distance[nowIdx])
+					{
+						prevIdx[nowIdx] = state.prevIdx;
+						distance[nowIdx] = state.distance;
+						if (state.prevIdx >= 0)
+						{
+							nextEdge[state.prevIdx] = state.e;
+							if (state.vertex == fVid)
+							{
+								break;
+							}
+						}
+
+						for (int64_t idx = 0; idx < storage_.OutgoingEdgesNumber(state.vertex); idx++)
+						{
+							Edge e = storage_.OutgoingEdge(state.vertex, idx);
+							int64_t nextVertex = e.GetEndVertex();
+							if (!currentPath.IsInPath(nextVertex))
+							{
+								DijkstraState next(nextVertex, state.vertex == prevVertex ? 0 : state.distance + e.GetLength(), nowIdx, e);
+								if (next.distance <= maxBranchSize_)
+								{
+									q.push(next);
+								}
+							}
+						}
+					}
+				}
+				
+				std::vector<Edge> newPath;
+				for (int64_t idx = prevIdx.back(); idx >= 0; idx = prevIdx[idx])
+				{
+					newPath.push_back(nextEdge[idx]);
+				}
+
+				for (auto it = newPath.rbegin(); it != newPath.rend(); ++it)
+				{
+					if (currentPath.PointPushBack(*it))
+					{
+						int64_t currentScore = currentPath.Score(scoreFullChains_);
+						if (currentScore > bestPath.score_ && currentPath.Instances().size() > 1)
+						{
+							bestPath.UpdateForward(currentPath, currentScore);
+						}
+					}
+					else
+					{
+						break;
+					}
+				}
+			}
+
+
+			/*
+				for (size_t d = 0; ; d++)
+				{
+					int64_t dist = currentPath.RightDistance();
+					if (dist < finishingProximity_)
+					{
+						visit_[currentPath.GetEndVertex() + storage_.GetVerticesNumber()] = true;
+					}
+
+					bool over = true;
+					size_t attempts = storage_.OutgoingEdgesNumber(currentPath.GetEndVertex());
+					for (size_t i = 0; i < attempts && (d < lookingDepth_ || currentPath.MiddlePathLength() - startLength < maxBranchSize_); i++)
+					{
+						Edge e = storage_.RandomForwardEdge(currentPath.GetEndVertex());
+						if (e.Valid() && currentPath.PointPushBack(e))
+						{
+							over = false;
+							break;
+						}
+					}
+
+					if (over)
+					{
+						for (size_t i = 0; i < d; i++)
+						{
+							currentPath.PointPopBack();
+						}
+
+						break;
+					}
+					else
+					{
+						int64_t currentScore = currentPath.Score(scoreFullChains_);
+						if (currentScore > bestPath.score_ && currentPath.Instances().size() > 1)
+						{
+							bestPath.UpdateForward(currentPath, currentScore);
+						}
+					}
+				}
+				*/			
 		}
 
 		void ExtendPathRandom(Path & currentPath, BestPath & bestPath, int maxDepth)
@@ -678,7 +916,7 @@ namespace Sibelia
 			}
 
 			bestPath.FixBackward(currentPath);
-		}				
+		}
 
 		void ExtendPathForward(Path & currentPath, BestPath & bestPath, int maxDepth)
 		{		
@@ -696,16 +934,29 @@ namespace Sibelia
 					{
 						if (currentPath.PointPushBack(e))
 						{
-#ifdef _DEBUG_OUT
-							currentPath.DebugOut(std::cerr);
-#endif
-							int64_t currentScore = currentPath.Score(scoreFullChains_);
-							if (currentScore > bestPath.score_ && currentPath.Instances().size() > 1)
+							int64_t currentScore = currentPath.Score(scoreFullChains_);							
+							/*
+							std::cerr << currentScore << std::endl;
+							std::vector<Edge> epath;
+							currentPath.DumpPath(epath);
+							for (auto e : epath)
 							{
-								bestPath.UpdateForward(currentPath, currentScore);
+								std::cerr << "(" << e.GetEndVertex() << ", " << storage_.GetInstancesCount(e.GetEndVertex()) << ") ";
 							}
 
-							ExtendPathForward(currentPath, bestPath, maxDepth - 1);
+							std::cerr << std::endl;
+							*/
+
+							if (currentScore > bestPath.score_ && currentPath.Instances().size() > 1)
+							{
+								bestPath.UpdateForward(currentPath, currentScore);								
+							}
+
+							if (currentScore > -minBlockSize_)
+							{
+								ExtendPathForward(currentPath, bestPath, maxDepth - 1);
+							}
+							
 							currentPath.PointPopBack();
 						}
 					}
@@ -729,16 +980,17 @@ namespace Sibelia
 					{
 						if (currentPath.PointPushFront(e))
 						{
-#ifdef _DEBUG_OUT
-							currentPath.DebugOut(std::cerr);
-#endif
 							int64_t currentScore = currentPath.Score(scoreFullChains_);
 							if (currentScore > bestPath.score_ && currentPath.Instances().size() > 1)
 							{
 								bestPath.UpdateBackward(currentPath, currentScore);
 							}
 
-							ExtendPathBackward(currentPath, bestPath, maxDepth - 1);
+							if (currentScore > -minBlockSize_)
+							{
+								ExtendPathBackward(currentPath, bestPath, maxDepth - 1);
+							}
+							
 							currentPath.PointPopFront();
 						}
 					}

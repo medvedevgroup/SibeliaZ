@@ -248,7 +248,7 @@ namespace Sibelia
 			minBlockSize_ = minBlockSize;
 			maxBranchSize_ = maxBranchSize;
 			flankingThreshold_ = flankingThreshold;
-			finishingProximity_ = 5 * k_;
+			finishingProximity_ = k_;
 			blockId_.resize(storage_.GetChrNumber());
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
@@ -503,18 +503,6 @@ namespace Sibelia
 						}
 					}
 				}
-				
-				/*
-				std::vector<Edge> epath;
-				currentPath.DumpPath(epath);				
-				std::cerr << "Winner: " << std::endl;
-				for (auto e : epath)
-				{
-					std::cerr << "(" << e.GetEndVertex() << ", " << storage_.GetInstancesCount(e.GetEndVertex()) << ") ";
-				}
-
-				std::cerr << std::endl;
-				*/
 
 				for (auto & instance : currentPath.Instances())
 				{
@@ -688,6 +676,12 @@ namespace Sibelia
 						{
 							bestPath.UpdateForward(currentPath, currentScore);
 						}
+
+						int64_t dist = currentPath.RightDistance();
+						if (dist < finishingProximity_)
+						{
+							visit_[currentPath.GetEndVertex() + storage_.GetVerticesNumber()] = true;
+						}
 					}
 					else
 					{
@@ -709,6 +703,12 @@ namespace Sibelia
 						if (currentScore > bestPath.score_ && currentPath.Instances().size() > 1)
 						{
 							bestPath.UpdateBackward(currentPath, currentScore);
+						}
+
+						int64_t dist = currentPath.LeftDistance();
+						if (dist < finishingProximity_)
+						{
+							visit_[currentPath.GetStartVertex() + storage_.GetVerticesNumber()] = true;
 						}
 					}
 					else

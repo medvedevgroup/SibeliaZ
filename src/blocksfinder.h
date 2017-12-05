@@ -216,13 +216,12 @@ namespace Sibelia
 
 					for (bool explore = true; explore;)
 					{
-						bestPath.Init();
 						currentPath.Init(vid);
 						while (true)
 						{
-							int64_t prevBestScore = bestPath.score_;
-							finder.ExtendPathDijkstra(currentPath, bestPath, finder.lookingDepth_);
-							if (bestPath.score_ <= prevBestScore)
+							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
+							finder.ExtendPathDijkstra(currentPath);
+							if (currentPath.Score(finder.scoreFullChains_) <= prevBestScore)
 							{
 								break;
 							}
@@ -243,12 +242,12 @@ namespace Sibelia
 		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t flankingThreshold, int64_t lookingDepth, int64_t sampleSize, int64_t threads, const std::string & debugOut)
 		{
 			blocksFound_ = 0;
+			finishingProximity_ = 0;
 			sampleSize_ = sampleSize;
 			lookingDepth_ = lookingDepth;
 			minBlockSize_ = minBlockSize;
 			maxBranchSize_ = maxBranchSize;
-			flankingThreshold_ = flankingThreshold;
-			finishingProximity_ = k_;
+			flankingThreshold_ = flankingThreshold;			
 			blockId_.resize(storage_.GetChrNumber());
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
@@ -660,7 +659,7 @@ namespace Sibelia
 		}
 
 
-		void ExtendPathDijkstra(Path & currentPath, BestPath & bestPath, int maxDepth)
+		void ExtendPathDijkstra(Path & currentPath)
 		{			
 			int64_t nextForwardVid = MostPopularVertex(currentPath, true);
 			if (nextForwardVid != 0)
@@ -670,13 +669,7 @@ namespace Sibelia
 				for (auto it = newPath.rbegin(); it != newPath.rend(); ++it)
 				{
 					if (currentPath.PointPushBack(*it))
-					{
-						int64_t currentScore = currentPath.Score(scoreFullChains_);
-						if (currentScore > bestPath.score_ && currentPath.Instances().size() > 1)
-						{
-							bestPath.UpdateForward(currentPath, currentScore);
-						}
-
+					{					
 						int64_t dist = currentPath.RightDistance();
 						if (dist < finishingProximity_)
 						{
@@ -698,13 +691,7 @@ namespace Sibelia
 				for (auto it = newPath.rbegin(); it != newPath.rend(); ++it)
 				{
 					if (currentPath.PointPushFront(*it))
-					{
-						int64_t currentScore = currentPath.Score(scoreFullChains_);
-						if (currentScore > bestPath.score_ && currentPath.Instances().size() > 1)
-						{
-							bestPath.UpdateBackward(currentPath, currentScore);
-						}
-
+					{						
 						int64_t dist = currentPath.LeftDistance();
 						if (dist < finishingProximity_)
 						{
@@ -719,8 +706,6 @@ namespace Sibelia
 			}
 
 		}
-
-		
 
 		int64_t k_;
 		std::atomic<int64_t> count_;

@@ -198,7 +198,6 @@ namespace Sibelia
 
 			void operator()(tbb::blocked_range<size_t> & range) const
 			{
-				BestPath bestPath;
 				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.flankingThreshold_);
 				std::vector<std::vector<char > > mutexAcquired(finder.storage_.GetChrNumber(), std::vector<char>(finder.storage_.MutexNumber(), 0));
 				for (size_t i = range.begin(); i != range.end(); i++)
@@ -257,13 +256,13 @@ namespace Sibelia
 			std::vector<int64_t> shuffle;
 			for (int64_t v = -storage_.GetVerticesNumber() + 1; v < storage_.GetVerticesNumber(); v++)
 			{
-				for (size_t i = 0; i < storage_.GetInstancesCount(v); i++)
+				for (JunctionStorage::JunctionIterator it(v); it.Valid(); ++it)
 				{
-					if (storage_.GetJunctionInstance(v, i).IsPositiveStrand())
+					if(it.IsPositiveStrand())
 					{
 						shuffle.push_back(v);
 						break;
-					}
+					}					
 				}
 			}
 
@@ -448,23 +447,23 @@ namespace Sibelia
 					{
 						if (instance.Front().IsPositiveStrand())
 						{
-							storage_.LockRange(instance.Front(), instance.Back(), mutexAcquired);
+//							storage_.LockRange(instance.Front(), instance.Back(), mutexAcquired);
 						}
 						else
 						{
-							storage_.LockRange(instance.Back().Reverse(), instance.Front().Reverse(), mutexAcquired);
+//							storage_.LockRange(instance.Back().Reverse(), instance.Front().Reverse(), mutexAcquired);
 						}
 					}
 				}
 
-				std::vector<std::pair<JunctionStorage::JunctionIterator, JunctionStorage::JunctionIterator> > result;
+				std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > result;
 				for (auto & instance : currentPath.Instances())
 				{
 					if (currentPath.IsGoodInstance(instance))
 					{
 						bool whole = true;
-						auto start = instance.Front();
-						auto end = instance.Back();
+						auto start = instance.Front().SequentialIterator();
+						auto end = instance.Back().SequentialIterator();
 						for (; start != end && start.IsUsed(); ++start);
 						for (; start != end && end.IsUsed(); --end);
 						for (auto it = start; it != end.Next(); it++)
@@ -509,11 +508,11 @@ namespace Sibelia
 					{
 						if (instance.Front().IsPositiveStrand())
 						{
-							storage_.UnlockRange(instance.Front(), instance.Back(), mutexAcquired);
+//							storage_.UnlockRange(instance.Front(), instance.Back(), mutexAcquired);
 						}
 						else
 						{
-							storage_.UnlockRange(instance.Back().Reverse(), instance.Front().Reverse(), mutexAcquired);
+//							storage_.UnlockRange(instance.Back().Reverse(), instance.Front().Reverse(), mutexAcquired);
 						}
 					}
 				}
@@ -620,7 +619,7 @@ namespace Sibelia
 			std::vector<int64_t> popularVid;
 			for (auto inst : currentPath.Instances())
 			{
-				auto it = forward ? inst.Back().Next() : inst.Front().Prev();
+				auto it = forward ? inst.Back().SequentialIterator().Next() : inst.Front().SequentialIterator().Prev();
 				for (size_t d = 0; it.Valid() && (d < lookingDepth_ || abs(it.GetPosition() - inst.Back().GetPosition()) < maxBranchSize_); d++)
 				{
 					if (!currentPath.IsInPath(it.GetVertexId()))

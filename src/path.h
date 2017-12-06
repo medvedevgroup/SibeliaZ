@@ -49,9 +49,8 @@ namespace Sibelia
 			origin_ = vid;			
 			distanceKeeper_.Set(vid, 0);
 			leftBodyFlank_ = rightBodyFlank_ = 0;
-			for (size_t i = 0; i < storage_->GetInstancesCount(vid); i++)
-			{
-				JunctionStorage::JunctionIterator it = storage_->GetJunctionInstance(vid, i);
+			for (JunctionStorage::JunctionIterator it(vid); it.Valid(); ++it)
+			{				
 				if (!it.IsUsed())
 				{
 					instance_.insert(Instance(it, 0));
@@ -264,8 +263,8 @@ namespace Sibelia
 					return false;
 				}
 
-				auto start1 = start.Next();
-				if (diff > maxBranchSize_ && (start.GetChar() != e.GetChar() || end != start1 || start1.GetVertexId() != e.GetEndVertex()))
+				auto start1 = start.SequentialIterator().Next();
+				if (diff > maxBranchSize_ && (!start1.Valid() || start.GetChar() != e.GetChar() || start1.GetVertexId() != e.GetEndVertex()))
 				{
 					return false;
 				}
@@ -277,8 +276,8 @@ namespace Sibelia
 					return false;
 				}
 
-				auto start1 = start.Next();
-				if (-diff > maxBranchSize_ && (start.GetChar() != e.GetChar() || end != start1 || start1.GetVertexId() != e.GetEndVertex()))
+				auto start1 = start.SequentialIterator().Next();
+				if (-diff > maxBranchSize_ && (!start1.Valid() || start.GetChar() != e.GetChar() || start1.GetVertexId() != e.GetEndVertex()))
 				{
 					return false;
 				}
@@ -301,12 +300,11 @@ namespace Sibelia
 
 			}
 
-			void operator()(const tbb::blocked_range<size_t> & range) const
+			void operator()() const
 			{
-				for (size_t i = range.begin(); i != range.end() && !failFlag; i++)
+				for (JunctionStorage::JunctionIterator nowIt(vertex); nowIt.Valid() && !failFlag; nowIt++)
 				{
 					bool newInstance = true;
-					JunctionStorage::JunctionIterator nowIt = path->storage_->GetJunctionInstance(vertex, i);
 					if (!nowIt.IsUsed())
 					{
 						auto inst = path->instance_.upper_bound(Instance(nowIt, 0));
@@ -367,12 +365,11 @@ namespace Sibelia
 
 			}
 
-			void operator()(const tbb::blocked_range<size_t> & range) const
+			void operator()() const
 			{
-				for (size_t i = range.begin(); i < range.end() && !failFlag; i++)
+				for (JunctionStorage::JunctionIterator nowIt(vertex); nowIt.Valid() && !failFlag; nowIt++)
 				{
 					bool newInstance = true;
-					JunctionStorage::JunctionIterator nowIt = path->storage_->GetJunctionInstance(vertex, i);
 					if (!nowIt.IsUsed())
 					{
 						auto inst = path->instance_.upper_bound(Instance(nowIt, 0));
@@ -430,59 +427,14 @@ namespace Sibelia
 			bool failFlag = false;
 			int64_t startVertexDistance = rightBodyFlank_;
 			int64_t endVertexDistance = startVertexDistance + e.GetLength();
-			PointPushBackWorker(this, vertex, endVertexDistance, e, failFlag)(tbb::blocked_range<size_t>(0, storage_->GetInstancesCount(vertex)));
+			PointPushBackWorker(this, vertex, endVertexDistance, e, failFlag)();
 			rightBody_.push_back(Point(e, startVertexDistance));
 			distanceKeeper_.Set(e.GetEndVertex(), endVertexDistance);
-			rightBodyFlank_ = rightBody_.back().EndDistance();
-
-			if (failFlag)
-			{
-				PointPopBack();
-			}
-			
+			rightBodyFlank_ = rightBody_.back().EndDistance();			
 			return !failFlag;
 		}
 
-		void PointPopBack()
-		{
-			int64_t lastVertex = rightBody_.back().GetEdge().GetEndVertex();
-			rightBody_.pop_back();			
-			distanceKeeper_.Unset(lastVertex);
-			rightBodyFlank_ = rightBody_.empty() ? 0 : rightBody_.back().EndDistance();
-			for (auto it = instance_.begin(); it != instance_.end(); )
-			{
-				if (it->Back().GetVertexId() == lastVertex)
-				{
-					if (it->Front() == it->Back())
-					{
-						it = instance_.erase(it);
-					}
-					else
-					{
-						auto jt = it->Back();
-						while (true)
-						{
-							if (distanceKeeper_.IsSet(jt.GetVertexId()))
-							{
-								const_cast<Instance&>(*it).ChangeBack(jt, distanceKeeper_.Get(jt.GetVertexId()));
-								break;
-							}
-							else
-							{
-								--jt;
-							}
-						}
-
-						it++;
-					}
-				}
-				else
-				{
-					++it;
-				}
-			}
-		}
-
+		
 		bool PointPushFront(const Edge & e)
 		{
 			int64_t vertex = e.GetStartVertex();
@@ -494,57 +446,11 @@ namespace Sibelia
 			bool failFlag = false;
 			int64_t endVertexDistance = leftBodyFlank_;
 			int64_t startVertexDistance = endVertexDistance - e.GetLength();
-			PointPushFrontWorker(this, vertex, startVertexDistance, e, failFlag)(tbb::blocked_range<size_t>(0, storage_->GetInstancesCount(vertex)));
+			PointPushFrontWorker(this, vertex, startVertexDistance, e, failFlag)();
 			leftBody_.push_back(Point(e, startVertexDistance));
 			distanceKeeper_.Set(e.GetStartVertex(), startVertexDistance);
-			leftBodyFlank_ = leftBody_.back().StartDistance();
-
-			if (failFlag)
-			{
-				PointPopFront();
-			}
-		
+			leftBodyFlank_ = leftBody_.back().StartDistance();		
 			return !failFlag;
-		}
-
-		void PointPopFront()
-		{
-			int64_t lastVertex = leftBody_.back().GetEdge().GetStartVertex();
-			leftBody_.pop_back();
-			distanceKeeper_.Unset(lastVertex);
-			leftBodyFlank_ = leftBody_.empty() ? 0 : leftBody_.back().StartDistance();
-			for (auto it = instance_.begin(); it != instance_.end(); )
-			{
-				if (it->Front().GetVertexId() == lastVertex)
-				{	
-					if (it->Front() == it->Back())
-					{
-						it = instance_.erase(it);
-					}
-					else
-					{
-						auto jt = it->Front();
-						while (true)
-						{
-							if (distanceKeeper_.IsSet(jt.GetVertexId()))
-							{
-								const_cast<Instance&>(*it).ChangeFront(jt, distanceKeeper_.Get(jt.GetVertexId()));
-								break;
-							}
-							else
-							{
-								++jt;
-							}
-						}
-
-						it++;
-					}
-				}
-				else
-				{
-					++it;
-				}
-			}
 		}
 
 		int64_t Score(bool final = false) const
@@ -619,8 +525,6 @@ namespace Sibelia
 
 	private:
 
-
-		friend struct BestPath;
 
 		std::vector<Point> leftBody_;
 		std::vector<Point> rightBody_;

@@ -536,95 +536,49 @@ namespace Sibelia
 				return distance > state.distance;
 			}
 		};
-
-		void Dijkstra(int64_t source, int64_t sink, std::vector<Edge> & path, bool forward)
+		
+		struct NextVertex
 		{
-			path.clear();
-			std::priority_queue<DijkstraState> q;
-			std::unordered_map<int64_t, int64_t> vertexIdx;
-			std::vector<int64_t> distance;
-			std::vector<int64_t> prevIdx;
-			std::vector<Edge> nextEdge;
-			int64_t prevVertex = source;
-			q.push(DijkstraState(prevVertex, 0, -1, Edge()));
-
-			while (q.size() > 0)
+			int64_t vid;
+			size_t steps;
+			JunctionStorage::JunctionSequentialIterator origin;
+			NextVertex() : vid(0)
 			{
-				DijkstraState state = q.top();
-				q.pop();
-				int64_t nowIdx;
-				auto it = vertexIdx.find(state.vertex);
-				if (it == vertexIdx.end())
-				{
-					nowIdx = vertexIdx.size();
-					vertexIdx[state.vertex] = nowIdx;
-					distance.push_back(INT64_MAX);
-					nextEdge.push_back(Edge());
-					prevIdx.push_back(-1);
-				}
-				else
-				{
-					nowIdx = it->second;
-				}
 
-				if (state.distance < distance[nowIdx])
-				{
-					prevIdx[nowIdx] = state.prevIdx;
-					distance[nowIdx] = state.distance;
-					if (state.prevIdx >= 0)
-					{
-						nextEdge[state.prevIdx] = state.e;
-						if (state.vertex == sink)
-						{
-							break;
-						}
-					}
-					if (forward)
-					{
-						for (int64_t idx = 0; idx < storage_.OutgoingEdgesNumber(state.vertex); idx++)
-						{
-							Edge e = storage_.OutgoingEdge(state.vertex, idx);
-							int64_t nextVertex = e.GetEndVertex();
-							DijkstraState next(nextVertex, state.vertex == prevVertex ? 0 : state.distance + e.GetLength(), nowIdx, e);
-							if (next.distance <= maxBranchSize_)
-							{
-								q.push(next);
-							}
-						}
-					}
-					else
-					{
-						for (int64_t idx = 0; idx < storage_.IngoingEdgesNumber(state.vertex); idx++)
-						{
-							Edge e = storage_.IngoingEdge(state.vertex, idx);
-							int64_t nextVertex = e.GetStartVertex();
-							DijkstraState next(nextVertex, state.vertex == prevVertex ? 0 : state.distance + e.GetLength(), nowIdx, e);
-							if (next.distance <= maxBranchSize_)
-							{
-								q.push(next);
-							}
-						}
-					}
-				}
 			}
 
-			for (int64_t idx = prevIdx.back(); idx >= 0; idx = prevIdx[idx])
+			NextVertex(int64_t vid, size_t steps, JunctionStorage::JunctionSequentialIterator origin) : vid(vid), steps(steps), origin(origin)
 			{
-				path.push_back(nextEdge[idx]);
-			}
-		}
 
-		int64_t MostPopularVertex(const Path & currentPath, bool forward)
+			}
+
+			bool operator < (const NextVertex & nextVertex) const
+			{
+				if (vid != nextVertex.vid)
+				{
+					return vid < nextVertex.vid;
+				}
+
+				return steps < nextVertex.steps;
+			}
+		};
+
+		NextVertex MostPopularVertex(const Path & currentPath, bool forward)
 		{
-			std::vector<int64_t> popularVid;
+			std::vector<NextVertex> popularVid;
 			for (auto inst : currentPath.Instances())
 			{
-				auto it = forward ? inst.Back().SequentialIterator().Next() : inst.Front().SequentialIterator().Prev();
+				auto origin = inst.Back().SequentialIterator();
+				auto it = forward ? origin.Next() : origin.Prev();
 				for (size_t d = 0; it.Valid() && (d < lookingDepth_ || abs(it.GetPosition() - inst.Back().GetPosition()) < maxBranchSize_); d++)
 				{
 					if (!currentPath.IsInPath(it.GetVertexId()))
 					{
-						popularVid.push_back(it.GetVertexId());
+						popularVid.push_back(NextVertex(it.GetVertexId(), d, origin));
+					}
+					else
+					{
+						break;
 					}
 
 					if (forward)
@@ -638,36 +592,36 @@ namespace Sibelia
 				}
 			}
 
-			int64_t bestVid = 0;
 			int64_t bestCount = 0;
+			NextVertex ret;
 			std::sort(popularVid.begin(), popularVid.end());
 			for (size_t i = 0; i < popularVid.size(); )
 			{
 				size_t j = i + 1;
-				for (; j < popularVid.size() && popularVid[j] == popularVid[i]; ++j);
-				if (j - i > bestCount)
+				for (; j < popularVid.size() && popularVid[j].vid == popularVid[i].vid; ++j);
+				if (j - i > bestCount || (j - i == bestCount && popularVid[i].steps > ret.steps))
 				{
 					bestCount = j - i;
-					bestVid = popularVid[i];
+					ret = popularVid[i];
 				}
 
 				i = j;
 			}
 
-			return bestVid;
+			return ret;
 		}
 
 
 		void ExtendPathDijkstra(Path & currentPath)
-		{			
-			int64_t nextForwardVid = MostPopularVertex(currentPath, true);
-			if (nextForwardVid != 0)
+		{	
+			int64_t origin = currentPath.Origin();
+			NextVertex nextForwardVid = MostPopularVertex(currentPath, true);
+			if (nextForwardVid.vid != 0)
 			{
-				std::vector<Edge> newPath;
-				Dijkstra(currentPath.GetEndVertex(), nextForwardVid, newPath, true);
-				for (auto it = newPath.rbegin(); it != newPath.rend(); ++it)
+				auto it = nextForwardVid.origin;
+				for(size_t i = 0; i < nextForwardVid.steps; i++)
 				{
-					if (currentPath.PointPushBack(*it))
+					if (currentPath.PointPushBack(it.OutgoingEdge()))
 					{					
 						int64_t dist = currentPath.RightDistance();
 						if (dist < finishingProximity_)
@@ -679,17 +633,18 @@ namespace Sibelia
 					{
 						break;
 					}
+
+					++it;
 				}
 			}
 
-			int64_t nextBackwardVid = MostPopularVertex(currentPath, false);
-			if (nextBackwardVid != 0)
+			NextVertex nextBackwardVid = MostPopularVertex(currentPath, false);
+			if (nextBackwardVid.vid != 0)
 			{
-				std::vector<Edge> newPath;
-				Dijkstra(currentPath.GetStartVertex(), nextForwardVid, newPath, false);
-				for (auto it = newPath.rbegin(); it != newPath.rend(); ++it)
+				auto it = nextBackwardVid.origin;
+				for (size_t i = 0; i < nextBackwardVid.steps; i++)
 				{
-					if (currentPath.PointPushFront(*it))
+					if (currentPath.PointPushFront(it.IngoingEdge()))
 					{						
 						int64_t dist = currentPath.LeftDistance();
 						if (dist < finishingProximity_)
@@ -701,6 +656,8 @@ namespace Sibelia
 					{
 						break;
 					}
+
+					--it;
 				}
 			}
 

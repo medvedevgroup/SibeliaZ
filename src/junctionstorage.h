@@ -179,6 +179,44 @@ namespace Sibelia
 				return JunctionStorage::this_->position_[GetChrId()][idx_].pos + JunctionStorage::this_->k_;
 			}
 
+			Edge OutgoingEdge() const
+			{
+				const Position & now = JunctionStorage::this_->position_[GetChrId()][idx_];
+				if (IsPositiveStrand())
+				{
+					const Position & next = JunctionStorage::this_->position_[GetChrId()][idx_ + 1];
+					char ch = JunctionStorage::this_->sequence_[GetChrId()][now.pos + JunctionStorage::this_->k_];
+					char revCh = TwoPaCo::DnaChar::ReverseChar(JunctionStorage::this_->sequence_[GetChrId()][next.pos - 1]);
+					return Edge(now.id, next.id, ch, revCh, next.pos - now.pos, 1);
+				}
+				else
+				{
+					const Position & next = JunctionStorage::this_->position_[GetChrId()][idx_ - 1];
+					char ch = TwoPaCo::DnaChar::ReverseChar(JunctionStorage::this_->sequence_[GetChrId()][now.pos - 1]);
+					char revCh = JunctionStorage::this_->sequence_[GetChrId()][now.pos + JunctionStorage::this_->k_];
+					return Edge(-now.id, -next.id, ch, revCh, now.pos - next.pos, 1);
+				}
+			}
+
+			Edge IngoingEdge() const
+			{
+				const Position & now = JunctionStorage::this_->position_[GetChrId()][idx_];
+				if (IsPositiveStrand())
+				{					
+					const Position & prev = JunctionStorage::this_->position_[GetChrId()][idx_ - 1];
+					char ch = JunctionStorage::this_->sequence_[GetChrId()][prev.pos + JunctionStorage::this_->k_];
+					char revCh = TwoPaCo::DnaChar::ReverseChar(JunctionStorage::this_->sequence_[GetChrId()][now.pos - 1]);
+					return Edge(prev.id, now.id, ch, revCh, now.pos - prev.pos, 1);				
+				}
+				else
+				{
+					const Position & prev = JunctionStorage::this_->position_[GetChrId()][idx_ + 1];
+					char ch = TwoPaCo::DnaChar::ReverseChar(JunctionStorage::this_->sequence_[GetChrId()][prev.pos - 1]);
+					char revCh = JunctionStorage::this_->sequence_[GetChrId()][now.pos + JunctionStorage::this_->k_];
+					return Edge(-prev.id, -now.id, ch, revCh, prev.pos - now.pos, 1);					
+				}
+			}
+
 			JunctionSequentialIterator Reverse()
 			{
 				return JunctionSequentialIterator(GetChrId(), idx_, !IsPositiveStrand());

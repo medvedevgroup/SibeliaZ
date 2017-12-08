@@ -442,47 +442,53 @@ namespace Sibelia
 			bool ret = false;
 			if (currentPath.Score(true) > 0 && currentPath.MiddlePathLength() >= minBlockSize_ && currentPath.GoodInstances() > 1)
 			{
-				for (auto & instance : currentPath.Instances())
+				/*
+				for (auto & instanceSet : currentPath.Instances())
 				{
-					if (currentPath.IsGoodInstance(instance))
+					for (auto & instance instanceSet)
 					{
-						if (instance.Front().IsPositiveStrand())
+						if (currentPath.IsGoodInstance(instance))
 						{
-//							storage_.LockRange(instance.Front(), instance.Back(), mutexAcquired);
-						}
-						else
-						{
-//							storage_.LockRange(instance.Back().Reverse(), instance.Front().Reverse(), mutexAcquired);
-						}
-					}
-				}
-
-				std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > result;
-				for (auto & instance : currentPath.Instances())
-				{
-					if (currentPath.IsGoodInstance(instance))
-					{
-						bool whole = true;
-						auto start = instance.Front().SequentialIterator();
-						auto end = instance.Back().SequentialIterator();
-						for (; start != end && start.IsUsed(); ++start);
-						for (; start != end && end.IsUsed(); --end);
-						for (auto it = start; it != end.Next(); it++)
-						{
-							if (it.IsUsed())
+							if (instance.Front().IsPositiveStrand())
 							{
-								whole = false;
-								break;
+								//							storage_.LockRange(instance.Front(), instance.Back(), mutexAcquired);
+							}
+							else
+							{
+								//							storage_.LockRange(instance.Back().Reverse(), instance.Front().Reverse(), mutexAcquired);
 							}
 						}
-
-						if (whole && abs(start.GetPosition() - end.GetPosition()) + k_ >= minBlockSize_)
+					}
+				}*/
+				
+				std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > result;
+				for (auto & instanceSet : currentPath.Instances())
+				{
+					for (auto & instance : instanceSet)
+					{
+						if (currentPath.IsGoodInstance(instance))
 						{
-							result.push_back(std::make_pair(start, end));
+							bool whole = true;
+							auto start = instance.Front().SequentialIterator();
+							auto end = instance.Back().SequentialIterator();
+							for (; start != end && start.IsUsed(); ++start);
+							for (; start != end && end.IsUsed(); --end);
+							for (auto it = start; it != end.Next(); it++)
+							{
+								if (it.IsUsed())
+								{
+									whole = false;
+									break;
+								}
+							}
+
+							if (whole && abs(start.GetPosition() - end.GetPosition()) + k_ >= minBlockSize_)
+							{
+								result.push_back(std::make_pair(start, end));
+							}
 						}
 					}
-				}
-
+				}			
 
 				if (result.size() > 1)
 				{
@@ -503,20 +509,25 @@ namespace Sibelia
 					}
 				}
 
-				for (auto & instance : currentPath.Instances())
+				/*
+				for (auto & instanceSet : currentPath.Instances()
 				{
-					if (currentPath.IsGoodInstance(instance))
+					for (auto & instance : instanceSet)
 					{
-						if (instance.Front().IsPositiveStrand())
+						if (currentPath.IsGoodInstance(instance))
 						{
-//							storage_.UnlockRange(instance.Front(), instance.Back(), mutexAcquired);
-						}
-						else
-						{
-//							storage_.UnlockRange(instance.Back().Reverse(), instance.Front().Reverse(), mutexAcquired);
+							if (instance.Front().IsPositiveStrand())
+							{
+								//								storage_.UnlockRange(instance.Front(), instance.Back(), mutexAcquired);
+							}
+							else
+							{
+								//								storage_.UnlockRange(instance.Back().Reverse(), instance.Front().Reverse(), mutexAcquired);
+							}
 						}
 					}
 				}
+				*/
 			}
 
 			return ret;
@@ -559,49 +570,52 @@ namespace Sibelia
 		{			
 			NextVertex ret;
 			int32_t bestVid = 0;
-			for (auto inst : currentPath.Instances())
+			for (auto & instanceSet : currentPath.Instances())
 			{
-				auto origin = forward? inst.Back().SequentialIterator() : inst.Front().SequentialIterator();
-				auto it = forward ? origin.Next() : origin.Prev();
-				for (size_t d = 1; it.Valid() && (d < lookingDepth_ || abs(it.GetPosition() - inst.Back().GetPosition()) < maxBranchSize_); d++)
+				for (auto & inst : instanceSet)
 				{
-					int32_t vid = it.GetVertexId();
-					if (!currentPath.IsInPath(vid))
+					auto origin = forward ? inst.Back().SequentialIterator() : inst.Front().SequentialIterator();
+					auto it = forward ? origin.Next() : origin.Prev();
+					for (size_t d = 1; it.Valid() && (d < lookingDepth_ || abs(it.GetPosition() - inst.Back().GetPosition()) < maxBranchSize_); d++)
 					{
-						auto jt = data.find(vid);
-						auto diff = abs(it.GetPosition() - origin.GetPosition());
-						if (jt == data.end())
+						int32_t vid = it.GetVertexId();
+						if (!currentPath.IsInPath(vid))
 						{
-							jt = data.insert(std::make_pair(vid, NextVertex(diff, origin))).first;
+							auto jt = data.find(vid);
+							auto diff = abs(it.GetPosition() - origin.GetPosition());
+							if (jt == data.end())
+							{
+								jt = data.insert(std::make_pair(vid, NextVertex(diff, origin))).first;
+							}
+							else
+							{
+								jt->second.count++;
+								if (diff < jt->second.diff)
+								{
+									jt->second.diff = diff;
+									jt->second.origin = origin;
+								}
+							}
+
+							if (jt->second.count > ret.count || (jt->second.count == ret.count && jt->second.diff > ret.diff))
+							{
+								ret = jt->second;
+								bestVid = jt->first;
+							}
 						}
 						else
 						{
-							jt->second.count++;
-							if (diff < jt->second.diff)
-							{
-								jt->second.diff = diff;
-								jt->second.origin = origin;
-							}
+							break;
 						}
 
-						if (jt->second.count > ret.count || (jt->second.count == ret.count && jt->second.diff > ret.diff))
+						if (forward)
 						{
-							ret = jt->second;
-							bestVid = jt->first;
+							++it;
 						}
-					}
-					else
-					{
-						break;
-					}
-
-					if (forward)
-					{
-						++it;
-					}
-					else
-					{
-						--it;
+						else
+						{
+							--it;
+						}
 					}
 				}
 			}

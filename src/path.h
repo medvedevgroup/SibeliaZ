@@ -39,7 +39,12 @@ namespace Sibelia
 			int64_t minBlockSize,
 			int64_t maxFlankingSize,
 			bool checkConsistency = false) :
-			maxBranchSize_(maxBranchSize), minBlockSize_(minBlockSize), maxFlankingSize_(maxFlankingSize), storage_(&storage), distanceKeeper_(storage.GetVerticesNumber())
+			maxBranchSize_(maxBranchSize),
+			minBlockSize_(minBlockSize),
+			maxFlankingSize_(maxFlankingSize),
+			storage_(&storage),
+			distanceKeeper_(storage.GetVerticesNumber()),
+			instance_(storage.GetChrNumber())
 		{
 			
 		}
@@ -49,11 +54,16 @@ namespace Sibelia
 			origin_ = vid;			
 			distanceKeeper_.Set(vid, 0);
 			leftBodyFlank_ = rightBodyFlank_ = 0;
+			for (auto & instanceSet : instance_)
+			{
+				instanceSet.clear();
+			}
+
 			for (JunctionStorage::JunctionIterator it(vid); it.Valid(); ++it)
 			{				
 				if (!it.IsUsed())
 				{
-					instance_.insert(Instance(it, 0));
+					instance_[it.GetChrId()].insert(Instance(it, 0));
 				}
 			}
 		}
@@ -121,23 +131,13 @@ namespace Sibelia
 
 			bool Within(const JunctionStorage::JunctionIterator it) const
 			{
-				if (it.GetChrId() == front_.GetChrId())
-				{
-					int64_t left = min(front_.GetIndex(), back_.GetIndex());
-					int64_t right = max(front_.GetIndex(), back_.GetIndex());
-					return it.GetIndex() >= left && it.GetIndex() <= right;
-				}
-
-				return false;
+				int64_t left = min(front_.GetIndex(), back_.GetIndex());
+				int64_t right = max(front_.GetIndex(), back_.GetIndex());
+				return it.GetIndex() >= left && it.GetIndex() <= right;
 			}
 
 			bool operator < (const Instance & inst) const
-			{
-				if (front_.GetChrId() != inst.front_.GetChrId())
-				{
-					return front_.GetChrId() < inst.front_.GetChrId();
-				}
-
+			{				
 				int64_t idx1 = back_.IsPositiveStrand() ? back_.GetIndex() : front_.GetIndex();
 				int64_t idx2 = inst.back_.IsPositiveStrand() ? inst.back_.GetIndex() : inst.front_.GetIndex();
 				return idx1 < idx2;
@@ -186,7 +186,7 @@ namespace Sibelia
 			return origin_;
 		}		
 
-		const InstanceSet & Instances() const
+		const std::vector<InstanceSet> & Instances() const
 		{
 			return instance_;
 		}
@@ -228,10 +228,13 @@ namespace Sibelia
 
 		void DumpInstances(std::ostream & out) const
 		{
-			for (auto inst : instance_)
+			for (auto & instanceSet : instance_)
 			{
-				out << "(" << (inst.Front().IsPositiveStrand() ? '+' : '-') << inst.Front().GetChrId() << ' ' << inst.Front().GetIndex() << ' ' << inst.Back().GetIndex() << ')' << std::endl;
-			}
+				for (auto inst : instanceSet)
+				{
+					out << "(" << (inst.Front().IsPositiveStrand() ? '+' : '-') << inst.Front().GetChrId() << ' ' << inst.Front().GetIndex() << ' ' << inst.Back().GetIndex() << ')' << std::endl;
+				}
+			}			
 		}
 
 		void DumpPath(std::vector<Edge> & ret) const
@@ -250,7 +253,7 @@ namespace Sibelia
 
 		bool Compatible(const JunctionStorage::JunctionIterator & start, const JunctionStorage::JunctionIterator & end, const Edge & e) const
 		{
-			if (start.GetChrId() != end.GetChrId() || start.IsPositiveStrand() != end.IsPositiveStrand())
+			if (start.IsPositiveStrand() != end.IsPositiveStrand())
 			{
 				return false;
 			}
@@ -307,22 +310,23 @@ namespace Sibelia
 					bool newInstance = true;
 					if (!nowIt.IsUsed())
 					{
-						auto inst = path->instance_.upper_bound(Instance(nowIt, 0));
-						if (inst != path->instance_.end() && inst->Within(nowIt))
+						auto & instanceSet = path->instance_[nowIt.GetChrId()];
+						auto inst = instanceSet.upper_bound(Instance(nowIt, 0));
+						if (inst != instanceSet.end() && inst->Within(nowIt))
 						{
 							continue;
 						}
 
 						if (nowIt.IsPositiveStrand())
 						{
-							if (inst != path->instance_.end() && path->Compatible(nowIt, inst->Front(), e))
+							if (inst != instanceSet.end() && path->Compatible(nowIt, inst->Front(), e))
 							{
 								newInstance = false;
 							}
 						}
 						else
 						{
-							if (inst != path->instance_.begin() && path->Compatible(nowIt, (--inst)->Front(), e))
+							if (inst != instanceSet.begin() && path->Compatible(nowIt, (--inst)->Front(), e))
 							{
 								newInstance = false;
 							}
@@ -343,7 +347,7 @@ namespace Sibelia
 						}
 						else
 						{
-							path->instance_.insert(Instance(nowIt, distance));
+							instanceSet.insert(Instance(nowIt, distance));
 						}
 					}
 				}
@@ -371,23 +375,24 @@ namespace Sibelia
 				{
 					bool newInstance = true;
 					if (!nowIt.IsUsed())
-					{
-						auto inst = path->instance_.upper_bound(Instance(nowIt, 0));
-						if (inst != path->instance_.end() && inst->Within(nowIt))
+					{						
+						auto & instanceSet = path->instance_[nowIt.GetChrId()];
+						auto inst = instanceSet.upper_bound(Instance(nowIt, 0));
+						if (inst != instanceSet.end() && inst->Within(nowIt))
 						{
 							continue;
 						}
 
 						if (nowIt.IsPositiveStrand())
 						{
-							if (inst != path->instance_.begin() && path->Compatible((--inst)->Back(), nowIt, e))
+							if (inst != instanceSet.begin() && path->Compatible((--inst)->Back(), nowIt, e))
 							{
 								newInstance = false;
 							}
 						}
 						else
 						{
-							if (inst != path->instance_.end() && path->Compatible(inst->Back(), nowIt, e))
+							if (inst != instanceSet.end() && path->Compatible(inst->Back(), nowIt, e))
 							{
 								newInstance = false;
 							}
@@ -408,7 +413,7 @@ namespace Sibelia
 						}
 						else
 						{
-							path->instance_.insert(Instance(nowIt, distance));
+							instanceSet.insert(Instance(nowIt, distance));
 						}
 					}
 				}
@@ -459,12 +464,15 @@ namespace Sibelia
 			int64_t length;
 			int64_t ret = 0;
 			int64_t middlePath = MiddlePathLength();
-			for (auto & inst : instance_)
+			for(auto & instanceSet : instance_)
 			{
-				InstanceScore(inst, length, score, middlePath);
-				if (!final || length >= minBlockSize_)
+				for (auto & inst : instanceSet)
 				{
-					ret += score;
+					InstanceScore(inst, length, score, middlePath);
+					if (!final || length >= minBlockSize_)
+					{
+						ret += score;
+					}
 				}
 			}
 
@@ -474,11 +482,14 @@ namespace Sibelia
 		int64_t GoodInstances() const
 		{
 			int64_t ret = 0;
-			for (auto & it : instance_)
+			for (auto & instanceSet : instance_)
 			{
-				if (IsGoodInstance(it))
+				for (auto & inst : instanceSet)
 				{
-					ret++;
+					if (IsGoodInstance(inst))
+					{
+						ret++;
+					}
 				}
 			}
 
@@ -513,14 +524,16 @@ namespace Sibelia
 
 			leftBody_.clear();
 			rightBody_.clear();
-			instance_.clear();
 			distanceKeeper_.Unset(origin_);			
 			for (int64_t v1 = -storage_->GetVerticesNumber() + 1; v1 < storage_->GetVerticesNumber(); v1++)
 			{
 				assert(!distanceKeeper_.IsSet(v1));
 			}
 
-			instance_.clear();
+			for (auto & instanceSet : instance_)
+			{
+				instanceSet.clear();
+			}
 		}
 
 	private:
@@ -528,7 +541,7 @@ namespace Sibelia
 
 		std::vector<Point> leftBody_;
 		std::vector<Point> rightBody_;
-		InstanceSet instance_;
+		std::vector<InstanceSet> instance_;
 
 		int64_t origin_;
 		int64_t minBlockSize_;

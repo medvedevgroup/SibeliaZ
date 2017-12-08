@@ -441,25 +441,26 @@ namespace Sibelia
 		{
 			bool ret = false;
 			if (currentPath.Score(true) > 0 && currentPath.MiddlePathLength() >= minBlockSize_ && currentPath.GoodInstances() > 1)
-			{
-				/*
+			{				
 				for (auto & instanceSet : currentPath.Instances())
 				{
-					for (auto & instance instanceSet)
+					for (auto & instance : instanceSet)
 					{
 						if (currentPath.IsGoodInstance(instance))
 						{
 							if (instance.Front().IsPositiveStrand())
 							{
-								//							storage_.LockRange(instance.Front(), instance.Back(), mutexAcquired);
+								storage_.LockRange(instance.Front().SequentialIterator(),
+									instance.Back().SequentialIterator(), mutexAcquired);
 							}
 							else
 							{
-								//							storage_.LockRange(instance.Back().Reverse(), instance.Front().Reverse(), mutexAcquired);
+								storage_.LockRange(instance.Back().SequentialIterator().Reverse(),
+									instance.Front().SequentialIterator().Reverse(), mutexAcquired);
 							}
 						}
 					}
-				}*/
+				}
 				
 				std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > result;
 				for (auto & instanceSet : currentPath.Instances())
@@ -509,8 +510,8 @@ namespace Sibelia
 					}
 				}
 
-				/*
-				for (auto & instanceSet : currentPath.Instances()
+				
+				for (auto & instanceSet : currentPath.Instances())
 				{
 					for (auto & instance : instanceSet)
 					{
@@ -518,16 +519,18 @@ namespace Sibelia
 						{
 							if (instance.Front().IsPositiveStrand())
 							{
-								//								storage_.UnlockRange(instance.Front(), instance.Back(), mutexAcquired);
+								storage_.UnlockRange(instance.Front().SequentialIterator(),
+									instance.Back().SequentialIterator(), mutexAcquired);
 							}
 							else
 							{
-								//								storage_.UnlockRange(instance.Back().Reverse(), instance.Front().Reverse(), mutexAcquired);
+								storage_.UnlockRange(instance.Back().SequentialIterator().Reverse(),
+									instance.Front().SequentialIterator().Reverse(), mutexAcquired);
 							}
 						}
 					}
 				}
-				*/
+				
 			}
 
 			return ret;
@@ -579,7 +582,7 @@ namespace Sibelia
 					for (size_t d = 1; it.Valid() && (d < lookingDepth_ || abs(it.GetPosition() - inst.Back().GetPosition()) < maxBranchSize_); d++)
 					{
 						int32_t vid = it.GetVertexId();
-						if (!currentPath.IsInPath(vid))
+						if (!currentPath.IsInPath(vid) && !it.IsUsed())
 						{
 							auto jt = data.find(vid);
 							auto diff = abs(it.GetPosition() - origin.GetPosition());

@@ -486,7 +486,7 @@ namespace Sibelia
 
 		};
 
-		void LockRange(JunctionIterator start, JunctionIterator end, std::vector<std::vector<char > > & mutexAcquired)
+		void LockRange(JunctionSequentialIterator start, JunctionSequentialIterator end, std::vector<std::vector<char > > & mutexAcquired)
 		{
 			do
 			{
@@ -501,7 +501,7 @@ namespace Sibelia
 			} while (start++ != end);
 		}
 
-		void UnlockRange(JunctionIterator start, JunctionIterator end, std::vector<std::vector<char > > & mutexAcquired)
+		void UnlockRange(JunctionSequentialIterator start, JunctionSequentialIterator end, std::vector<std::vector<char > > & mutexAcquired)
 		{
 			do
 			{

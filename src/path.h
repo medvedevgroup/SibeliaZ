@@ -226,6 +226,21 @@ namespace Sibelia
 			return origin_;
 		}
 
+		size_t RightSize() const
+		{
+			return rightBody_.size();
+		}
+
+		int64_t RightVertex(size_t idx) const
+		{
+			if (idx == 0)
+			{
+				return origin_;
+			}
+			
+			return rightBody_[idx - 1].GetEdge().GetEndVertex();
+		}
+
 		void DumpInstances(std::ostream & out) const
 		{
 			for (auto & instanceSet : instance_)

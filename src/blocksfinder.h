@@ -579,7 +579,7 @@ namespace Sibelia
 				{
 					auto origin = forward ? inst.Back().SequentialIterator() : inst.Front().SequentialIterator();
 					auto it = forward ? origin.Next() : origin.Prev();
-					for (size_t d = 1; it.Valid() && (d < lookingDepth_ || abs(it.GetPosition() - inst.Back().GetPosition()) < maxBranchSize_); d++)
+					for (size_t d = 1; it.Valid() && (d < lookingDepth_ || abs(it.GetPosition() - origin.GetPosition()) < maxBranchSize_); d++)
 					{
 						int32_t vid = it.GetVertexId();
 						if (!currentPath.IsInPath(vid) && !it.IsUsed())
@@ -626,7 +626,60 @@ namespace Sibelia
 			data.clear();
 			return std::make_pair(bestVid, ret);	
 		}
+		/*
+		std::pair<int32_t, NextVertex> MostPopularVertexByPath(Path & currentPath, std::unordered_map<int32_t, NextVertex> & data)
+		{
+			size_t end = min(4, currentPath.RightSize());
+			for (size_t i = 0; i < end; i++)
+			{
+				for (JunctionStorage::JunctionIterator origin(currentPath.RightVertex[currentPath.RightSize() - end]); origin.Valid(); origin++)
+				{
+					auto it = forward ? origin.Next() : origin.Prev();
+					for (size_t d = 1; it.Valid() && (d < lookingDepth_ || abs(it.GetPosition() - inst.Back().GetPosition()) < maxBranchSize_); d++)
+					{
+						int32_t vid = it.GetVertexId();
+						if (!currentPath.IsInPath(vid) && !it.IsUsed())
+						{
+							auto jt = data.find(vid);
+							auto diff = abs(it.GetPosition() - origin.GetPosition());
+							if (jt == data.end())
+							{
+								jt = data.insert(std::make_pair(vid, NextVertex(diff, origin))).first;
+							}
+							else
+							{
+								jt->second.count++;
+								if (diff < jt->second.diff)
+								{
+									jt->second.diff = diff;
+									jt->second.origin = origin;
+								}
+							}
 
+							if (jt->second.count > ret.count || (jt->second.count == ret.count && jt->second.diff > ret.diff))
+							{
+								ret = jt->second;
+								bestVid = jt->first;
+							}
+						}
+						else
+						{
+							break;
+						}
+
+						if (forward)
+						{
+							++it;
+						}
+						else
+						{
+							--it;
+						}
+					}
+				}
+			}
+		}
+		*/
 
 		void ExtendPathDijkstra(Path & currentPath, std::unordered_map<int32_t, NextVertex> & data)
 		{	

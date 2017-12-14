@@ -228,7 +228,7 @@ namespace Sibelia
 
 		size_t RightSize() const
 		{
-			return rightBody_.size();
+			return rightBody_.size() + 1;
 		}
 
 		int64_t RightVertex(size_t idx) const
@@ -239,6 +239,21 @@ namespace Sibelia
 			}
 			
 			return rightBody_[idx - 1].GetEdge().GetEndVertex();
+		}
+
+		size_t LeftSize() const
+		{
+			return leftBody_.size() + 1;
+		}
+
+		int64_t LeftVertex(size_t idx) const
+		{
+			if (idx == 0)
+			{
+				return origin_;
+			}
+
+			return leftBody_[idx - 1].GetEdge().GetStartVertex();
 		}
 
 		void DumpInstances(std::ostream & out) const
@@ -523,7 +538,7 @@ namespace Sibelia
 		{			
 			length = abs(inst.Front().GetPosition() - inst.Back().GetPosition());
 			score = length - (middlePath - length);
-		}
+		}		
 
 		void Clear()
 		{

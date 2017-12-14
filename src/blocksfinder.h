@@ -624,18 +624,23 @@ namespace Sibelia
 			}
 
 			data.clear();
-			return std::make_pair(bestVid, ret);	
+			return std::make_pair(bestVid, ret);
 		}
-		/*
-		std::pair<int32_t, NextVertex> MostPopularVertexByPath(Path & currentPath, std::unordered_map<int32_t, NextVertex> & data)
+		
+		std::pair<int32_t, NextVertex> MostPopularVertexByPath(Path & currentPath, bool forward, std::unordered_map<int32_t, NextVertex> & data)
 		{
-			size_t end = min(4, currentPath.RightSize());
-			for (size_t i = 0; i < end; i++)
+			NextVertex ret;
+			int32_t bestVid = 0;
+			auto vertex = forward ? &Path::RightVertex : &Path::LeftVertex;
+			size_t size = forward ? currentPath.RightSize() : currentPath.LeftSize();
+			size_t end = min(1, size);
+			for (size_t i = 1; i <= end; i++)
 			{
-				for (JunctionStorage::JunctionIterator origin(currentPath.RightVertex[currentPath.RightSize() - end]); origin.Valid(); origin++)
+				for (JunctionStorage::JunctionIterator nowIt((currentPath.*vertex)(size - i)); nowIt.Valid(); nowIt++)
 				{
+					auto origin = nowIt.SequentialIterator();
 					auto it = forward ? origin.Next() : origin.Prev();
-					for (size_t d = 1; it.Valid() && (d < lookingDepth_ || abs(it.GetPosition() - inst.Back().GetPosition()) < maxBranchSize_); d++)
+					for (size_t d = 1; it.Valid() && (d < lookingDepth_ || abs(it.GetPosition() - origin.GetPosition()) < maxBranchSize_); d++)
 					{
 						int32_t vid = it.GetVertexId();
 						if (!currentPath.IsInPath(vid) && !it.IsUsed())
@@ -678,13 +683,15 @@ namespace Sibelia
 					}
 				}
 			}
-		}
-		*/
+
+			data.clear();
+			return std::make_pair(bestVid, ret);
+		}		
 
 		void ExtendPathDijkstra(Path & currentPath, std::unordered_map<int32_t, NextVertex> & data)
 		{	
 			int64_t origin = currentPath.Origin();
-			auto nextForwardVid = MostPopularVertex(currentPath, true, data);
+			auto nextForwardVid = MostPopularVertexByPath(currentPath, true, data);
 			if (nextForwardVid.first != 0)
 			{				
 				for(auto it = nextForwardVid.second.origin; it.GetVertexId() != nextForwardVid.first; ++it)
@@ -704,7 +711,7 @@ namespace Sibelia
 				}
 			}
 
-			auto nextBackwardVid = MostPopularVertex(currentPath, false, data);
+			auto nextBackwardVid = MostPopularVertexByPath(currentPath, false, data);
 			if (nextBackwardVid.first != 0)
 			{				
 				for (auto it = nextBackwardVid.second.origin; it.GetVertexId() != nextBackwardVid.first; --it)

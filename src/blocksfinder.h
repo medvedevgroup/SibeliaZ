@@ -198,7 +198,8 @@ namespace Sibelia
 
 			void operator()(tbb::blocked_range<size_t> & range) const
 			{
-				std::unordered_map<int32_t, NextVertex> data;
+				std::vector<uint32_t> data;
+				std::vector<uint16_t> count(finder.storage_.GetVerticesNumber() * 2 + 1, 0);
 				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.flankingThreshold_);
 				std::vector<std::vector<char > > mutexAcquired(finder.storage_.GetChrNumber(), std::vector<char>(finder.storage_.MutexNumber(), 0));
 				for (size_t i = range.begin(); i != range.end(); i++)
@@ -220,7 +221,7 @@ namespace Sibelia
 						while (true)
 						{
 							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
-							finder.ExtendPathDijkstra(currentPath, data);
+							finder.ExtendPathDijkstra(currentPath, count, data);
 							if (currentPath.Score(finder.scoreFullChains_) <= prevBestScore)
 							{
 								break;
@@ -569,7 +570,7 @@ namespace Sibelia
 		};
 
 
-		std::pair<int32_t, NextVertex> MostPopularVertex(const Path & currentPath, bool forward, std::unordered_map<int32_t, NextVertex> & data)
+		std::pair<int32_t, NextVertex> MostPopularVertex(const Path & currentPath, bool forward, std::vector<uint16_t> & count, std::vector<uint32_t> & data)
 		{			
 			NextVertex ret;
 			int32_t bestVid = 0;
@@ -584,26 +585,20 @@ namespace Sibelia
 						int32_t vid = it.GetVertexId();
 						if (!currentPath.IsInPath(vid) && !it.IsUsed())
 						{
-							auto jt = data.find(vid);
-							auto diff = abs(it.GetPosition() - origin.GetPosition());
-							if (jt == data.end())
+							auto adjVid = vid + storage_.GetVerticesNumber();
+							if (count[adjVid] == 0)
 							{
-								jt = data.insert(std::make_pair(vid, NextVertex(diff, origin))).first;
-							}
-							else
-							{
-								jt->second.count++;
-								if (diff < jt->second.diff)
-								{
-									jt->second.diff = diff;
-									jt->second.origin = origin;
-								}
+								data.push_back(adjVid);
 							}
 
-							if (jt->second.count > ret.count || (jt->second.count == ret.count && jt->second.diff > ret.diff))
+							count[adjVid] = min(UINT16_MAX, count[adjVid] + 1);
+							auto diff = abs(it.GetPosition() - origin.GetPosition());
+							if (count[adjVid] > ret.count || (count[adjVid] == ret.count && diff > ret.diff))
 							{
-								ret = jt->second;
-								bestVid = jt->first;
+								ret.diff = diff;
+								ret.origin = origin;
+								ret.count = count[adjVid];
+								bestVid = vid;
 							}
 						}
 						else
@@ -623,75 +618,19 @@ namespace Sibelia
 				}
 			}
 
-			data.clear();
-			return std::make_pair(bestVid, ret);
-		}
-		
-		std::pair<int32_t, NextVertex> MostPopularVertexByPath(Path & currentPath, bool forward, std::unordered_map<int32_t, NextVertex> & data)
-		{
-			NextVertex ret;
-			int32_t bestVid = 0;
-			auto vertex = forward ? &Path::RightVertex : &Path::LeftVertex;
-			size_t size = forward ? currentPath.RightSize() : currentPath.LeftSize();
-			size_t end = min(1, size);
-			for (size_t i = 1; i <= end; i++)
+			for (auto vid : data)
 			{
-				for (JunctionStorage::JunctionIterator nowIt((currentPath.*vertex)(size - i)); nowIt.Valid(); nowIt++)
-				{
-					auto origin = nowIt.SequentialIterator();
-					auto it = forward ? origin.Next() : origin.Prev();
-					for (size_t d = 1; it.Valid() && (d < lookingDepth_ || abs(it.GetPosition() - origin.GetPosition()) < maxBranchSize_); d++)
-					{
-						int32_t vid = it.GetVertexId();
-						if (!currentPath.IsInPath(vid) && !it.IsUsed())
-						{
-							auto jt = data.find(vid);
-							auto diff = abs(it.GetPosition() - origin.GetPosition());
-							if (jt == data.end())
-							{
-								jt = data.insert(std::make_pair(vid, NextVertex(diff, origin))).first;
-							}
-							else
-							{
-								jt->second.count++;
-								if (diff < jt->second.diff)
-								{
-									jt->second.diff = diff;
-									jt->second.origin = origin;
-								}
-							}
-
-							if (jt->second.count > ret.count || (jt->second.count == ret.count && jt->second.diff > ret.diff))
-							{
-								ret = jt->second;
-								bestVid = jt->first;
-							}
-						}
-						else
-						{
-							break;
-						}
-
-						if (forward)
-						{
-							++it;
-						}
-						else
-						{
-							--it;
-						}
-					}
-				}
+				count[vid] = 0;
 			}
 
 			data.clear();
 			return std::make_pair(bestVid, ret);
-		}		
+		}				
 
-		void ExtendPathDijkstra(Path & currentPath, std::unordered_map<int32_t, NextVertex> & data)
+		void ExtendPathDijkstra(Path & currentPath, std::vector<uint16_t> & count, std::vector<uint32_t> & data)
 		{	
 			int64_t origin = currentPath.Origin();
-			auto nextForwardVid = MostPopularVertexByPath(currentPath, true, data);
+			auto nextForwardVid = MostPopularVertex(currentPath, true, count, data);
 			if (nextForwardVid.first != 0)
 			{				
 				for(auto it = nextForwardVid.second.origin; it.GetVertexId() != nextForwardVid.first; ++it)
@@ -711,7 +650,7 @@ namespace Sibelia
 				}
 			}
 
-			auto nextBackwardVid = MostPopularVertexByPath(currentPath, false, data);
+			auto nextBackwardVid = MostPopularVertex(currentPath, false, count, data);
 			if (nextBackwardVid.first != 0)
 			{				
 				for (auto it = nextBackwardVid.second.origin; it.GetVertexId() != nextBackwardVid.first; --it)

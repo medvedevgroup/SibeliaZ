@@ -559,8 +559,14 @@ namespace Sibelia
 		uint64_t GetInstancesCount(int64_t vertexId) const
 		{
 			return vertex_[abs(vertexId)].size();
-		}
+		}		
 
+		size_t MutexNumber() const
+		{
+			return 1 << mutexBits_;
+		}
+		
+		/*
 		int64_t IngoingEdgesNumber(int64_t vertexId) const
 		{
 			return ingoingEdge_[vertexId + GetVerticesNumber()].size();
@@ -570,7 +576,7 @@ namespace Sibelia
 		{
 			return outgoingEdge_[vertexId + GetVerticesNumber()].size();
 		}
-		
+
 		Edge IngoingEdge(int64_t vertexId, int64_t idx) const
 		{
 			return ingoingEdge_[vertexId + GetVerticesNumber()][idx];
@@ -629,12 +635,7 @@ namespace Sibelia
 			std::sort(list.begin(), list.end());
 			list.erase(std::unique(list.begin(), list.end()), list.end());
 		}
-
-		size_t MutexNumber() const
-		{
-			return 1 << mutexBits_;
-		}
-
+				
 		void OutgoingEdges(int64_t vertexId, std::vector<Edge> & list) const
 		{
 			list.clear();
@@ -683,7 +684,7 @@ namespace Sibelia
 
 			std::sort(list.begin(), list.end());
 			list.erase(std::unique(list.begin(), list.end()), list.end());
-		}
+		}*/
 
 		void Init(const std::string & inFileName, const std::string & genomesFileName, int64_t threads)
 		{
@@ -748,6 +749,7 @@ namespace Sibelia
 				chrSizeBits_[i] = max(int64_t(0), chrSizeBits_[i] - mutexBits_);
 			}
 
+			/*
 			int64_t vertices = GetVerticesNumber();
 			ingoingEdge_.resize(vertices * 2 + 1);
 			outgoingEdge_.resize(vertices * 2 + 1);
@@ -755,7 +757,7 @@ namespace Sibelia
 			{
 				IngoingEdges(vertexId, ingoingEdge_[vertexId + vertices]);
 				OutgoingEdges(vertexId, outgoingEdge_[vertexId + vertices]);
-			}
+			}*/
 		}					
 
 		JunctionStorage() {}
@@ -782,8 +784,8 @@ namespace Sibelia
 
 		int64_t k_;
 		int64_t mutexBits_;
-		std::vector<std::vector<Edge> > ingoingEdge_;
-		std::vector<std::vector<Edge> > outgoingEdge_;
+		//std::vector<std::vector<Edge> > ingoingEdge_;
+		//std::vector<std::vector<Edge> > outgoingEdge_;
 		std::vector<std::string> sequence_;
 		std::vector<std::string> sequenceDescription_;		
 		std::vector<int64_t> chrSizeBits_;

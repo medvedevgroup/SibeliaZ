@@ -309,6 +309,7 @@ namespace Sibelia
 			out << "}" << std::endl;
 		}
 
+		/*
 		void DumpLight(std::ostream & out) const
 		{
 			out << "digraph G\n{\nrankdir = LR" << std::endl;
@@ -338,6 +339,7 @@ namespace Sibelia
 
 			out << "}" << std::endl;
 		}
+		*/
 
 		void ListBlocksSequences(const BlockList & block, const std::string & fileName) const
 		{

@@ -201,7 +201,6 @@ namespace Sibelia
 				std::vector<uint32_t> data;
 				std::vector<uint32_t> count(finder.storage_.GetVerticesNumber() * 2 + 1, 0);
 				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.flankingThreshold_);
-				std::vector<std::vector<char > > mutexAcquired(finder.storage_.GetChrNumber(), std::vector<char>(finder.storage_.MutexNumber(), 0));
 				for (size_t i = range.begin(); i != range.end(); i++)
 				{
 					if (finder.count_++ % 1000 == 0)
@@ -228,7 +227,7 @@ namespace Sibelia
 							}
 						}
 
-						if (!finder.TryFinalizeBlock(currentPath, mutexAcquired, std::cerr))
+						if (!finder.TryFinalizeBlock(currentPath, std::cerr))
 						{
 							explore = false;
 						}
@@ -308,38 +307,6 @@ namespace Sibelia
 
 			out << "}" << std::endl;
 		}
-
-		/*
-		void DumpLight(std::ostream & out) const
-		{
-			out << "digraph G\n{\nrankdir = LR" << std::endl;
-			std::vector<Edge> total;
-			for (int64_t i = -storage_.GetVerticesNumber() + 1; i < storage_.GetVerticesNumber(); i++)
-			{
-				for (size_t j = 0; j < storage_.IngoingEdgesNumber(i); j++)
-				{
-					Edge e = storage_.IngoingEdge(i, j);
-					total.push_back(e);
-				}
-
-				for (size_t j = 0; j < storage_.OutgoingEdgesNumber(i); j++)
-				{
-					Edge e = storage_.OutgoingEdge(i, j);
-					total.push_back(e);
-				}
-			}
-
-			std::sort(total.begin(), total.end());
-			total.erase(std::unique(total.begin(), total.end()), total.end());
-
-			for (Edge & e : total)
-			{
-				out << e.GetStartVertex() << " -> " << e.GetEndVertex() << "[label=\"" << e.GetChar() << ", " << e.GetCapacity() << "\"]" << std::endl;
-			}
-
-			out << "}" << std::endl;
-		}
-		*/
 
 		void ListBlocksSequences(const BlockList & block, const std::string & fileName) const
 		{
@@ -440,31 +407,34 @@ namespace Sibelia
 		void ListChrs(std::ostream & out) const;
 
 		template<class P>
-		bool TryFinalizeBlock(P & currentPath, std::vector<std::vector<char > > & mutexAcquired, std::ostream & log)
+		bool TryFinalizeBlock(P & currentPath, std::ostream & log)
 		{
 			bool ret = false;
 			if (currentPath.Score(true) > 0 && currentPath.MiddlePathLength() >= minBlockSize_ && currentPath.GoodInstances() > 1)
-			{				
-				for (auto & instanceSet : currentPath.Instances())
+			{
 				{
-					for (auto & instance : instanceSet)
+					std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
+					for (auto & instanceSet : currentPath.Instances())
 					{
-						if (currentPath.IsGoodInstance(instance))
+						for (auto & instance : instanceSet)
 						{
-							if (instance.Front().IsPositiveStrand())
+							if (currentPath.IsGoodInstance(instance))
 							{
-								storage_.LockRange(instance.Front().SequentialIterator(),
-									instance.Back().SequentialIterator(), mutexAcquired);
-							}
-							else
-							{
-								storage_.LockRange(instance.Back().SequentialIterator().Reverse(),
-									instance.Front().SequentialIterator().Reverse(), mutexAcquired);
+								if (instance.Front().IsPositiveStrand())
+								{
+									storage_.LockRange(instance.Front().SequentialIterator(),
+										instance.Back().SequentialIterator(), idx);
+								}
+								else
+								{
+									storage_.LockRange(instance.Back().SequentialIterator().Reverse(),
+										instance.Front().SequentialIterator().Reverse(), idx);
+								}
 							}
 						}
 					}
 				}
-				
+
 				std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > result;
 				for (auto & instanceSet : currentPath.Instances())
 				{
@@ -492,12 +462,12 @@ namespace Sibelia
 							}
 						}
 					}
-				}			
+				}
 
 				if (result.size() > 1)
 				{
 					ret = true;
-					int64_t currentBlock = ++blocksFound_;				
+					int64_t currentBlock = ++blocksFound_;
 					int64_t instanceCount = 0;
 					for (auto & instance : result)
 					{
@@ -513,27 +483,30 @@ namespace Sibelia
 					}
 				}
 
-				
-				for (auto & instanceSet : currentPath.Instances())
+
 				{
-					for (auto & instance : instanceSet)
+					std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
+					for (auto & instanceSet : currentPath.Instances())
 					{
-						if (currentPath.IsGoodInstance(instance))
+						for (auto & instance : instanceSet)
 						{
-							if (instance.Front().IsPositiveStrand())
+							if (currentPath.IsGoodInstance(instance))
 							{
-								storage_.UnlockRange(instance.Front().SequentialIterator(),
-									instance.Back().SequentialIterator(), mutexAcquired);
-							}
-							else
-							{
-								storage_.UnlockRange(instance.Back().SequentialIterator().Reverse(),
-									instance.Front().SequentialIterator().Reverse(), mutexAcquired);
+								if (instance.Front().IsPositiveStrand())
+								{
+									storage_.UnlockRange(instance.Front().SequentialIterator(),
+										instance.Back().SequentialIterator(), idx);
+								}
+								else
+								{
+									storage_.UnlockRange(instance.Back().SequentialIterator().Reverse(),
+										instance.Front().SequentialIterator().Reverse(), idx);
+								}
 							}
 						}
 					}
+
 				}
-				
 			}
 
 			return ret;

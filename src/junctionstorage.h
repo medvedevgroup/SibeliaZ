@@ -491,30 +491,32 @@ namespace Sibelia
 
 		};
 
-		void LockRange(JunctionSequentialIterator start, JunctionSequentialIterator end, std::vector<std::vector<char > > & mutexAcquired)
+		void LockRange(JunctionSequentialIterator start, JunctionSequentialIterator end, std::pair<size_t, size_t> & prevIdx)
 		{
 			do
 			{
 				size_t idx = MutexIdx(start.GetChrId(), start.GetIndex());
-				if (!mutexAcquired[start.GetChrId()][idx])
+				if (start.GetChrId() != prevIdx.first || idx != prevIdx.second)
 				{
 					mutex_[start.GetChrId()][idx].lock();
-					mutexAcquired[start.GetChrId()][idx] = true;
+					prevIdx.first = start.GetChrId();
+					prevIdx.second = idx;
 				}
 				
 				
 			} while (start++ != end);
 		}
 
-		void UnlockRange(JunctionSequentialIterator start, JunctionSequentialIterator end, std::vector<std::vector<char > > & mutexAcquired)
+		void UnlockRange(JunctionSequentialIterator start, JunctionSequentialIterator end, std::pair<size_t, size_t> & prevIdx)
 		{
 			do
 			{
 				size_t idx = MutexIdx(start.GetChrId(), start.GetIndex());
-				if (mutexAcquired[start.GetChrId()][idx])
+				if (start.GetChrId() != prevIdx.first || idx != prevIdx.second)
 				{
 					mutex_[start.GetChrId()][idx].unlock();
-					mutexAcquired[start.GetChrId()][idx] = false;
+					prevIdx.first = start.GetChrId();
+					prevIdx.second = idx;
 				}
 				
 

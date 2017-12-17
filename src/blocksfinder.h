@@ -267,7 +267,7 @@ namespace Sibelia
 				}
 			}
 
-			//std::random_shuffle(shuffle.begin(), shuffle.end());				
+			std::random_shuffle(shuffle.begin(), shuffle.end());				
 			time_t mark = time(0);
 			count_ = 0;
 			tbb::task_scheduler_init init(threads);

@@ -763,7 +763,7 @@ namespace Sibelia
 			
 			mutex_.resize(GetChrNumber());
 			chrSizeBits_.resize(GetChrNumber(), 1);
-			for (mutexBits_ = 3; (1 << mutexBits_) < threads * 8; mutexBits_++);
+			for (mutexBits_ = 3; (1 << mutexBits_) < threads * (1 << 10); mutexBits_++);
 			for (size_t i = 0; i < mutex_.size(); i++) 
 			{
 				mutex_[i].reset(new tbb::mutex[1 << mutexBits_]);

@@ -199,7 +199,7 @@ namespace Sibelia
 			void operator()(tbb::blocked_range<size_t> & range) const
 			{
 				std::vector<uint32_t> data;
-				std::vector<uint16_t> count(finder.storage_.GetVerticesNumber() * 2 + 1, 0);
+				std::vector<uint32_t> count(finder.storage_.GetVerticesNumber() * 2 + 1, 0);
 				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.flankingThreshold_);
 				std::vector<std::vector<char > > mutexAcquired(finder.storage_.GetChrNumber(), std::vector<char>(finder.storage_.MutexNumber(), 0));
 				for (size_t i = range.begin(); i != range.end(); i++)
@@ -572,7 +572,7 @@ namespace Sibelia
 		};
 
 
-		std::pair<int32_t, NextVertex> MostPopularVertex(const Path & currentPath, bool forward, std::vector<uint16_t> & count, std::vector<uint32_t> & data)
+		std::pair<int32_t, NextVertex> MostPopularVertex(const Path & currentPath, bool forward, std::vector<uint32_t> & count, std::vector<uint32_t> & data)
 		{			
 			NextVertex ret;
 			int32_t bestVid = 0;
@@ -593,7 +593,7 @@ namespace Sibelia
 								data.push_back(adjVid);
 							}
 
-							count[adjVid] = min(UINT16_MAX, count[adjVid] + 1);
+							count[adjVid]++;
 							auto diff = abs(it.GetPosition() - origin.GetPosition());
 							if (count[adjVid] > ret.count || (count[adjVid] == ret.count && diff > ret.diff))
 							{
@@ -629,7 +629,7 @@ namespace Sibelia
 			return std::make_pair(bestVid, ret);
 		}				
 
-		void ExtendPathDijkstra(Path & currentPath, std::vector<uint16_t> & count, std::vector<uint32_t> & data)
+		void ExtendPathDijkstra(Path & currentPath, std::vector<uint32_t> & count, std::vector<uint32_t> & data)
 		{	
 			int64_t origin = currentPath.Origin();
 			auto nextForwardVid = MostPopularVertex(currentPath, true, count, data);

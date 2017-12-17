@@ -405,7 +405,6 @@ namespace Sibelia
 		void ListChromosomesAsPermutations(const BlockList & block, const std::string & fileName) const;
 		void TryOpenFile(const std::string & fileName, std::ofstream & stream) const;
 		void ListChrs(std::ostream & out) const;
-
 		template<class P>
 		bool TryFinalizeBlock(P & currentPath, std::ostream & log)
 		{
@@ -549,46 +548,45 @@ namespace Sibelia
 		{			
 			NextVertex ret;
 			int32_t bestVid = 0;
-			for (auto & instanceSet : currentPath.Instances())
+			auto & instances = currentPath.AllInstances();
+			for (auto instIt : instances)
 			{
-				for (auto & inst : instanceSet)
+				auto & inst = *instIt;
+				auto origin = forward ? inst.Back().SequentialIterator() : inst.Front().SequentialIterator();
+				auto it = forward ? origin.Next() : origin.Prev();
+				for (size_t d = 1; it.Valid() && (d < lookingDepth_ || abs(it.GetPosition() - origin.GetPosition()) < maxBranchSize_); d++)
 				{
-					auto origin = forward ? inst.Back().SequentialIterator() : inst.Front().SequentialIterator();
-					auto it = forward ? origin.Next() : origin.Prev();
-					for (size_t d = 1; it.Valid() && (d < lookingDepth_ || abs(it.GetPosition() - origin.GetPosition()) < maxBranchSize_); d++)
+					int32_t vid = it.GetVertexId();
+					if (!currentPath.IsInPath(vid) && !it.IsUsed())
 					{
-						int32_t vid = it.GetVertexId();
-						if (!currentPath.IsInPath(vid) && !it.IsUsed())
+						auto adjVid = vid + storage_.GetVerticesNumber();
+						if (count[adjVid] == 0)
 						{
-							auto adjVid = vid + storage_.GetVerticesNumber();
-							if (count[adjVid] == 0)
-							{
-								data.push_back(adjVid);
-							}
-
-							count[adjVid]++;
-							auto diff = abs(it.GetPosition() - origin.GetPosition());
-							if (count[adjVid] > ret.count || (count[adjVid] == ret.count && diff > ret.diff))
-							{
-								ret.diff = diff;
-								ret.origin = origin;
-								ret.count = count[adjVid];
-								bestVid = vid;
-							}
-						}
-						else
-						{
-							break;
+							data.push_back(adjVid);
 						}
 
-						if (forward)
+						count[adjVid]++;
+						auto diff = abs(it.GetPosition() - origin.GetPosition());
+						if (count[adjVid] > ret.count || (count[adjVid] == ret.count && diff > ret.diff))
 						{
-							++it;
+							ret.diff = diff;
+							ret.origin = origin;
+							ret.count = count[adjVid];
+							bestVid = vid;
 						}
-						else
-						{
-							--it;
-						}
+					}
+					else
+					{
+						break;
+					}
+
+					if (forward)
+					{
+						++it;
+					}
+					else
+					{
+						--it;
 					}
 				}
 			}

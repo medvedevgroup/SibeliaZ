@@ -63,7 +63,7 @@ namespace Sibelia
 			{				
 				if (!it.IsUsed())
 				{
-					instance_[it.GetChrId()].insert(Instance(it, 0));
+					allInstances_.push_back(instance_[it.GetChrId()].insert(Instance(it, 0)));
 				}
 			}
 		}
@@ -189,6 +189,11 @@ namespace Sibelia
 		const std::vector<InstanceSet> & Instances() const
 		{
 			return instance_;
+		}
+
+		const std::vector<InstanceSet::iterator> & AllInstances() const
+		{
+			return allInstances_;
 		}
 
 		int64_t LeftDistance() const
@@ -377,7 +382,7 @@ namespace Sibelia
 						}
 						else
 						{
-							instanceSet.insert(Instance(nowIt, distance));
+							path->allInstances_.push_back(instanceSet.insert(Instance(nowIt, distance)));
 						}
 					}
 				}
@@ -443,7 +448,7 @@ namespace Sibelia
 						}
 						else
 						{
-							instanceSet.insert(Instance(nowIt, distance));
+							path->allInstances_.push_back(instanceSet.insert(Instance(nowIt, distance)));
 						}
 					}
 				}
@@ -564,6 +569,8 @@ namespace Sibelia
 			{
 				instanceSet.clear();
 			}
+
+			allInstances_.clear();
 		}
 
 	private:
@@ -572,6 +579,7 @@ namespace Sibelia
 		std::vector<Point> leftBody_;
 		std::vector<Point> rightBody_;
 		std::vector<InstanceSet> instance_;
+		std::vector<InstanceSet::iterator> allInstances_;
 
 		int64_t origin_;
 		int64_t minBlockSize_;

@@ -203,7 +203,7 @@ namespace Sibelia
 				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.flankingThreshold_);
 				for (size_t i = range.begin(); i != range.end(); i++)
 				{
-					if (finder.count_++ % 1000 == 0)
+					if (finder.count_++ % 10000 == 0)
 					{
 						std::cout << finder.count_ << '\t' << shuffle.size() << std::endl;
 					}
@@ -267,7 +267,7 @@ namespace Sibelia
 				}
 			}
 
-			std::random_shuffle(shuffle.begin(), shuffle.end());				
+			//std::random_shuffle(shuffle.begin(), shuffle.end());				
 			time_t mark = time(0);
 			count_ = 0;
 			tbb::task_scheduler_init init(threads);
@@ -549,12 +549,12 @@ namespace Sibelia
 			NextVertex ret;
 			int32_t bestVid = 0;
 			auto & instances = currentPath.AllInstances();
-			for (auto instIt : instances)
+			for(size_t i = 0; i < instances.size(); i++)
 			{
-				auto & inst = *instIt;
+				auto & inst = *instances[i].first;
 				auto origin = forward ? inst.Back().SequentialIterator() : inst.Front().SequentialIterator();
 				auto it = forward ? origin.Next() : origin.Prev();
-				for (size_t d = 1; it.Valid() && (d < lookingDepth_ || abs(it.GetPosition() - origin.GetPosition()) < maxBranchSize_); d++)
+				for (size_t d = 1; it.Valid() && (d < lookingDepth_); d++)
 				{
 					int32_t vid = it.GetVertexId();
 					if (!currentPath.IsInPath(vid) && !it.IsUsed())
@@ -566,7 +566,7 @@ namespace Sibelia
 						}
 
 						count[adjVid]++;
-						auto diff = abs(it.GetPosition() - origin.GetPosition());
+						auto diff = abs(it.GetAbsolutePosition() - origin.GetAbsolutePosition());
 						if (count[adjVid] > ret.count || (count[adjVid] == ret.count && diff > ret.diff))
 						{
 							ret.diff = diff;

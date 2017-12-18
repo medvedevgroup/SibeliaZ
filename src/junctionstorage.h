@@ -185,6 +185,11 @@ namespace Sibelia
 				return JunctionStorage::this_->position_[GetChrId()][idx_].pos + JunctionStorage::this_->k_;
 			}
 
+			int64_t GetAbsolutePosition() const
+			{
+				return JunctionStorage::this_->position_[GetChrId()][idx_].pos;
+			}
+
 			Edge OutgoingEdge() const
 			{
 				const Position & now = JunctionStorage::this_->position_[GetChrId()][idx_];

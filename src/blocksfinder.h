@@ -220,8 +220,18 @@ namespace Sibelia
 						while (true)
 						{
 							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
-							finder.ExtendPathDijkstra(currentPath, count, data);
-							if (currentPath.Score(finder.scoreFullChains_) <= prevBestScore)
+							bool ret = finder.ExtendPathDijkstraForward(currentPath, count, data);
+							if (!ret || currentPath.Score(finder.scoreFullChains_) <= prevBestScore)
+							{
+								break;
+							}
+						}
+						
+						while (true)
+						{
+							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
+							bool ret = finder.ExtendPathDijkstraBackward(currentPath, count, data);
+							if (!ret || currentPath.Score(finder.scoreFullChains_) <= prevBestScore)
 							{
 								break;
 							}
@@ -269,7 +279,7 @@ namespace Sibelia
 
 			
 			std::random_shuffle(shuffle.begin(), shuffle.end());
-
+			shuffle.push_back(-99);
 			time_t mark = time(0);
 			count_ = 0;
 			tbb::task_scheduler_init init(threads);
@@ -529,45 +539,49 @@ namespace Sibelia
 		{			
 			NextVertex ret;
 			int32_t bestVid = 0;
-			auto & instances = currentPath.AllInstances();
-			for(size_t i = 0; i < instances.size(); i++)
+			auto f = forward ? &Path::RightVertex : &Path::LeftVertex;
+			size_t bodySize = forward ? currentPath.RightSize() : currentPath.LeftSize();
+			size_t end = min(1, bodySize);
+			for (size_t i = 0; i < end; i++)
 			{
-				auto & inst = *instances[i].first;
-				auto origin = forward ? inst.Back().SequentialIterator() : inst.Front().SequentialIterator();
-				auto it = forward ? origin.Next() : origin.Prev();
-				for (size_t d = 1; it.Valid() && (d < lookingDepth_); d++)
+				for (JunctionStorage::JunctionIterator nowIt((currentPath.*f)(bodySize - end)); nowIt.Valid(); nowIt++)
 				{
-					int32_t vid = it.GetVertexId();
-					if (!currentPath.IsInPath(vid) && !it.IsUsed())
+					auto origin = nowIt.SequentialIterator();
+					auto it = forward ? origin.Next() : origin.Prev();
+					for (size_t d = 1; it.Valid() && (d < lookingDepth_); d++)
 					{
-						auto adjVid = vid + storage_.GetVerticesNumber();
-						if (count[adjVid] == 0)
+						int32_t vid = it.GetVertexId();
+						if (!currentPath.IsInPath(vid) && !it.IsUsed())
 						{
-							data.push_back(adjVid);
+							auto adjVid = vid + storage_.GetVerticesNumber();
+							if (count[adjVid] == 0)
+							{
+								data.push_back(adjVid);
+							}
+
+							count[adjVid]++;
+							auto diff = abs(it.GetAbsolutePosition() - origin.GetAbsolutePosition());
+							if (count[adjVid] > ret.count || (count[adjVid] == ret.count && diff > ret.diff))
+							{
+								ret.diff = diff;
+								ret.origin = origin;
+								ret.count = count[adjVid];
+								bestVid = vid;
+							}
+						}
+						else
+						{
+							break;
 						}
 
-						count[adjVid]++;
-						auto diff = abs(it.GetAbsolutePosition() - origin.GetAbsolutePosition());
-						if (count[adjVid] > ret.count || (count[adjVid] == ret.count && diff > ret.diff))
+						if (forward)
 						{
-							ret.diff = diff;
-							ret.origin = origin;
-							ret.count = count[adjVid];
-							bestVid = vid;
+							++it;
 						}
-					}
-					else
-					{
-						break;
-					}
-
-					if (forward)
-					{
-						++it;
-					}
-					else
-					{
-						--it;
+						else
+						{
+							--it;
+						}
 					}
 				}
 			}
@@ -581,7 +595,7 @@ namespace Sibelia
 			return std::make_pair(bestVid, ret);
 		}				
 
-		void ExtendPathDijkstra(Path & currentPath, std::vector<uint32_t> & count, std::vector<uint32_t> & data)
+		bool ExtendPathDijkstraForward(Path & currentPath, std::vector<uint32_t> & count, std::vector<uint32_t> & data)
 		{	
 			int64_t origin = currentPath.Origin();
 			auto nextForwardVid = MostPopularVertex(currentPath, true, count, data);
@@ -599,18 +613,27 @@ namespace Sibelia
 					}
 					else
 					{
-						break;
+						return false;
 					}
 				}
 			}
+			else
+			{
+				return false;
+			}
 
+			return true;
+		}
+
+		bool ExtendPathDijkstraBackward(Path & currentPath, std::vector<uint32_t> & count, std::vector<uint32_t> & data)
+		{		
 			auto nextBackwardVid = MostPopularVertex(currentPath, false, count, data);
 			if (nextBackwardVid.first != 0)
-			{				
+			{
 				for (auto it = nextBackwardVid.second.origin; it.GetVertexId() != nextBackwardVid.first; --it)
 				{
 					if (currentPath.PointPushFront(it.IngoingEdge()))
-					{						
+					{
 						int64_t dist = currentPath.LeftDistance();
 						if (dist < finishingProximity_)
 						{
@@ -619,11 +642,16 @@ namespace Sibelia
 					}
 					else
 					{
-						break;
+						return false;
 					}
 				}
 			}
+			else
+			{
+				return false;
+			}
 
+			return true;
 		}
 
 		int64_t k_;

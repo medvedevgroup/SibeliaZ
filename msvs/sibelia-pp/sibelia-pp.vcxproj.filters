@@ -53,8 +53,5 @@
     <ClInclude Include="..\..\src\distancekeeper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\smallpath.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

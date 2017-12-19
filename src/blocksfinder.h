@@ -420,16 +420,19 @@ namespace Sibelia
 					for (auto & instIt : currentPath.AllInstances())
 					{
 						auto & instance = *instIt.first;
-						if (instance.Front().IsPositiveStrand())
+						if (currentPath.IsGoodInstance(instance))
 						{
-							storage_.LockRange(instance.Front().SequentialIterator(),
-								instance.Back().SequentialIterator(), idx);
-						}
-						else
-						{
-							storage_.LockRange(instance.Back().SequentialIterator().Reverse(),
-								instance.Front().SequentialIterator().Reverse(), idx);
-						}
+							if (instance.Front().IsPositiveStrand())
+							{
+								storage_.LockRange(instance.Front().SequentialIterator(),
+									instance.Back().SequentialIterator(), idx);
+							}
+							else
+							{
+								storage_.LockRange(instance.Back().SequentialIterator().Reverse(),
+									instance.Front().SequentialIterator().Reverse(), idx);
+							}
+						}						
 					}
 				}
 
@@ -437,23 +440,26 @@ namespace Sibelia
 				for (auto & instIt : currentPath.AllInstances())
 				{
 					auto & instance = *instIt.first;
-					bool whole = true;
-					auto start = instance.Front().SequentialIterator();
-					auto end = instance.Back().SequentialIterator();
-					for (; start != end && start.IsUsed(); ++start);
-					for (; start != end && end.IsUsed(); --end);
-					for (auto it = start; it != end.Next(); it++)
+					if (currentPath.IsGoodInstance(instance))
 					{
-						if (it.IsUsed())
+						bool whole = true;
+						auto start = instance.Front().SequentialIterator();
+						auto end = instance.Back().SequentialIterator();
+						for (; start != end && start.IsUsed(); ++start);
+						for (; start != end && end.IsUsed(); --end);
+						for (auto it = start; it != end.Next(); it++)
 						{
-							whole = false;
-							break;
+							if (it.IsUsed())
+							{
+								whole = false;
+								break;
+							}
 						}
-					}
 
-					if (whole && abs(start.GetPosition() - end.GetPosition()) + k_ >= minBlockSize_)
-					{
-						result.push_back(std::make_pair(start, end));
+						if (whole && abs(start.GetPosition() - end.GetPosition()) + k_ >= minBlockSize_)
+						{
+							result.push_back(std::make_pair(start, end));
+						}
 					}
 				}
 
@@ -481,15 +487,18 @@ namespace Sibelia
 					for (auto & instIt : currentPath.AllInstances())
 					{
 						auto & instance = *instIt.first;
-						if (instance.Front().IsPositiveStrand())
+						if (currentPath.IsGoodInstance(instance))
 						{
-							storage_.UnlockRange(instance.Front().SequentialIterator(),
-								instance.Back().SequentialIterator(), idx);
-						}
-						else
-						{
-							storage_.UnlockRange(instance.Back().SequentialIterator().Reverse(),
-								instance.Front().SequentialIterator().Reverse(), idx);
+							if (instance.Front().IsPositiveStrand())
+							{
+								storage_.UnlockRange(instance.Front().SequentialIterator(),
+									instance.Back().SequentialIterator(), idx);
+							}
+							else
+							{
+								storage_.UnlockRange(instance.Back().SequentialIterator().Reverse(),
+									instance.Front().SequentialIterator().Reverse(), idx);
+							}
 						}
 					}
 				}

@@ -268,7 +268,6 @@ namespace Sibelia
 			}
 
 			
-			shuffle.erase(shuffle.begin() + (1 << 17), shuffle.end());
 			std::random_shuffle(shuffle.begin(), shuffle.end());
 
 			time_t mark = time(0);

@@ -267,7 +267,10 @@ namespace Sibelia
 				}
 			}
 
-			//std::random_shuffle(shuffle.begin(), shuffle.end());				
+			
+			shuffle.erase(shuffle.begin() + (1 << 17), shuffle.end());
+			std::random_shuffle(shuffle.begin(), shuffle.end());
+
 			time_t mark = time(0);
 			count_ = 0;
 			tbb::task_scheduler_init init(threads);
@@ -375,10 +378,10 @@ namespace Sibelia
 				}
 			}
 
-			CreateOutDirectory(outDir);
-			GenerateReport(instance, outDir + "/" + "coverage_report.txt");
+			CreateOutDirectory(outDir);			
 			ListBlocksIndices(instance, outDir + "/" + "blocks_coords.txt");
 			ListBlocksSequences(instance, outDir + "/" + "blocks_sequences.fasta");
+			GenerateReport(instance, outDir + "/" + "coverage_report.txt");
 		}
 
 
@@ -405,61 +408,53 @@ namespace Sibelia
 		void ListChromosomesAsPermutations(const BlockList & block, const std::string & fileName) const;
 		void TryOpenFile(const std::string & fileName, std::ofstream & stream) const;
 		void ListChrs(std::ostream & out) const;
+
 		template<class P>
 		bool TryFinalizeBlock(P & currentPath, std::ostream & log)
 		{
-			bool ret = false;
+			bool ret = false;	
 			if (currentPath.Score(true) > 0 && currentPath.MiddlePathLength() >= minBlockSize_ && currentPath.GoodInstances() > 1)
 			{
+				currentPath.SortInstancePtr();
 				{
 					std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
-					for (auto & instanceSet : currentPath.Instances())
+					for (auto & instIt : currentPath.AllInstances())
 					{
-						for (auto & instance : instanceSet)
+						auto & instance = *instIt.first;
+						if (instance.Front().IsPositiveStrand())
 						{
-							if (currentPath.IsGoodInstance(instance))
-							{
-								if (instance.Front().IsPositiveStrand())
-								{
-									storage_.LockRange(instance.Front().SequentialIterator(),
-										instance.Back().SequentialIterator(), idx);
-								}
-								else
-								{
-									storage_.LockRange(instance.Back().SequentialIterator().Reverse(),
-										instance.Front().SequentialIterator().Reverse(), idx);
-								}
-							}
+							storage_.LockRange(instance.Front().SequentialIterator(),
+								instance.Back().SequentialIterator(), idx);
+						}
+						else
+						{
+							storage_.LockRange(instance.Back().SequentialIterator().Reverse(),
+								instance.Front().SequentialIterator().Reverse(), idx);
 						}
 					}
 				}
 
 				std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > result;
-				for (auto & instanceSet : currentPath.Instances())
+				for (auto & instIt : currentPath.AllInstances())
 				{
-					for (auto & instance : instanceSet)
+					auto & instance = *instIt.first;
+					bool whole = true;
+					auto start = instance.Front().SequentialIterator();
+					auto end = instance.Back().SequentialIterator();
+					for (; start != end && start.IsUsed(); ++start);
+					for (; start != end && end.IsUsed(); --end);
+					for (auto it = start; it != end.Next(); it++)
 					{
-						if (currentPath.IsGoodInstance(instance))
+						if (it.IsUsed())
 						{
-							bool whole = true;
-							auto start = instance.Front().SequentialIterator();
-							auto end = instance.Back().SequentialIterator();
-							for (; start != end && start.IsUsed(); ++start);
-							for (; start != end && end.IsUsed(); --end);
-							for (auto it = start; it != end.Next(); it++)
-							{
-								if (it.IsUsed())
-								{
-									whole = false;
-									break;
-								}
-							}
-
-							if (whole && abs(start.GetPosition() - end.GetPosition()) + k_ >= minBlockSize_)
-							{
-								result.push_back(std::make_pair(start, end));
-							}
+							whole = false;
+							break;
 						}
+					}
+
+					if (whole && abs(start.GetPosition() - end.GetPosition()) + k_ >= minBlockSize_)
+					{
+						result.push_back(std::make_pair(start, end));
 					}
 				}
 
@@ -482,51 +477,29 @@ namespace Sibelia
 					}
 				}
 
-
 				{
 					std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
-					for (auto & instanceSet : currentPath.Instances())
+					for (auto & instIt : currentPath.AllInstances())
 					{
-						for (auto & instance : instanceSet)
+						auto & instance = *instIt.first;
+						if (instance.Front().IsPositiveStrand())
 						{
-							if (currentPath.IsGoodInstance(instance))
-							{
-								if (instance.Front().IsPositiveStrand())
-								{
-									storage_.UnlockRange(instance.Front().SequentialIterator(),
-										instance.Back().SequentialIterator(), idx);
-								}
-								else
-								{
-									storage_.UnlockRange(instance.Back().SequentialIterator().Reverse(),
-										instance.Front().SequentialIterator().Reverse(), idx);
-								}
-							}
+							storage_.UnlockRange(instance.Front().SequentialIterator(),
+								instance.Back().SequentialIterator(), idx);
+						}
+						else
+						{
+							storage_.UnlockRange(instance.Back().SequentialIterator().Reverse(),
+								instance.Front().SequentialIterator().Reverse(), idx);
 						}
 					}
-
 				}
+				
 			}
 
 			return ret;
 		}
 
-		struct DijkstraState
-		{
-			int64_t prevIdx;
-			int64_t vertex;
-			int64_t distance;
-			Edge e;
-			DijkstraState(int64_t vertex, int64_t distance, int64_t prevIdx, Edge e) : vertex(vertex), distance(distance), prevIdx(prevIdx), e(e)
-			{
-			}
-
-			bool operator < (const DijkstraState & state) const
-			{
-				return distance > state.distance;
-			}
-		};
-		
 		struct NextVertex
 		{
 			int32_t diff;

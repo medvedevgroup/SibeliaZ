@@ -78,6 +78,18 @@ namespace Sibelia
 			JunctionStorage::JunctionIterator back_;
 		public:			
 		
+			static bool OldComparator(const Instance & a, const Instance & b)
+			{
+				if (a.front_.GetChrId() != b.front_.GetChrId())
+				{
+					return a.front_.GetChrId() < b.front_.GetChrId();
+				}
+
+				int64_t idx1 = a.back_.IsPositiveStrand() ? a.back_.GetIndex() : a.front_.GetIndex();
+				int64_t idx2 = b.back_.IsPositiveStrand() ? b.back_.GetIndex() : b.front_.GetIndex();
+				return idx1 < idx2;
+			}
+
 			Instance()
 			{
 
@@ -531,6 +543,28 @@ namespace Sibelia
 			}
 
 			return ret;
+		}
+
+		static bool CmpInstance(const std::pair<InstanceSet::iterator, size_t> & a, const std::pair<InstanceSet::iterator, size_t> & b)
+		{
+			return Path::Instance::OldComparator(*a.first, *b.first);
+		}
+
+		void SortInstancePtr()
+		{
+			std::sort(allInstances_.begin(), allInstances_.end(), CmpInstance);
+		}
+
+		void GoodInstances(std::vector<Instance> & goodInstance) const
+		{
+			for (auto & instanceIt : allInstances_)
+			{
+				auto & inst = *instanceIt.first;
+				if (IsGoodInstance(inst))
+				{
+					goodInstance.push_back(inst);
+				}
+			}
 		}
 
 		bool IsGoodInstance(const Instance & it) const

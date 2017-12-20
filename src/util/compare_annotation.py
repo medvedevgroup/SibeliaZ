@@ -18,7 +18,7 @@ class GenomeCollection:
 	def WriteHeader(self):
 		print('Seq_id\tSize\tDescription')
 		for idx, (seq_species, seq_id, seq_length) in enumerate(self.order):
-			print('\t'.join(str(x) for x in(idx, seq_species + "." + seq_id, seq_length)))
+			print('\t'.join(str(x) for x in(idx + 1, seq_length, seq_species + "." + seq_id)))
 		print('--------------------------------------------------------------------------------')
 
 class Annotation:
@@ -43,7 +43,7 @@ class Annotation:
 	def WriteRecords(self, genomes):
 		src_species = 'Dmel'
 		for block_cnt, record in enumerate(self.record):
-			print("Block#" + str(block_cnt))
+			print("Block #" + str(block_cnt))
 			print("Seq_id\tStrand\tStart\tEnd\tLength")
 			src_chr = record[self.header['Arm/Scaffold']]			
 			src_strand = int(record[self.header['Strand']])

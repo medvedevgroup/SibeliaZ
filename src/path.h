@@ -320,7 +320,7 @@ namespace Sibelia
 				}
 
 				auto start1 = start.SequentialIterator().Next();
-				if (diff > maxBranchSize_ && (!start1.Valid() || start.GetChar() != e.GetChar() || start1.GetVertexId() != e.GetEndVertex()))
+				if (diff > maxBranchSize_ && (!start1.Valid() || start.GetChar() != e.GetChar() || end.SequentialIterator() != start1 || start1.GetVertexId() != e.GetEndVertex()))
 				{
 					return false;
 				}
@@ -333,7 +333,7 @@ namespace Sibelia
 				}
 
 				auto start1 = start.SequentialIterator().Next();
-				if (-diff > maxBranchSize_ && (!start1.Valid() || start.GetChar() != e.GetChar() || start1.GetVertexId() != e.GetEndVertex()))
+				if (-diff > maxBranchSize_ && (!start1.Valid() || start.GetChar() != e.GetChar() || end.SequentialIterator() != start1 || start1.GetVertexId() != e.GetEndVertex()))
 				{
 					return false;
 				}
@@ -453,6 +453,7 @@ namespace Sibelia
 
 						if (!newInstance && inst->Back().GetVertexId() != vertex)
 						{
+							int64_t chr = inst->Back().GetChrId();
 							int64_t nextLength = abs(nowIt.GetPosition() - inst->Front().GetPosition());
 							int64_t leftFlankSize = -(path->leftBodyFlank_ - inst->LeftFlankDistance());
 							assert(leftFlankSize >= 0);

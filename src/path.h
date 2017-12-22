@@ -58,7 +58,7 @@ namespace Sibelia
 			{				
 				if (!it.IsUsed())
 				{
-					allInstances_.push_back(std::make_pair(instance_[it.GetChrId()].insert(Instance(it, 0)), it.GetChrId()));
+					allInstances_.push_back(instance_[it.GetChrId()].insert(Instance(it, 0)));
 				}
 			}
 		}
@@ -209,7 +209,7 @@ namespace Sibelia
 			return instance_;
 		}
 
-		const std::vector<std::pair<InstanceSet::iterator, size_t> > & AllInstances() const
+		const std::vector<InstanceSet::iterator> & AllInstances() const
 		{
 			return allInstances_;
 		}
@@ -400,7 +400,7 @@ namespace Sibelia
 						}
 						else
 						{
-							path->allInstances_.push_back(std::make_pair(instanceSet.insert(Instance(nowIt, distance)), nowIt.GetChrId()));
+							path->allInstances_.push_back(instanceSet.insert(Instance(nowIt, distance)));
 						}
 					}
 				}
@@ -466,7 +466,7 @@ namespace Sibelia
 						}
 						else
 						{
-							path->allInstances_.push_back(std::make_pair(instanceSet.insert(Instance(nowIt, distance)), nowIt.GetChrId()));
+							path->allInstances_.push_back(instanceSet.insert(Instance(nowIt, distance)));
 						}
 					}
 				}
@@ -519,7 +519,7 @@ namespace Sibelia
 			int64_t middlePath = MiddlePathLength();
 			for(auto & instanceIt : allInstances_)
 			{
-				auto & inst = *instanceIt.first;
+				auto & inst = *instanceIt;
 				InstanceScore(inst, length, score, middlePath);
 				if (!final || length >= minBlockSize_)
 				{
@@ -535,7 +535,7 @@ namespace Sibelia
 			int64_t ret = 0;
 			for (auto & instanceIt : allInstances_)
 			{
-				auto & inst = *instanceIt.first;
+				auto & inst = *instanceIt;
 				if (IsGoodInstance(inst))
 				{
 					ret++;
@@ -545,9 +545,9 @@ namespace Sibelia
 			return ret;
 		}
 
-		static bool CmpInstance(const std::pair<InstanceSet::iterator, size_t> & a, const std::pair<InstanceSet::iterator, size_t> & b)
+		static bool CmpInstance(const InstanceSet::iterator & a, const InstanceSet::iterator & b)
 		{
-			return Path::Instance::OldComparator(*a.first, *b.first);
+			return Path::Instance::OldComparator(*a, *b);
 		}
 
 		void SortInstancePtr()
@@ -559,7 +559,7 @@ namespace Sibelia
 		{
 			for (auto & instanceIt : allInstances_)
 			{
-				auto & inst = *instanceIt.first;
+				auto & inst = *instanceIt;
 				if (IsGoodInstance(inst))
 				{
 					goodInstance.push_back(inst);
@@ -603,7 +603,7 @@ namespace Sibelia
 
 			for (auto it : allInstances_)
 			{
-				instance_[it.second].erase(it.first);
+				instance_[it->Front().GetChrId()].erase(it);
 			}
 
 			allInstances_.clear();
@@ -615,7 +615,7 @@ namespace Sibelia
 		std::vector<Point> leftBody_;
 		std::vector<Point> rightBody_;
 		std::vector<InstanceSet> instance_;
-		std::vector<std::pair<InstanceSet::iterator, size_t> > allInstances_;
+		std::vector<InstanceSet::iterator> allInstances_;
 
 		int64_t origin_;
 		int64_t minBlockSize_;

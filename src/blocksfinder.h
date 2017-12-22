@@ -421,7 +421,7 @@ namespace Sibelia
 		template<class P>
 		bool TryFinalizeBlock(P & currentPath, std::ostream & log)
 		{
-			bool ret = false;	
+			bool ret = false;
 			if (currentPath.Score(true) > 0 && currentPath.MiddlePathLength() >= minBlockSize_ && currentPath.GoodInstances() > 1)
 			{
 				currentPath.SortInstancePtr();
@@ -429,7 +429,7 @@ namespace Sibelia
 					std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
 					for (auto & instIt : currentPath.AllInstances())
 					{
-						auto & instance = *instIt.first;
+						auto & instance = *instIt;
 						if (currentPath.IsGoodInstance(instance))
 						{
 							if (instance.Front().IsPositiveStrand())
@@ -449,7 +449,7 @@ namespace Sibelia
 				std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > result;
 				for (auto & instIt : currentPath.AllInstances())
 				{
-					auto & instance = *instIt.first;
+					auto & instance = *instIt;
 					if (currentPath.IsGoodInstance(instance))
 					{
 						bool whole = true;
@@ -496,7 +496,7 @@ namespace Sibelia
 					std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
 					for (auto & instIt : currentPath.AllInstances())
 					{
-						auto & instance = *instIt.first;
+						auto & instance = *instIt;
 						if (currentPath.IsGoodInstance(instance))
 						{
 							if (instance.Front().IsPositiveStrand())

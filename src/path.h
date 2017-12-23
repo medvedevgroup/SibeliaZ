@@ -58,7 +58,7 @@ namespace Sibelia
 			{				
 				if (!it.IsUsed())
 				{
-					allInstances_.push_back(instance_[it.GetChrId()].insert(Instance(it, 0)));
+					allInstances_.push_back(instance_[it.GetChrId()].insert(Instance(it.SequentialIterator(), 0)));
 				}
 			}
 		}
@@ -74,8 +74,8 @@ namespace Sibelia
 			int32_t compareIdx_;
 			int32_t frontDistance_;
 			int32_t backDistance_;
-			JunctionStorage::JunctionIterator front_;
-			JunctionStorage::JunctionIterator back_;
+			JunctionStorage::JunctionSequentialIterator front_;
+			JunctionStorage::JunctionSequentialIterator back_;
 		public:			
 		
 			static bool OldComparator(const Instance & a, const Instance & b)
@@ -95,7 +95,7 @@ namespace Sibelia
 
 			}
 
-			Instance(JunctionStorage::JunctionIterator & it, int64_t distance) : front_(it),
+			Instance(JunctionStorage::JunctionSequentialIterator & it, int64_t distance) : front_(it),
 				back_(it),
 				frontDistance_(distance),
 				backDistance_(distance),
@@ -104,7 +104,7 @@ namespace Sibelia
 
 			}
 
-			void ChangeFront(const JunctionStorage::JunctionIterator & it, int64_t distance)
+			void ChangeFront(const JunctionStorage::JunctionSequentialIterator & it, int64_t distance)
 			{
 				front_ = it;
 				frontDistance_ = distance;
@@ -114,7 +114,7 @@ namespace Sibelia
 				}
 			}
 
-			void ChangeBack(const JunctionStorage::JunctionIterator & it, int64_t distance)
+			void ChangeBack(const JunctionStorage::JunctionSequentialIterator & it, int64_t distance)
 			{
 				back_ = it;
 				backDistance_ = distance;
@@ -129,12 +129,12 @@ namespace Sibelia
 				return front_ == back_;
 			}
 
-			JunctionStorage::JunctionIterator Front() const
+			JunctionStorage::JunctionSequentialIterator Front() const
 			{
 				return front_;
 			}
 
-			JunctionStorage::JunctionIterator Back() const
+			JunctionStorage::JunctionSequentialIterator Back() const
 			{
 				return back_;
 			}
@@ -304,7 +304,7 @@ namespace Sibelia
 			}
 		}
 
-		bool Compatible(const JunctionStorage::JunctionIterator & start, const JunctionStorage::JunctionIterator & end, const Edge & e) const
+		bool Compatible(const JunctionStorage::JunctionSequentialIterator & start, const JunctionStorage::JunctionSequentialIterator & end, const Edge & e) const
 		{
 			if (start.IsPositiveStrand() != end.IsPositiveStrand())
 			{
@@ -319,8 +319,8 @@ namespace Sibelia
 					return false;
 				}
 
-				auto start1 = start.SequentialIterator().Next();
-				if (diff > maxBranchSize_ && (!start1.Valid() || start.GetChar() != e.GetChar() || end.SequentialIterator() != start1 || start1.GetVertexId() != e.GetEndVertex()))
+				auto start1 = start.Next();
+				if (diff > maxBranchSize_ && (!start1.Valid() || start.GetChar() != e.GetChar() || end != start1 || start1.GetVertexId() != e.GetEndVertex()))
 				{
 					return false;
 				}
@@ -332,8 +332,8 @@ namespace Sibelia
 					return false;
 				}
 
-				auto start1 = start.SequentialIterator().Next();
-				if (-diff > maxBranchSize_ && (!start1.Valid() || start.GetChar() != e.GetChar() || end.SequentialIterator() != start1 || start1.GetVertexId() != e.GetEndVertex()))
+				auto start1 = start.Next();
+				if (-diff > maxBranchSize_ && (!start1.Valid() || start.GetChar() != e.GetChar() || end != start1 || start1.GetVertexId() != e.GetEndVertex()))
 				{
 					return false;
 				}
@@ -364,7 +364,7 @@ namespace Sibelia
 					if (!nowIt.IsUsed())
 					{
 						auto & instanceSet = path->instance_[nowIt.GetChrId()];
-						auto inst = instanceSet.upper_bound(Instance(nowIt, 0));
+						auto inst = instanceSet.upper_bound(Instance(nowIt.SequentialIterator(), 0));
 						if (inst != instanceSet.end() && inst->Within(nowIt))
 						{
 							continue;
@@ -372,14 +372,14 @@ namespace Sibelia
 
 						if (nowIt.IsPositiveStrand())
 						{
-							if (inst != instanceSet.end() && path->Compatible(nowIt, inst->Front(), e))
+							if (inst != instanceSet.end() && path->Compatible(nowIt.SequentialIterator(), inst->Front(), e))
 							{
 								newInstance = false;
 							}
 						}
 						else
 						{
-							if (inst != instanceSet.begin() && path->Compatible(nowIt, (--inst)->Front(), e))
+							if (inst != instanceSet.begin() && path->Compatible(nowIt.SequentialIterator(), (--inst)->Front(), e))
 							{
 								newInstance = false;
 							}
@@ -396,11 +396,11 @@ namespace Sibelia
 								break;
 							}
 
-							const_cast<Instance&>(*inst).ChangeFront(nowIt, distance);
+							const_cast<Instance&>(*inst).ChangeFront(nowIt.SequentialIterator(), distance);
 						}
 						else
 						{
-							path->allInstances_.push_back(instanceSet.insert(Instance(nowIt, distance)));
+							path->allInstances_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
 						}
 					}
 				}
@@ -430,7 +430,7 @@ namespace Sibelia
 					if (!nowIt.IsUsed())
 					{						
 						auto & instanceSet = path->instance_[nowIt.GetChrId()];
-						auto inst = instanceSet.upper_bound(Instance(nowIt, 0));
+						auto inst = instanceSet.upper_bound(Instance(nowIt.SequentialIterator(), 0));
 						if (inst != instanceSet.end() && inst->Within(nowIt))
 						{
 							continue;
@@ -438,14 +438,14 @@ namespace Sibelia
 
 						if (nowIt.IsPositiveStrand())
 						{
-							if (inst != instanceSet.begin() && path->Compatible((--inst)->Back(), nowIt, e))
+							if (inst != instanceSet.begin() && path->Compatible((--inst)->Back(), nowIt.SequentialIterator(), e))
 							{
 								newInstance = false;
 							}
 						}
 						else
 						{
-							if (inst != instanceSet.end() && path->Compatible(inst->Back(), nowIt, e))
+							if (inst != instanceSet.end() && path->Compatible(inst->Back(), nowIt.SequentialIterator(), e))
 							{
 								newInstance = false;
 							}
@@ -463,11 +463,11 @@ namespace Sibelia
 								break;
 							}
 
-							const_cast<Instance&>(*inst).ChangeBack(nowIt, distance);
+							const_cast<Instance&>(*inst).ChangeBack(nowIt.SequentialIterator(), distance);
 						}
 						else
 						{
-							path->allInstances_.push_back(instanceSet.insert(Instance(nowIt, distance)));
+							path->allInstances_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
 						}
 					}
 				}
@@ -489,7 +489,24 @@ namespace Sibelia
 			PointPushBackWorker(this, vertex, endVertexDistance, e, failFlag)();
 			rightBody_.push_back(Point(e, startVertexDistance));
 			distanceKeeper_.Set(e.GetEndVertex(), endVertexDistance);
-			rightBodyFlank_ = rightBody_.back().EndDistance();			
+			rightBodyFlank_ = rightBody_.back().EndDistance();
+
+			for (auto nowIt : allInstances_)
+			{
+				int64_t nextLength = abs(nowIt->Back().GetPosition() - nowIt->Front().GetPosition());
+				int64_t leftFlankSize = -(leftBodyFlank_ - nowIt->LeftFlankDistance());
+				if (nextLength >= minBlockSize_ && leftFlankSize > maxFlankingSize_)
+				{
+					failFlag = true;
+					break;
+				}
+			}
+
+			if (failFlag)
+			{
+		//		PointPopBack();
+			}
+
 			return !failFlag;
 		}
 
@@ -509,6 +526,24 @@ namespace Sibelia
 			leftBody_.push_back(Point(e, startVertexDistance));
 			distanceKeeper_.Set(e.GetStartVertex(), startVertexDistance);
 			leftBodyFlank_ = leftBody_.back().StartDistance();
+
+			for (auto nowIt : allInstances_)
+			{
+				int64_t nextLength = abs(nowIt->Front().GetPosition() - nowIt->Back().GetPosition());
+				int64_t rightFlankSize = rightBodyFlank_ - nowIt->RightFlankDistance();
+				assert(rightFlankSize >= 0);
+				if (nextLength >= minBlockSize_ && rightFlankSize > maxFlankingSize_)
+				{
+					failFlag = true;
+					break;
+				}
+			}
+
+			if (failFlag)
+			{
+			//	PointPopFront();
+			}
+
 			return !failFlag;
 		}
 
@@ -581,6 +616,81 @@ namespace Sibelia
 			length = abs(inst.Front().GetPosition() - inst.Back().GetPosition());
 			score = length - (middlePath - length);
 		}		
+
+		void PointPopBack()
+		{
+			int64_t lastVertex = rightBody_.back().GetEdge().GetEndVertex();
+			rightBody_.pop_back();
+			distanceKeeper_.Unset(lastVertex);
+			rightBodyFlank_ = rightBody_.empty() ? 0 : rightBody_.back().EndDistance();
+			for (auto it : allInstances_)
+			{
+				if (it->Back().GetVertexId() == lastVertex)
+				{
+					if (it->Front() == it->Back())
+					{						
+						instance_[it->Front().GetChrId()].erase(it);
+					}
+					else
+					{
+						auto jt = it->Back();
+						while (true)
+						{
+							if (distanceKeeper_.IsSet(jt.GetVertexId()))
+							{
+								const_cast<Instance&>(*it).ChangeBack(jt, distanceKeeper_.Get(jt.GetVertexId()));
+								break;
+							}
+							else
+							{
+								--jt;
+							}
+						}
+					}
+				}
+			}
+		}
+
+
+		void PointPopFront()
+		{
+			int64_t lastVertex = leftBody_.back().GetEdge().GetStartVertex();
+			leftBody_.pop_back();
+			distanceKeeper_.Unset(lastVertex);
+			leftBodyFlank_ = leftBody_.empty() ? 0 : leftBody_.back().StartDistance();
+			for (auto it : allInstances_)
+			{				
+				if (it->Front().GetVertexId() == lastVertex)
+				{
+					if (it->Front() == it->Back())
+					{
+						instance_[it->Front().GetChrId()].erase(it);
+					}
+					else
+					{
+						auto jt = it->Front();
+						while (true)
+						{
+							if (distanceKeeper_.IsSet(jt.GetVertexId()))
+							{
+								const_cast<Instance&>(*it).ChangeFront(jt, distanceKeeper_.Get(jt.GetVertexId()));
+								break;
+							}
+							else
+							{
+								++jt;
+							}
+						}
+
+						it++;
+					}
+				}
+				else
+				{
+					++it;
+				}
+			}
+		}
 
 		void Clear()
 		{

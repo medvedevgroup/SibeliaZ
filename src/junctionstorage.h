@@ -578,7 +578,6 @@ namespace Sibelia
 			return 1 << mutexBits_;
 		}
 		
-		/*
 		int64_t IngoingEdgesNumber(int64_t vertexId) const
 		{
 			return ingoingEdge_[vertexId + GetVerticesNumber()].size();
@@ -625,7 +624,7 @@ namespace Sibelia
 				}
 				else
 				{					
-					if (now.idx + 1 < position_[now.chr].size())
+					if (now.idx + 1 < chrSize_[now.chr])
 					{
 						const Position & prev = position_[now.chr][now.idx + 1];
 						char ch = TwoPaCo::DnaChar::ReverseChar(sequence_[now.chr][prev.pos - 1]);
@@ -655,7 +654,7 @@ namespace Sibelia
 			{
 				if (now.id == vertexId)
 				{
-					if (now.idx + 1 < position_[now.chr].size())
+					if (now.idx + 1 < chrSize_[now.chr])
 					{
 						const Position & next = position_[now.chr][now.idx + 1];
 						char ch = sequence_[now.chr][now.pos + k_];
@@ -696,7 +695,7 @@ namespace Sibelia
 
 			std::sort(list.begin(), list.end());
 			list.erase(std::unique(list.begin(), list.end()), list.end());
-		}*/
+		}
 
 		void Init(const std::string & inFileName, const std::string & genomesFileName, int64_t threads)
 		{
@@ -775,8 +774,7 @@ namespace Sibelia
 				for (; (int64_t(1) << chrSizeBits_[i]) <= chrSize_[i]; chrSizeBits_[i]++);
 				chrSizeBits_[i] = max(int64_t(0), chrSizeBits_[i] - mutexBits_);
 			}
-
-			/*
+			
 			int64_t vertices = GetVerticesNumber();
 			ingoingEdge_.resize(vertices * 2 + 1);
 			outgoingEdge_.resize(vertices * 2 + 1);
@@ -784,7 +782,7 @@ namespace Sibelia
 			{
 				IngoingEdges(vertexId, ingoingEdge_[vertexId + vertices]);
 				OutgoingEdges(vertexId, outgoingEdge_[vertexId + vertices]);
-			}*/
+			}
 		}					
 
 		JunctionStorage() {}
@@ -811,8 +809,8 @@ namespace Sibelia
 
 		int64_t k_;
 		int64_t mutexBits_;
-		//std::vector<std::vector<Edge> > ingoingEdge_;
-		//std::vector<std::vector<Edge> > outgoingEdge_;
+		std::vector<std::vector<Edge> > ingoingEdge_;
+		std::vector<std::vector<Edge> > outgoingEdge_;
 		std::vector<std::string> sequence_;
 		std::vector<std::string> sequenceDescription_;		
 		std::vector<int64_t> chrSizeBits_;

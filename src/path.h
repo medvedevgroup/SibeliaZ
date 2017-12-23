@@ -730,6 +730,64 @@ namespace Sibelia
 		int64_t rightBodyFlank_;		
 		DistanceKeeper distanceKeeper_;
 		const JunctionStorage * storage_;
+		friend class BestPath;
+	};
+
+	struct BestPath
+	{
+		int64_t score_;
+		int64_t leftFlank_;
+		int64_t rightFlank_;
+		std::vector<Path::Point> newLeftBody_;
+		std::vector<Path::Point> newRightBody_;
+
+		void FixForward(Path & path)
+		{
+			for (auto & pt : newRightBody_)
+			{
+				bool ret = path.PointPushBack(pt.GetEdge());
+				assert(ret);
+			}
+
+			newRightBody_.clear();
+			rightFlank_ = path.rightBody_.size();
+		}
+
+		void FixBackward(Path & path)
+		{
+			for (auto & pt : newLeftBody_)
+			{
+				bool ret = path.PointPushFront(pt.GetEdge());
+				assert(ret);
+			}
+
+			newLeftBody_.clear();
+			leftFlank_ = path.leftBody_.size();
+		}
+
+		void UpdateForward(const Path & path, int64_t newScore)
+		{
+			score_ = newScore;
+			newRightBody_.clear();
+			std::copy(path.rightBody_.begin() + rightFlank_, path.rightBody_.end(), std::back_inserter(newRightBody_));
+		}
+
+		void UpdateBackward(const Path & path, int64_t newScore)
+		{
+			score_ = newScore;
+			newLeftBody_.clear();
+			std::copy(path.leftBody_.begin() + leftFlank_, path.leftBody_.end(), std::back_inserter(newLeftBody_));
+		}
+
+		BestPath()
+		{
+			Init();
+		}
+
+		void Init()
+		{
+			score_ = leftFlank_ = rightFlank_ = 0;
+		}
 	};
 }
 

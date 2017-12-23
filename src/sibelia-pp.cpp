@@ -70,7 +70,7 @@ int main(int argc, char * argv[])
 			"depth",
 			"Looking depth",
 			false,
-			16,
+			8,
 			"integer",
 			cmd);
 

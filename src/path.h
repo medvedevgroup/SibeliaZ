@@ -606,10 +606,12 @@ namespace Sibelia
 			int64_t lastVertex = rightBody_.back().GetEdge().GetEndVertex();
 			rightBody_.pop_back();
 			distanceKeeper_.Unset(lastVertex);
+			assert(distanceKeeper_.IsSet(origin_));
 			rightBodyFlank_ = rightBody_.empty() ? 0 : rightBody_.back().EndDistance();
 			for(auto kt = allInstances_.begin(); kt != allInstances_.end(); )
 			{
 				auto it = *kt;
+				auto vv = it->Front().GetVertexId();
 				if (it->Back().GetVertexId() == lastVertex)
 				{
 					if (it->Front() == it->Back())
@@ -619,9 +621,19 @@ namespace Sibelia
 					}
 					else
 					{
+						bool inc = true;
 						auto jt = it->Back();
 						while (true)
 						{
+							auto vid = jt.GetVertexId();
+							if (jt == it->Front())
+							{
+								inc = false;
+								instance_[it->Front().GetChrId()].erase(it);
+								kt = allInstances_.erase(kt);
+								break;
+							}
+							
 							if (distanceKeeper_.IsSet(jt.GetVertexId()))
 							{
 								const_cast<Instance&>(*it).ChangeBack(jt, distanceKeeper_.Get(jt.GetVertexId()));
@@ -633,7 +645,11 @@ namespace Sibelia
 							}
 						}
 						
-						++kt;
+						if (inc)
+						{
+							++kt;
+						}
+						
 					}			
 				}
 				else
@@ -662,9 +678,19 @@ namespace Sibelia
 					}
 					else
 					{
+						bool inc = true;
 						auto jt = it->Front();
 						while (true)
 						{
+							assert(jt.Valid());
+							if (jt == it->Back())
+							{
+								inc = false;
+								instance_[it->Front().GetChrId()].erase(it);
+								kt = allInstances_.erase(kt);
+								break;
+							}
+
 							if (distanceKeeper_.IsSet(jt.GetVertexId()))
 							{
 								const_cast<Instance&>(*it).ChangeFront(jt, distanceKeeper_.Get(jt.GetVertexId()));
@@ -676,7 +702,10 @@ namespace Sibelia
 							}
 						}
 
-						++kt;
+						if (inc)
+						{
+							++kt;
+						}						
 					}
 				}
 				else

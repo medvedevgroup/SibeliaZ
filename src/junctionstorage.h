@@ -774,15 +774,6 @@ namespace Sibelia
 				for (; (int64_t(1) << chrSizeBits_[i]) <= chrSize_[i]; chrSizeBits_[i]++);
 				chrSizeBits_[i] = max(int64_t(0), chrSizeBits_[i] - mutexBits_);
 			}
-			
-			int64_t vertices = GetVerticesNumber();
-			ingoingEdge_.resize(vertices * 2 + 1);
-			outgoingEdge_.resize(vertices * 2 + 1);
-			for (int64_t vertexId = -vertices + 1; vertexId < vertices; vertexId++)
-			{
-				IngoingEdges(vertexId, ingoingEdge_[vertexId + vertices]);
-				OutgoingEdges(vertexId, outgoingEdge_[vertexId + vertices]);
-			}
 		}					
 
 		JunctionStorage() {}

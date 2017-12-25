@@ -184,115 +184,7 @@ namespace Sibelia
 		BlocksFinder(JunctionStorage & storage, size_t k) : storage_(storage), k_(k)
 		{
 			scoreFullChains_ = true;
-		}
-
-		struct ProcessVertexBruteForce
-		{
-		public:
-			BlocksFinder & finder;
-			std::vector<int64_t> & shuffle;
-
-			ProcessVertexBruteForce(BlocksFinder & finder, std::vector<int64_t> & shuffle) : finder(finder), shuffle(shuffle)
-			{
-			}
-
-			void operator()(tbb::blocked_range<size_t> & range) const
-			{
-				BestPath bestPath;
-				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.flankingThreshold_);				
-				for (size_t i = range.begin(); i != range.end(); i++)
-				{
-					if (finder.count_++ % 1000 == 0)
-					{
-						std::cerr << finder.count_ << '\t' << shuffle.size() << std::endl;
-					}
-
-					int64_t vid = shuffle[i];
-					for (bool explore = true; explore;)
-					{
-						bestPath.Init();
-						currentPath.Init(vid);
-						while (true)
-						{
-							int64_t prevBestScore = bestPath.score_;
-							finder.ExtendPathBackward(currentPath, bestPath, finder.lookingDepth_);
-							bestPath.FixBackward(currentPath);
-							finder.ExtendPathForward(currentPath, bestPath, finder.lookingDepth_);
-							bestPath.FixForward(currentPath);
-							if (bestPath.score_ <= prevBestScore)
-							{
-								break;
-							}
-
-						}
-
-						if (!finder.TryFinalizeBlock(currentPath, std::cerr))
-						{
-							explore = false;
-						}
-
-						currentPath.Clear();
-					}
-				}
-			}
-		};
-
-		void ExtendPathForward(Path & currentPath, BestPath & bestPath, int maxDepth)
-		{
-			if (maxDepth > 0)
-			{
-				int64_t prevVertex = currentPath.GetEndVertex();
-				for (int64_t idx = 0; idx < storage_.OutgoingEdgesNumber(prevVertex); idx++)
-				{
-					Edge e = storage_.OutgoingEdge(prevVertex, idx);
-					{
-						if (currentPath.PointPushBack(e))
-						{
-#ifdef _DEBUG_OUT
-							currentPath.DebugOut(std::cerr);
-#endif
-							int64_t currentScore = currentPath.Score(scoreFullChains_);
-							if (currentScore > bestPath.score_ && currentPath.Instances().size() > 1)
-							{
-								bestPath.UpdateForward(currentPath, currentScore);
-							}
-
-							ExtendPathForward(currentPath, bestPath, maxDepth - 1);
-							currentPath.PointPopBack();
-						}
-					}
-				}
-			}
-		}
-
-		void ExtendPathBackward(Path & currentPath, BestPath & bestPath, int maxDepth)
-		{
-			if (maxDepth > 0)
-			{
-				int64_t prevVertex = currentPath.GetStartVertex();
-				for (int64_t idx = 0; idx < storage_.IngoingEdgesNumber(prevVertex); idx++)
-				{
-					Edge e = storage_.IngoingEdge(prevVertex, idx);
-					{
-						if (currentPath.PointPushFront(e))
-						{
-#ifdef _DEBUG_OUT
-							currentPath.DebugOut(std::cerr);
-#endif
-							int64_t currentScore = currentPath.Score(scoreFullChains_);
-							if (currentScore > bestPath.score_ && currentPath.Instances().size() > 1)
-							{
-								bestPath.UpdateBackward(currentPath, currentScore);
-							}
-
-							ExtendPathBackward(currentPath, bestPath, maxDepth - 1);
-							currentPath.PointPopFront();
-						}
-					}
-				}
-			}
-		}
-
+		}		
 
 		struct ProcessVertexDijkstra
 		{
@@ -527,8 +419,7 @@ namespace Sibelia
 		{
 			bool ret = false;
 			if (currentPath.Score(true) > 0 && currentPath.MiddlePathLength() >= minBlockSize_ && currentPath.GoodInstances() > 1)
-			{
-				/*
+			{				
 				{
 					std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
 					for (auto & it : currentPath.AllInstances())
@@ -546,7 +437,7 @@ namespace Sibelia
 							}
 						}
 					}
-				}*/
+				}
 
 				std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > result;
 				for (auto & jt : currentPath.AllInstances())
@@ -595,7 +486,6 @@ namespace Sibelia
 					}
 				}
 
-				/*
 				{
 					std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
 					for (auto & it : currentPath.AllInstances())
@@ -614,7 +504,6 @@ namespace Sibelia
 						}
 					}
 				}
-				*/
 			}
 
 			return ret;

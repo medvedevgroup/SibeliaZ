@@ -413,102 +413,7 @@ namespace Sibelia
 		void ListChromosomesAsPermutations(const BlockList & block, const std::string & fileName) const;
 		void TryOpenFile(const std::string & fileName, std::ofstream & stream) const;
 		void ListChrs(std::ostream & out) const;
-
-		template<class P>
-		bool TryFinalizeBlock(P & currentPath, std::ostream & log)
-		{
-			bool ret = false;
-			if (currentPath.Score(true) > 0 && currentPath.MiddlePathLength() >= minBlockSize_ && currentPath.GoodInstances() > 1)
-			{				
-				{
-					std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
-					for (auto & it : currentPath.AllInstances())
-					{
-						auto & instance = *it;
-						if (currentPath.IsGoodInstance(instance))
-						{
-							if (instance.Front().IsPositiveStrand())
-							{
-								storage_.LockRange(instance.Front(), instance.Back(), idx);
-							}
-							else
-							{
-								storage_.LockRange(instance.Back().Reverse(), instance.Front().Reverse(), idx);
-							}
-						}
-					}
-				}
-
-				std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > result;
-				for (auto & jt : currentPath.AllInstances())
-				{
-					auto & instance = *jt;
-					if (currentPath.IsGoodInstance(instance))
-					{
-						bool whole = true;
-						auto start = instance.Front();
-						auto end = instance.Back();
-						for (; start != end && start.IsUsed(); ++start);
-						for (; start != end && end.IsUsed(); --end);
-						for (auto it = start; it != end + 1; it++)
-						{
-							if (it.IsUsed())
-							{
-								whole = false;
-								break;
-							}
-						}
-
-						if (whole && abs(start.GetPosition() - end.GetPosition()) >= minBlockSize_)
-						{
-							result.push_back(std::make_pair(start, end));
-						}
-					}
-				}
-
-
-				if (result.size() > 1)
-				{
-					ret = true;
-					int64_t currentBlock = ++blocksFound_;
-					int64_t instanceCount = 0;
-					for (auto & instance : result)
-					{
-						auto end = instance.second;
-						for (auto it = instance.first; it != end; ++it)
-						{
-							it.MarkUsed();
-							int64_t idx = it.GetIndex();
-							int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());
-							blockId_[it.GetChrId()][it.GetIndex()].block = it.IsPositiveStrand() ? +currentBlock : -currentBlock;
-							blockId_[it.GetChrId()][it.GetIndex()].instance = instanceCount;
-						}
-					}
-				}
-
-				{
-					std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
-					for (auto & it : currentPath.AllInstances())
-					{
-						auto & instance = *it;
-						if (currentPath.IsGoodInstance(instance))
-						{
-							if (instance.Front().IsPositiveStrand())
-							{
-								storage_.UnlockRange(instance.Front(), instance.Back(), idx);
-							}
-							else
-							{
-								storage_.UnlockRange(instance.Back().Reverse(), instance.Front().Reverse(), idx);
-							}
-						}
-					}
-				}
-			}
-
-			return ret;
-		}
-
+		
 		template<class P>
 		bool TryFinalizeBlock(P & currentPath, std::pair<int64_t, std::vector<Path::Instance> > & goodInstance, std::ostream & log)
 		{
@@ -562,7 +467,14 @@ namespace Sibelia
 				if (result.size() > 1)
 				{
 					ret = true;
-					int64_t currentBlock = ++blocksFound_;
+					int64_t currentBlock = ++blocksFound_;/*
+					if (currentBlock == 1912)
+					{
+						for (auto it : result)
+						{
+							std::cout << it.first.GetPosition() << ' ' << it.second.GetPosition() << ' ' << it.first.GetPosition() - it.second.GetPosition() << std::endl;
+						}
+					}*/
 					int64_t instanceCount = 0;
 					for (auto & instance : result)
 					{
@@ -624,7 +536,7 @@ namespace Sibelia
 			int32_t bestVid = 0;
 			auto f = forward ? &Path::RightVertex : &Path::LeftVertex;
 			size_t bodySize = forward ? currentPath.RightSize() : currentPath.LeftSize();
-			size_t end = min(1, bodySize);
+			size_t end = 1;
 			for (size_t i = 0; i < end; i++)
 			{
 				for (JunctionStorage::JunctionIterator nowIt((currentPath.*f)(bodySize - end)); nowIt.Valid(); nowIt++)

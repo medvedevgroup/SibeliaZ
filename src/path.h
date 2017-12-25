@@ -96,7 +96,7 @@ namespace Sibelia
 
 			}
 
-			Instance(JunctionStorage::JunctionSequentialIterator & it, int64_t distance) : front_(it),
+			Instance(const JunctionStorage::JunctionSequentialIterator & it, int64_t distance) : front_(it),
 				back_(it),
 				frontDistance_(distance),
 				backDistance_(distance),

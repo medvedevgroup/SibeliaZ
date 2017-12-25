@@ -183,7 +183,7 @@ namespace Sibelia
 
 		BlocksFinder(JunctionStorage & storage, size_t k) : storage_(storage), k_(k)
 		{
-			scoreFullChains_ = false;
+			scoreFullChains_ = true;
 		}
 
 		struct ProcessVertexBruteForce
@@ -208,11 +208,6 @@ namespace Sibelia
 					}
 
 					int64_t vid = shuffle[i];
-					if (finder.visit_[vid + finder.storage_.GetVerticesNumber()])
-					{
-						continue;
-					}
-
 					for (bool explore = true; explore;)
 					{
 						bestPath.Init();
@@ -247,11 +242,6 @@ namespace Sibelia
 			if (maxDepth > 0)
 			{
 				int64_t prevVertex = currentPath.GetEndVertex();
-				if (currentPath.RightDistance() < finishingProximity_)
-				{
-					visit_[prevVertex + storage_.GetVerticesNumber()] = true;
-				}
-
 				for (int64_t idx = 0; idx < storage_.OutgoingEdgesNumber(prevVertex); idx++)
 				{
 					Edge e = storage_.OutgoingEdge(prevVertex, idx);
@@ -280,11 +270,6 @@ namespace Sibelia
 			if (maxDepth > 0)
 			{
 				int64_t prevVertex = currentPath.GetStartVertex();
-				if (currentPath.LeftDistance() < finishingProximity_)
-				{
-					visit_[prevVertex + storage_.GetVerticesNumber()] = true;
-				}
-
 				for (int64_t idx = 0; idx < storage_.IngoingEdgesNumber(prevVertex); idx++)
 				{
 					Edge e = storage_.IngoingEdge(prevVertex, idx);
@@ -332,13 +317,7 @@ namespace Sibelia
 						std::cout << finder.count_ << '\t' << shuffle.size() << std::endl;
 					}
 
-					int64_t vid = shuffle[i];
-					if (finder.visit_[vid + finder.storage_.GetVerticesNumber()])
-					{
-						continue;
-					}
-					
-
+					int64_t vid = shuffle[i];				
 					for (bool explore = true; explore;)
 					{
 						currentPath.Init(vid);
@@ -348,7 +327,7 @@ namespace Sibelia
 						{
 							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
 							bool ret = finder.ExtendPathDijkstraForward(currentPath, count, data, goodInstance);
-							if (!ret || currentPath.Score(finder.scoreFullChains_) <= prevBestScore)
+							if (!ret)
 							{
 								break;
 							}
@@ -359,14 +338,12 @@ namespace Sibelia
 						{
 							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
 							bool ret = finder.ExtendPathDijkstraBackward(currentPath, count, data, goodInstance);
-							if (!ret || currentPath.Score(finder.scoreFullChains_) <= prevBestScore)
+							if (!ret)
 							{
 								break;
 							}
 						}
-
 						
-
 						if (!finder.TryFinalizeBlock(currentPath, goodInstance, std::cerr))
 						{
 							explore = false;
@@ -412,10 +389,8 @@ namespace Sibelia
 			time_t mark = time(0);
 			count_ = 0;
 			tbb::task_scheduler_init init(threads);
-			visit_.reset(new std::atomic<bool>[storage_.GetVerticesNumber() * 2]);
-			std::fill(visit_.get(), visit_.get() + storage_.GetVerticesNumber() * 2, false);
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexBruteForce(*this, shuffle));
-			visit_.release();
+			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexDijkstra(*this, shuffle));
+//			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexBruteForce(*this, shuffle));
 			std::cout << "Time: " << time(0) - mark << std::endl;
 		}
 
@@ -593,7 +568,7 @@ namespace Sibelia
 							}
 						}
 
-						if (whole && abs(start.GetPosition() - end.GetPosition()) + k_ >= minBlockSize_)
+						if (whole && abs(start.GetPosition() - end.GetPosition()) >= minBlockSize_)
 						{
 							result.push_back(std::make_pair(start, end));
 						}
@@ -780,7 +755,7 @@ namespace Sibelia
 
 							count[adjVid]++;
 							auto diff = abs(it.GetAbsolutePosition() - origin.GetAbsolutePosition());
-							if (count[adjVid] > ret.count || (count[adjVid] == ret.count && diff > ret.diff))
+							if (count[adjVid] > ret.count || (count[adjVid] == ret.count && diff < ret.diff))
 							{
 								ret.diff = diff;
 								ret.origin = origin;
@@ -824,7 +799,7 @@ namespace Sibelia
 				{
 					if (currentPath.PointPushBack(it.OutgoingEdge()))
 					{
-						int64_t score = currentPath.Score();
+						int64_t score = currentPath.Score(scoreFullChains_);
 						if (score > goodInstance.first)
 						{
 							goodInstance.first = score;
@@ -841,7 +816,7 @@ namespace Sibelia
 						int64_t dist = currentPath.RightDistance();
 						if (dist < finishingProximity_)
 						{
-							visit_[currentPath.GetEndVertex() + storage_.GetVerticesNumber()] = true;
+							
 						}
 					}
 					else
@@ -865,7 +840,7 @@ namespace Sibelia
 			{
 				for (auto it = nextBackwardVid.second.origin; it.GetVertexId() != nextBackwardVid.first; --it)
 				{
-					int64_t score = currentPath.Score();
+					int64_t score = currentPath.Score(scoreFullChains_);
 					if (score > goodInstance.first)
 					{
 						goodInstance.first = score;
@@ -884,7 +859,7 @@ namespace Sibelia
 						int64_t dist = currentPath.LeftDistance();
 						if (dist < finishingProximity_)
 						{
-							visit_[currentPath.GetStartVertex() + storage_.GetVerticesNumber()] = true;
+							
 						}
 					}
 					else
@@ -913,7 +888,6 @@ namespace Sibelia
 		int64_t finishingProximity_;
 		int64_t flankingThreshold_;
 		JunctionStorage & storage_;
-		std::unique_ptr<std::atomic<bool>[] > visit_;
 		std::vector<std::vector<Edge> > syntenyPath_;
 		std::vector<std::vector<Assignment> > blockId_;
 	};

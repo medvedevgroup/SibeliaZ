@@ -569,11 +569,6 @@ namespace Sibelia
 		{
 			return Path::Instance::OldComparator(*a, *b);
 		}
-		/*
-		void SortInstancePtr()
-		{
-			std::sort(allInstances_.begin(), allInstances_.end(), CmpInstance);
-		}*/
 
 		void GoodInstances(std::vector<Instance> & goodInstance) const
 		{

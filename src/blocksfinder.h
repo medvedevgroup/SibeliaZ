@@ -467,26 +467,22 @@ namespace Sibelia
 				if (result.size() > 1)
 				{
 					ret = true;
-					int64_t currentBlock = ++blocksFound_;/*
-					if (currentBlock == 1912)
-					{
-						for (auto it : result)
-						{
-							std::cout << it.first.GetPosition() << ' ' << it.second.GetPosition() << ' ' << it.first.GetPosition() - it.second.GetPosition() << std::endl;
-						}
-					}*/
 					int64_t instanceCount = 0;
+					int64_t currentBlock = ++blocksFound_;
 					for (auto & instance : result)
 					{
-						auto end = instance.second;
-						for (auto it = instance.first; it != end; ++it)
+						auto it = instance.first;
+						do
 						{
 							it.MarkUsed();
 							int64_t idx = it.GetIndex();
 							int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());
 							blockId_[it.GetChrId()][it.GetIndex()].block = it.IsPositiveStrand() ? +currentBlock : -currentBlock;
 							blockId_[it.GetChrId()][it.GetIndex()].instance = instanceCount;
-						}
+
+						} while (it++ != instance.second);	
+
+						instanceCount++;
 					}
 				}
 

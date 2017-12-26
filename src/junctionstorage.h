@@ -441,6 +441,11 @@ namespace Sibelia
 				return iidx_ < JunctionStorage::this_->vertex_[abs(vid_)].size();
 			}
 
+			size_t InstancesCount() const
+			{
+				return JunctionStorage::this_->vertex_[abs(vid_)].size();
+			}
+
 			bool IsUsed() const
 			{
 				return JunctionStorage::this_->position_[GetChrId()][GetIndex()].used;
@@ -449,6 +454,11 @@ namespace Sibelia
 			void MarkUsed() const
 			{
 				JunctionStorage::this_->position_[GetChrId()][GetIndex()].used = true;
+			}
+
+			JunctionIterator operator + (size_t inc) const
+			{
+				return JunctionIterator(vid_, iidx_ + inc);
 			}
 
 			JunctionIterator& operator++ ()
@@ -490,6 +500,10 @@ namespace Sibelia
 
 		private:			
 			
+			JunctionIterator(int64_t vid, size_t iidx) : iidx_(iidx), vid_(vid)
+			{
+			}
+
 			friend class JunctionStorage;
 			size_t iidx_;
 			int64_t vid_;

@@ -204,11 +204,12 @@ namespace Sibelia
 				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.flankingThreshold_);
 				for (size_t i = range.begin(); i != range.end(); i++)
 				{
-					if (finder.count_++ % 10000 == 0)
+					if (finder.count_++ % 1000 == 0)
 					{
 						std::cout << finder.count_ << '\t' << shuffle.size() << std::endl;
 					}
 
+					int64_t score;
 					int64_t vid = shuffle[i];				
 					for (bool explore = true; explore;)
 					{
@@ -218,8 +219,8 @@ namespace Sibelia
 						while (true)
 						{
 							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
-							bool ret = finder.ExtendPathDijkstraForward(currentPath, count, data, goodInstance);
-							if (!ret)
+							bool ret = finder.ExtendPathDijkstraForward(currentPath, count, data, goodInstance, score);
+							if (!ret || score < 0)
 							{
 								break;
 							}
@@ -229,8 +230,8 @@ namespace Sibelia
 						while (true)
 						{
 							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
-							bool ret = finder.ExtendPathDijkstraBackward(currentPath, count, data, goodInstance);
-							if (!ret)
+							bool ret = finder.ExtendPathDijkstraBackward(currentPath, count, data, goodInstance, score);
+							if (!ret || score < 0)
 							{
 								break;
 							}
@@ -282,7 +283,6 @@ namespace Sibelia
 			count_ = 0;
 			tbb::task_scheduler_init init(threads);
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexDijkstra(*this, shuffle));
-//			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexBruteForce(*this, shuffle));
 			std::cout << "Time: " << time(0) - mark << std::endl;
 		}
 
@@ -586,7 +586,7 @@ namespace Sibelia
 			return std::make_pair(bestVid, ret);
 		}				
 
-		bool ExtendPathDijkstraForward(Path & currentPath, std::vector<uint32_t> & count, std::vector<uint32_t> & data, std::pair<int64_t, std::vector<Path::Instance> > & goodInstance)
+		bool ExtendPathDijkstraForward(Path & currentPath, std::vector<uint32_t> & count, std::vector<uint32_t> & data, std::pair<int64_t, std::vector<Path::Instance> > & goodInstance, int64_t & score)
 		{	
 			int64_t origin = currentPath.Origin();
 			auto nextForwardVid = MostPopularVertex(currentPath, true, count, data);			
@@ -596,7 +596,7 @@ namespace Sibelia
 				{
 					if (currentPath.PointPushBack(it.OutgoingEdge()))
 					{
-						int64_t score = currentPath.Score(scoreFullChains_);
+						score = currentPath.Score(scoreFullChains_);
 						if (score > goodInstance.first)
 						{
 							goodInstance.first = score;
@@ -608,12 +608,6 @@ namespace Sibelia
 									goodInstance.second.push_back(*it);
 								}
 							}
-						}
-
-						int64_t dist = currentPath.RightDistance();
-						if (dist < finishingProximity_)
-						{
-							
 						}
 					}
 					else
@@ -630,33 +624,27 @@ namespace Sibelia
 			return true;
 		}
 
-		bool ExtendPathDijkstraBackward(Path & currentPath, std::vector<uint32_t> & count, std::vector<uint32_t> & data, std::pair<int64_t, std::vector<Path::Instance> > & goodInstance)
+		bool ExtendPathDijkstraBackward(Path & currentPath, std::vector<uint32_t> & count, std::vector<uint32_t> & data, std::pair<int64_t, std::vector<Path::Instance> > & goodInstance, int64_t & score)
 		{		
 			auto nextBackwardVid = MostPopularVertex(currentPath, false, count, data);
 			if (nextBackwardVid.first != 0)
 			{
 				for (auto it = nextBackwardVid.second.origin; it.GetVertexId() != nextBackwardVid.first; --it)
-				{
-					int64_t score = currentPath.Score(scoreFullChains_);
-					if (score > goodInstance.first)
-					{
-						goodInstance.first = score;
-						goodInstance.second.clear();
-						for (auto it : currentPath.AllInstances())
-						{
-							if (currentPath.IsGoodInstance(*it))
-							{
-								goodInstance.second.push_back(*it);
-							}
-						}
-					}
-
+				{				
 					if (currentPath.PointPushFront(it.IngoingEdge()))
 					{
-						int64_t dist = currentPath.LeftDistance();
-						if (dist < finishingProximity_)
+						score = currentPath.Score(scoreFullChains_);
+						if (score > goodInstance.first)
 						{
-							
+							goodInstance.first = score;
+							goodInstance.second.clear();
+							for (auto it : currentPath.AllInstances())
+							{
+								if (currentPath.IsGoodInstance(*it))
+								{
+									goodInstance.second.push_back(*it);
+								}
+							}
 						}
 					}
 					else

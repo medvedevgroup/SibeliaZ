@@ -220,7 +220,7 @@ namespace Sibelia
 						{
 							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
 							bool ret = finder.ExtendPathDijkstraForward(currentPath, count, data, goodInstance, score);
-							if (!ret || score < 0)
+							if (!ret || score < 0 || (score == 0 && currentPath.MiddlePathLength() >= finder.minBlockSize_))
 							{
 								break;
 							}
@@ -231,7 +231,7 @@ namespace Sibelia
 						{
 							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
 							bool ret = finder.ExtendPathDijkstraBackward(currentPath, count, data, goodInstance, score);
-							if (!ret || score < 0)
+							if (!ret || score < 0 || (score == 0 && currentPath.MiddlePathLength() >= finder.minBlockSize_))
 							{
 								break;
 							}

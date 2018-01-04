@@ -2,14 +2,14 @@
 
 
 namespace Sibelia
-{ 
-	#include <errno.h>
-	#include <sys/types.h>
-	#include <sys/stat.h>
+{
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
-	#ifdef _WIN32
-		#include <direct.h>
-	#endif
+#ifdef _WIN32
+#include <direct.h>
+#endif
 
 	void CreateOutDirectory(const std::string & path)
 	{
@@ -41,7 +41,7 @@ namespace Sibelia
 	{
 		return CompareBlocks(a, b, &BlockInstance::GetChrId);
 	}
-	
+
 	const std::string DELIMITER(80, '-');
 
 	int BlockInstance::GetSignedBlockId() const
@@ -165,6 +165,7 @@ namespace Sibelia
 
 		out << std::endl;
 		group.clear();
+		std::vector<bool> cover;
 		GroupBy(sepBlock, ByFirstElement, std::back_inserter(group));
 		group.push_back(IndexPair(0, sepBlock.size()));
 		for (std::vector<IndexPair>::iterator it = group.begin(); it != group.end(); ++it)
@@ -180,7 +181,7 @@ namespace Sibelia
 
 			out.precision(2);
 			out.setf(std::ostream::fixed);
-			std::vector<double> coverage = CalculateCoverage(sepBlock.begin() + it->first, sepBlock.begin() + it->second);
+			std::vector<double> coverage = CalculateCoverage(sepBlock.begin() + it->first, sepBlock.begin() + it->second, cover);
 			std::copy(coverage.begin(), coverage.end(), std::ostream_iterator<double>(out, "%\t"));
 			out << std::endl;
 		}
@@ -188,10 +189,9 @@ namespace Sibelia
 		out << DELIMITER << std::endl;
 	}
 
-	std::vector<double> BlocksFinder::CalculateCoverage(GroupedBlockList::const_iterator start, GroupedBlockList::const_iterator end) const
+	std::vector<double> BlocksFinder::CalculateCoverage(GroupedBlockList::const_iterator start, GroupedBlockList::const_iterator end, std::vector<bool> & cover) const
 	{
 		std::vector<double> ret;
-		std::vector<bool> cover;
 		double totalBp = 0;
 		double totalCoveredBp = 0;
 		for (size_t chr = 0; chr < storage_.GetChrNumber(); chr++)

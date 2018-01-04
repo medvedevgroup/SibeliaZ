@@ -441,6 +441,11 @@ namespace Sibelia
 				return iidx_ < JunctionStorage::this_->vertex_[abs(vid_)].size();
 			}
 
+			size_t InstancesCount() const
+			{
+				return JunctionStorage::this_->vertex_[abs(vid_)].size();
+			}
+
 			bool IsUsed() const
 			{
 				return JunctionStorage::this_->position_[GetChrId()][GetIndex()].used;
@@ -449,6 +454,11 @@ namespace Sibelia
 			void MarkUsed() const
 			{
 				JunctionStorage::this_->position_[GetChrId()][GetIndex()].used = true;
+			}
+
+			JunctionIterator operator + (size_t inc) const
+			{
+				return JunctionIterator(vid_, iidx_ + inc);
 			}
 
 			JunctionIterator& operator++ ()
@@ -490,6 +500,10 @@ namespace Sibelia
 
 		private:			
 			
+			JunctionIterator(int64_t vid, size_t iidx) : iidx_(iidx), vid_(vid)
+			{
+			}
+
 			friend class JunctionStorage;
 			size_t iidx_;
 			int64_t vid_;
@@ -773,15 +787,6 @@ namespace Sibelia
 				mutex_[i].reset(new tbb::mutex[1 << mutexBits_]);
 				for (; (int64_t(1) << chrSizeBits_[i]) <= chrSize_[i]; chrSizeBits_[i]++);
 				chrSizeBits_[i] = max(int64_t(0), chrSizeBits_[i] - mutexBits_);
-			}
-			
-			int64_t vertices = GetVerticesNumber();
-			ingoingEdge_.resize(vertices * 2 + 1);
-			outgoingEdge_.resize(vertices * 2 + 1);
-			for (int64_t vertexId = -vertices + 1; vertexId < vertices; vertexId++)
-			{
-				IngoingEdges(vertexId, ingoingEdge_[vertexId + vertices]);
-				OutgoingEdges(vertexId, outgoingEdge_[vertexId + vertices]);
 			}
 		}					
 

@@ -143,7 +143,7 @@ int main(int argc, char * argv[])
 			outDirName.getValue() + "/paths.txt");
 		finder.GenerateLegacyOutput(outDirName.getValue());
 		std::ofstream dumpStream(outDirName.getValue() + "/graph.dot");
-		finder.Dump(dumpStream);
+		//finder.Dump(dumpStream);
 	}
 	catch (TCLAP::ArgException & e)
 	{

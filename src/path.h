@@ -44,8 +44,7 @@ namespace Sibelia
 			maxFlankingSize_(maxFlankingSize),
 			storage_(&storage),
 			distanceKeeper_(storage.GetVerticesNumber()),
-			instance_(storage.GetChrNumber()),
-			allInstances_(CmpInstance)
+			instance_(storage.GetChrNumber())
 		{
 		
 		}
@@ -59,7 +58,7 @@ namespace Sibelia
 			{				
 				if (!it.IsUsed())
 				{
-					allInstances_.insert(instance_[it.GetChrId()].insert(Instance(it.SequentialIterator(), 0)));
+					allInstance_.push_back(instance_[it.GetChrId()].insert(Instance(it.SequentialIterator(), 0)));
 				}
 			}
 		}
@@ -209,12 +208,11 @@ namespace Sibelia
 		{
 			return instance_;
 		}
+		
 
-		typedef std::set<InstanceSet::iterator, bool(*)(const InstanceSet::iterator&, const InstanceSet::iterator&)> InstItSet;
-
-		const InstItSet & AllInstances() const
+		const std::vector<InstanceSet::iterator> & AllInstances() const
 		{
-			return allInstances_;
+			return allInstance_;
 		}
 
 		int64_t LeftDistance() const
@@ -394,7 +392,7 @@ namespace Sibelia
 						}
 						else
 						{
-							path->allInstances_.insert(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
+							path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
 						}
 					}
 				}
@@ -451,7 +449,7 @@ namespace Sibelia
 						}
 						else
 						{
-							path->allInstances_.insert(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
+							path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
 						}
 					}
 				}
@@ -475,7 +473,7 @@ namespace Sibelia
 			distanceKeeper_.Set(e.GetEndVertex(), endVertexDistance);
 			rightBodyFlank_ = rightBody_.back().EndDistance();
 
-			for (auto nowIt : allInstances_)
+			for (auto nowIt : allInstance_)
 			{
 				int64_t nextLength = abs(nowIt->Back().GetPosition() - nowIt->Front().GetPosition());
 				int64_t leftFlankSize = -(leftBodyFlank_ - nowIt->LeftFlankDistance());
@@ -511,7 +509,7 @@ namespace Sibelia
 			distanceKeeper_.Set(e.GetStartVertex(), startVertexDistance);
 			leftBodyFlank_ = leftBody_.back().StartDistance();
 
-			for (auto nowIt : allInstances_)
+			for (auto nowIt : allInstance_)
 			{
 				int64_t nextLength = abs(nowIt->Front().GetPosition() - nowIt->Back().GetPosition());
 				int64_t rightFlankSize = rightBodyFlank_ - nowIt->RightFlankDistance();
@@ -537,7 +535,7 @@ namespace Sibelia
 			int64_t length;
 			int64_t ret = 0;
 			int64_t middlePath = MiddlePathLength();
-			for(auto & instanceIt : allInstances_)
+			for(auto & instanceIt : allInstance_)
 			{
 				auto & inst = *instanceIt;
 				InstanceScore(inst, length, score, middlePath);
@@ -553,7 +551,7 @@ namespace Sibelia
 		int64_t GoodInstances() const
 		{
 			int64_t ret = 0;
-			for (auto & instanceIt : allInstances_)
+			for (auto & instanceIt : allInstance_)
 			{
 				auto & inst = *instanceIt;
 				if (IsGoodInstance(inst))
@@ -572,7 +570,7 @@ namespace Sibelia
 
 		void GoodInstances(std::vector<Instance> & goodInstance) const
 		{
-			for (auto & instanceIt : allInstances_)
+			for (auto & instanceIt : allInstance_)
 			{
 				auto & inst = *instanceIt;
 				if (IsGoodInstance(inst))
@@ -603,32 +601,23 @@ namespace Sibelia
 			distanceKeeper_.Unset(lastVertex);
 			assert(distanceKeeper_.IsSet(origin_));
 			rightBodyFlank_ = rightBody_.empty() ? 0 : rightBody_.back().EndDistance();
-			for(auto kt = allInstances_.begin(); kt != allInstances_.end(); )
+			for (int64_t i = allInstance_.size() - 1; i >= 0; i--)
 			{
-				auto it = *kt;
-				auto vv = it->Front().GetVertexId();
+				auto it = *(allInstance_.begin() + i);
 				if (it->Back().GetVertexId() == lastVertex)
 				{
 					if (it->Front() == it->Back())
-					{						
-						instance_[it->Front().GetChrId()].erase(it);
-						kt = allInstances_.erase(kt);
+					{
+						assert(i == instance_.size() - 1);
+						instance_[it->Back().GetChrId()].erase(it);
+						allInstance_.pop_back();
 					}
 					else
 					{
-						bool inc = true;
 						auto jt = it->Back();
 						while (true)
 						{
 							auto vid = jt.GetVertexId();
-							if (jt == it->Front())
-							{
-								inc = false;
-								instance_[it->Front().GetChrId()].erase(it);
-								kt = allInstances_.erase(kt);
-								break;
-							}
-							
 							if (distanceKeeper_.IsSet(jt.GetVertexId()))
 							{
 								const_cast<Instance&>(*it).ChangeBack(jt, distanceKeeper_.Get(jt.GetVertexId()));
@@ -636,20 +625,18 @@ namespace Sibelia
 							}
 							else
 							{
+								if (jt == it->Front())
+								{
+									assert(i == instance_.size() - 1);
+									instance_[it->Back().GetChrId()].erase(it);
+									allInstance_.pop_back();
+									break;
+								}
+
 								--jt;
 							}
 						}
-						
-						if (inc)
-						{
-							++kt;
-						}
-						
-					}			
-				}
-				else
-				{
-					++kt;
+					}
 				}
 			}
 		}
@@ -661,31 +648,23 @@ namespace Sibelia
 			leftBody_.pop_back();
 			distanceKeeper_.Unset(lastVertex);
 			leftBodyFlank_ = leftBody_.empty() ? 0 : leftBody_.back().StartDistance();
-			for (auto kt = allInstances_.begin(); kt != allInstances_.end(); )
+			for (int64_t i = allInstance_.size() - 1; i >= 0; i--)
 			{
-				auto it = *kt;
+				auto it = *(allInstance_.begin() + i);
 				if (it->Front().GetVertexId() == lastVertex)
 				{
 					if (it->Front() == it->Back())
 					{
-						instance_[it->Front().GetChrId()].erase(it);
-						kt = allInstances_.erase(kt);
+						assert(i == instance_.size() - 1);
+						instance_[it->Back().GetChrId()].erase(it);
+						allInstance_.pop_back();
 					}
 					else
 					{
-						bool inc = true;
 						auto jt = it->Front();
 						while (true)
 						{
 							assert(jt.Valid());
-							if (jt == it->Back())
-							{
-								inc = false;
-								instance_[it->Front().GetChrId()].erase(it);
-								kt = allInstances_.erase(kt);
-								break;
-							}
-
 							if (distanceKeeper_.IsSet(jt.GetVertexId()))
 							{
 								const_cast<Instance&>(*it).ChangeFront(jt, distanceKeeper_.Get(jt.GetVertexId()));
@@ -693,22 +672,22 @@ namespace Sibelia
 							}
 							else
 							{
+								if (jt == it->Back())
+								{
+									assert(i == instance_.size() - 1);
+									instance_[it->Back().GetChrId()].erase(it);
+									allInstance_.pop_back();
+									break;
+								}
+
 								++jt;
 							}
 						}
-
-						if (inc)
-						{
-							++kt;
-						}						
 					}
-				}
-				else
-				{
-					++kt;
 				}
 			}
 		}
+
 
 		void Clear()
 		{
@@ -730,21 +709,20 @@ namespace Sibelia
 				assert(!distanceKeeper_.IsSet(v1));
 			}
 
-			for (auto it : allInstances_)
+			for (auto it : allInstance_)
 			{
 				instance_[it->Front().GetChrId()].erase(it);
 			}
 
-			allInstances_.clear();
+			allInstance_.clear();
 		}
 
 	private:
 
-
 		std::vector<Point> leftBody_;
 		std::vector<Point> rightBody_;
 		std::vector<InstanceSet> instance_;
-		InstItSet allInstances_;
+		std::vector<InstanceSet::iterator> allInstance_;
 
 		int64_t origin_;
 		int64_t minBlockSize_;

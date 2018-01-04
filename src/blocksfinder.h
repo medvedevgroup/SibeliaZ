@@ -626,6 +626,7 @@ namespace Sibelia
 			bool ret = false;
 			if (goodInstance.first > 0 && goodInstance.second.size() > 1)
 			{
+				std::sort(goodInstance.second.begin(), goodInstance.second.end(), Path::Instance::OldComparator);
 				{
 					std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
 					for (auto & instIt : goodInstance.second)

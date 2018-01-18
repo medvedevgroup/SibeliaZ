@@ -628,7 +628,7 @@ namespace Sibelia
 				{
 					if (it->Front() == it->Back())
 					{
-						assert(i == instance_.size() - 1);
+						assert(i == allInstance_.size() - 1);
 						instance_[it->Back().GetChrId()].erase(it);
 						allInstance_.pop_back();
 					}
@@ -647,7 +647,7 @@ namespace Sibelia
 							{
 								if (jt == it->Front())
 								{
-									assert(i == instance_.size() - 1);
+									assert(i == allInstance_.size() - 1);
 									instance_[it->Back().GetChrId()].erase(it);
 									allInstance_.pop_back();
 									break;
@@ -675,7 +675,7 @@ namespace Sibelia
 				{
 					if (it->Front() == it->Back())
 					{
-						assert(i == instance_.size() - 1);
+						assert(i == allInstance_.size() - 1);
 						instance_[it->Back().GetChrId()].erase(it);
 						allInstance_.pop_back();
 					}
@@ -694,7 +694,7 @@ namespace Sibelia
 							{
 								if (jt == it->Back())
 								{
-									assert(i == instance_.size() - 1);
+									assert(i == allInstance_.size() - 1);
 									instance_[it->Back().GetChrId()].erase(it);
 									allInstance_.pop_back();
 									break;

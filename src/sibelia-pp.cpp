@@ -90,6 +90,14 @@ int main(int argc, char * argv[])
 			"integer",
 			cmd);
 
+		TCLAP::ValueArg<unsigned int> abundanceThreshold("",
+			"abundance",
+			"Max abundance of a junction",
+			false,
+			100500,
+			"integer",
+			cmd);
+
 		TCLAP::ValueArg<std::string> tmpDirName("",
 			"tmpdir",
 			"Temporary directory name",
@@ -132,7 +140,7 @@ int main(int argc, char * argv[])
 
 		cmd.parse(argc, argv);
 
-		Sibelia::JunctionStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue(), threads.getValue());
+		Sibelia::JunctionStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue(), threads.getValue(), abundanceThreshold.getValue());
 		Sibelia::BlocksFinder finder(storage, kvalue.getValue());		
 		finder.FindBlocks(minBlockSize.getValue(),
 			maxBranchSize.getValue(),

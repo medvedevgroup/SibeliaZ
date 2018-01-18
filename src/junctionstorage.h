@@ -711,9 +711,10 @@ namespace Sibelia
 			list.erase(std::unique(list.begin(), list.end()), list.end());
 		}
 
-		void Init(const std::string & inFileName, const std::string & genomesFileName, int64_t threads)
+		void Init(const std::string & inFileName, const std::string & genomesFileName, int64_t threads, int64_t abundanceThreshold)
 		{
 			this_ = this;
+			std::vector<size_t> abundance;
 			{
 				TwoPaCo::JunctionPositionReader reader(inFileName);
 				for (TwoPaCo::JunctionPosition junction; reader.NextJunctionPosition(junction);)
@@ -723,12 +724,31 @@ namespace Sibelia
 						chrSize_.push_back(0);
 					}
 
-					++chrSize_.back();
+					size_t absId = abs(junction.GetId());
+					while (absId >= vertex_.size())
+					{
+						vertex_.push_back(VertexVector());
+						abundance.push_back(0);
+					}
+
+					++abundance[absId];
+				}
+			}
+
+			{
+				TwoPaCo::JunctionPositionReader reader(inFileName);
+				for (TwoPaCo::JunctionPosition junction; reader.NextJunctionPosition(junction);)
+				{
+					size_t absId = abs(junction.GetId());
+					if (abundance[absId] < abundanceThreshold)
+					{
+						++chrSize_[junction.GetChr()];
+					}
 				}
 			}
 
 			position_.resize(chrSize_.size());
-			for(size_t i = 0; i < chrSize_.size(); i++)
+			for (size_t i = 0; i < chrSize_.size(); i++)
 			{
 				position_[i].reset(new Position[chrSize_[i]]);
 			}
@@ -745,17 +765,16 @@ namespace Sibelia
 						idx = 0;
 					}
 
-					position_[junction.GetChr()][idx].Assign(junction);				
-					size_t absId = abs(junction.GetId());
-					while (absId >= vertex_.size())
+					size_t absId = abs(junction.GetId());					
+					if (abundance[absId] < abundanceThreshold)
 					{
-						vertex_.push_back(VertexVector());
+						position_[junction.GetChr()][idx].Assign(junction);
+						vertex_[absId].push_back(Vertex(junction));
+						vertex_[absId].back().idx = idx++;
 					}
-
-					vertex_[absId].push_back(Vertex(junction));
-					vertex_[absId].back().idx = idx++;
 				}
 			}
+
 
 			size_t record = 0;
 			sequence_.resize(position_.size());
@@ -791,9 +810,9 @@ namespace Sibelia
 		}					
 
 		JunctionStorage() {}
-		JunctionStorage(const std::string & fileName, const std::string & genomesFileName, uint64_t k, int64_t threads) : k_(k)
+		JunctionStorage(const std::string & fileName, const std::string & genomesFileName, uint64_t k, int64_t threads, int64_t abundanceThreshold) : k_(k)
 		{
-			Init(fileName, genomesFileName, threads);
+			Init(fileName, genomesFileName, threads, abundanceThreshold);
 		}
 
 

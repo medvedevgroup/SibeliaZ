@@ -47,27 +47,34 @@ L-Sibelia requires two input files:
 
 To get the blocks, run the following command:
 
--k <k> --gfile <fasta> --infile <dbg> -m <m> -o <out_dir>
+-k <k> --gfile <fasta> --infile <dbg> -m <m> -o <out_dir> -t <threads>
 
 Description of the parameters:
 
 1) -k : the value of k to be used
+
 3) --gfile: the file with the input genomes
+
 2) --infile : the output of TwoPaco. On running TwoPaCo, see its docummentation:
 
-	https://github.com/medvedevgroup/TwoPaCo
+	<https://github.com/medvedevgroup/TwoPaCo>
 
 TwoPaCo has to be run with the same value of k as L-Sibelia, other parameters
 for TwoPaCo are irrelevant (they control TwoPaCo's speed/memory tradeoffs). The
 file supplied as this parameter should be the file produced by TwoPaCo directly
 (no need to run graphdump).
+
 3) -m : the minimum size of the locally collinear block. L-Sibelia will only
 output blocks longer than m basepairs.
+
 4) -o : the directory for the output files. Currently it produces files with
 the coordinates (blocks_coords.txt), sequences (blocks_sequences.fasta) and
 coverage report (coverage_report.txt) as the original Sibelia does. For the
 description of the formats, see:
 
-	https://github.com/bioinf/Sibelia/blob/master/SIBELIA.md#output-description
+	<https://github.com/bioinf/Sibelia/blob/master/SIBELIA.md#output-description>
 
 GFF output and others will added soon.
+
+5) -t : The number of thread L-Sibelia will be using. The current version has
+a good parallel scalability, but it does not speed-up beyont 16 threads.

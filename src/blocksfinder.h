@@ -264,27 +264,6 @@ namespace Sibelia
 				blockId_[i].resize(storage_.GetChrVerticesCount(i));
 			}
 
-			/*
-			size_t cycles = 0;
-			for (size_t chr = 0; chr < storage_.GetChrNumber(); chr++)
-			{
-				for (auto it = storage_.GetIterator(chr, 0); it.Valid(); ++it)
-				{
-					auto jt = it;
-					for (++jt; jt.Valid() && abs(it.GetPosition() - jt.GetPosition()) < maxBranchSize_; ++jt)
-					{
-						if (jt.GetVertexId() == it.GetVertexId())
-						{
-							++cycles;
-							break;
-						}						
-					}
-				}
-			}
-
-			std::cout << "Cycles: " << std::endl;
-			*/
-
 			std::vector<int64_t> shuffle;
 			for (int64_t v = -storage_.GetVerticesNumber() + 1; v < storage_.GetVerticesNumber(); v++)
 			{

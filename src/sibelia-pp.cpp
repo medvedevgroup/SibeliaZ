@@ -94,7 +94,7 @@ int main(int argc, char * argv[])
 			"abundance",
 			"Max abundance of a junction",
 			false,
-			100500,
+			1024,
 			"integer",
 			cmd);
 

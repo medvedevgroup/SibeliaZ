@@ -78,3 +78,11 @@ GFF output and others will added soon.
 
 5) -t : The number of thread L-Sibelia will be using. The current version has
 a good parallel scalability, but it does not speed-up beyont 16 threads.
+
+A note about the repeat masking: L-Sibelia works best when simple repeats are 
+masked. Unfortunately, TwoPaCo currently does not recognize soft-masking of 
+repeats (i.e. using lowercase characters), so please to convert soft-masked
+repeats to hard-maksed ones (with Ns). There is a simple script for in
+the util folder:
+
+	<https://github.com/medvedevgroup/L-Sibelia/blob/master/src/util/maskn.py>

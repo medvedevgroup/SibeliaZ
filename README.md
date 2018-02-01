@@ -83,6 +83,4 @@ A note about the repeat masking: L-Sibelia works best when simple repeats are
 masked. Unfortunately, TwoPaCo currently does not recognize soft-masking of 
 repeats (i.e. using lowercase characters), so please to convert soft-masked
 repeats to hard-maksed ones (with Ns). There is a simple script for it in
-the util folder:
-
-	<https://github.com/medvedevgroup/L-Sibelia/blob/master/src/util/maskn.py>
+the (see src/util/maskn.py).

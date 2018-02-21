@@ -208,36 +208,63 @@ namespace Sibelia
 					{
 						std::cout << finder.count_ << '\t' << shuffle.size() << std::endl;
 					}
-
+					
 					int64_t score;
 					int64_t vid = shuffle[i];				
 					for (bool explore = true; explore;)
 					{
 						currentPath.Init(vid);
-						goodInstance.first = 0;
-						goodInstance.second.clear();
+						int64_t bestScore = 0;
+						size_t bestRightSize = currentPath.RightSize();
+						size_t bestLeftSize = currentPath.LeftSize();
 						while (true)
 						{
 							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
-							bool ret = finder.ExtendPathDijkstraForward(currentPath, count, data, goodInstance, score);
-							if (!ret || score < 0 || (score == 0 && currentPath.MiddlePathLength() >= finder.minBlockSize_))
-							{
-								break;
-							}
-						}
-			
-
-						while (true)
-						{
-							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
-							bool ret = finder.ExtendPathDijkstraBackward(currentPath, count, data, goodInstance, score);
+							bool ret = finder.ExtendPathDijkstraForward(currentPath, count, data, bestRightSize, bestScore, score);
 							if (!ret || score < 0 || (score == 0 && currentPath.MiddlePathLength() >= finder.minBlockSize_))
 							{
 								break;
 							}
 						}
 						
-						if (!finder.TryFinalizeBlock(currentPath, goodInstance, std::cerr))
+						while (currentPath.RightSize() > bestRightSize)
+						{
+							currentPath.PointPopBack();
+						}
+			
+						while (true)
+						{
+							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
+							bool ret = finder.ExtendPathDijkstraBackward(currentPath, count, data, bestLeftSize, bestScore, score);
+							if (!ret || score < 0 || (score == 0 && currentPath.MiddlePathLength() >= finder.minBlockSize_))
+							{
+								break;
+							}
+						}
+
+						while (currentPath.LeftSize() > bestLeftSize)
+						{
+							currentPath.PointPopFront();
+						}
+						
+						if (bestScore > 0)
+						{							
+							goodInstance.second.clear();
+							goodInstance.first = bestScore;
+							for (auto it : currentPath.AllInstances())
+							{
+								if (currentPath.IsGoodInstance(*it))
+								{
+									goodInstance.second.push_back(*it);
+								}
+							}
+
+							if (!finder.TryFinalizeBlock(currentPath, goodInstance, std::cerr))
+							{
+								explore = false;
+							}
+						}
+						else
 						{
 							explore = false;
 						}
@@ -639,7 +666,12 @@ namespace Sibelia
 		}
 
 
-		bool ExtendPathDijkstraForward(Path & currentPath, std::vector<uint32_t> & count, std::vector<uint32_t> & data, std::pair<int64_t, std::vector<Path::Instance> > & goodInstance, int64_t & score)
+		bool ExtendPathDijkstraForward(Path & currentPath,
+			std::vector<uint32_t> & count,
+			std::vector<uint32_t> & data,
+			size_t & bestRightSize,
+			int64_t & bestScore,
+			int64_t & nowScore)
 		{				
 			int64_t origin = currentPath.Origin();
 			std::pair<int32_t, NextVertex> nextForwardVid;
@@ -651,25 +683,18 @@ namespace Sibelia
 			{
 				nextForwardVid = MostPopularVertexSampling(currentPath, true, count, data);
 			}
-
+			
 			if (nextForwardVid.first != 0)
 			{				
 				for(auto it = nextForwardVid.second.origin; it.GetVertexId() != nextForwardVid.first; ++it)
 				{
 					if (currentPath.PointPushBack(it.OutgoingEdge()))
 					{
-						score = currentPath.Score(scoreFullChains_);
-						if (score > goodInstance.first)
+						nowScore = currentPath.Score(scoreFullChains_);
+						if (nowScore > bestScore)
 						{
-							goodInstance.first = score;
-							goodInstance.second.clear();
-							for (auto it : currentPath.AllInstances())
-							{
-								if (currentPath.IsGoodInstance(*it))
-								{
-									goodInstance.second.push_back(*it);
-								}
-							}
+							bestScore = nowScore;
+							bestRightSize = currentPath.RightSize();
 						}
 					}
 					else
@@ -686,7 +711,12 @@ namespace Sibelia
 			return true;
 		}
 
-		bool ExtendPathDijkstraBackward(Path & currentPath, std::vector<uint32_t> & count, std::vector<uint32_t> & data, std::pair<int64_t, std::vector<Path::Instance> > & goodInstance, int64_t & score)
+		bool ExtendPathDijkstraBackward(Path & currentPath,
+			std::vector<uint32_t> & count,
+			std::vector<uint32_t> & data,
+			size_t & bestLeftSize,
+			int64_t & bestScore,
+			int64_t & nowScore)
 		{	
 			std::pair<int32_t, NextVertex> nextBackwardVid;
 			if (sampleSize_ == 0 || storage_.GetInstancesCount(currentPath.RightVertex()) <= sampleSize_)
@@ -704,18 +734,11 @@ namespace Sibelia
 				{				
 					if (currentPath.PointPushFront(it.IngoingEdge()))
 					{
-						score = currentPath.Score(scoreFullChains_);
-						if (score > goodInstance.first)
+						nowScore = currentPath.Score(scoreFullChains_);
+						if (nowScore > bestScore)
 						{
-							goodInstance.first = score;
-							goodInstance.second.clear();
-							for (auto it : currentPath.AllInstances())
-							{
-								if (currentPath.IsGoodInstance(*it))
-								{
-									goodInstance.second.push_back(*it);
-								}
-							}
+							bestScore = nowScore;
+							bestLeftSize = currentPath.LeftSize();							
 						}
 					}
 					else

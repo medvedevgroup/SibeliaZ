@@ -166,6 +166,7 @@ namespace Sibelia
 		out << std::endl;
 		group.clear();
 		std::vector<bool> cover;
+		std::vector<double> coverage;
 		GroupBy(sepBlock, ByFirstElement, std::back_inserter(group));
 		group.push_back(IndexPair(0, sepBlock.size()));
 		for (std::vector<IndexPair>::iterator it = group.begin(); it != group.end(); ++it)
@@ -181,7 +182,7 @@ namespace Sibelia
 
 			out.precision(2);
 			out.setf(std::ostream::fixed);
-			std::vector<double> coverage = CalculateCoverage(sepBlock.begin() + it->first, sepBlock.begin() + it->second, cover);
+			CalculateCoverage(sepBlock.begin() + it->first, sepBlock.begin() + it->second, cover, coverage);
 			std::copy(coverage.begin(), coverage.end(), std::ostream_iterator<double>(out, "%\t"));
 			out << std::endl;
 		}
@@ -189,9 +190,12 @@ namespace Sibelia
 		out << DELIMITER << std::endl;
 	}
 
-	std::vector<double> BlocksFinder::CalculateCoverage(GroupedBlockList::const_iterator start, GroupedBlockList::const_iterator end, std::vector<bool> & cover) const
+	void BlocksFinder::CalculateCoverage(GroupedBlockList::const_iterator start,
+		GroupedBlockList::const_iterator end,
+		std::vector<bool> & cover,
+		std::vector<double> & ret) const
 	{
-		std::vector<double> ret;
+		ret.clear();
 		double totalBp = 0;
 		double totalCoveredBp = 0;
 		for (size_t chr = 0; chr < storage_.GetChrNumber(); chr++)
@@ -215,7 +219,6 @@ namespace Sibelia
 		}
 
 		ret.insert(ret.begin(), totalCoveredBp / totalBp * 100);
-		return ret;
 	}
 
 

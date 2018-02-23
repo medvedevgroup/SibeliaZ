@@ -291,7 +291,7 @@ namespace Sibelia
 				blockId_[i].resize(storage_.GetChrVerticesCount(i));
 			}
 
-			std::vector<int64_t> shuffle;
+			std::vector<int64_t> shuffle;			
 			for (int64_t v = -storage_.GetVerticesNumber() + 1; v < storage_.GetVerticesNumber(); v++)
 			{
 				for (JunctionStorage::JunctionIterator it(v); it.Valid(); ++it)
@@ -303,9 +303,9 @@ namespace Sibelia
 					}					
 				}
 			}
-
+			
 			srand(time(0));
-			std::random_shuffle(shuffle.begin(), shuffle.end());			
+			//std::random_shuffle(shuffle.begin(), shuffle.end());			
 			time_t mark = time(0);
 			count_ = 0;
 			tbb::task_scheduler_init init(threads);
@@ -414,6 +414,51 @@ namespace Sibelia
 			ListBlocksIndices(instance, outDir + "/" + "blocks_coords.txt");
 			ListBlocksSequences(instance, outDir + "/" + "blocks_sequences.fasta");
 			GenerateReport(instance, outDir + "/" + "coverage_report.txt");
+
+			std::string buf;
+			std::set<int64_t> vertex;
+			std::ifstream oldCoordsIn(outDir + "/missing.maf");
+			if (oldCoordsIn)
+			{
+				std::ofstream missingDot(outDir + "/missing.dot");
+				while (std::getline(oldCoordsIn, buf) && buf[0] != '-')
+				{
+					std::string seq;
+					std::stringstream ss(buf);
+					char sign;
+					int seqId, start, length, end, seqSize;
+					ss >> seq >> seq >> start >> length >> sign >> seqSize;
+					seqId = atoi(seq.substr(2).c_str()) - 1;
+					end = start + length;
+					if (sign == '-')
+					{
+						start = seqSize - start;
+						end = seqSize - end;
+						std::swap(start, end);
+						assert(start < end);
+					}
+
+					for (auto it = storage_.Begin(seqId); it.Valid(); ++it)
+					{
+						int64_t pos = it.GetPosition();
+						if (pos >= start && pos < end)
+						{
+							vertex.insert(it.GetVertexId());
+						}
+					}
+
+				}
+
+				missingDot << "digraph G\n{\nrankdir = LR" << std::endl;
+				std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > vvisit;
+				for (auto vid : vertex)
+				{
+					DumpVertex(vid, missingDot, vvisit);
+					missingDot << vid << "[shape=square]" << std::endl;
+				}
+
+				missingDot << "}" << std::endl;
+			}			
 		}
 
 
@@ -441,6 +486,49 @@ namespace Sibelia
 		void TryOpenFile(const std::string & fileName, std::ofstream & stream) const;
 		void ListChrs(std::ostream & out) const;
 		
+		template<class T>
+		void DumpVertex(int64_t id, std::ostream & out, T & visit, int64_t cnt = 5) const
+		{
+			for (auto kt = JunctionStorage::JunctionIterator(id); kt.Valid(); ++kt)
+			{
+				auto jt = kt.SequentialIterator();
+				for (int64_t i = 0; i < cnt; i++)
+				{
+					auto it = jt - 1;
+					auto pr = std::make_pair(it, jt);
+					if (it.Valid() && std::find(visit.begin(), visit.end(), pr) == visit.end())
+					{
+						out << it.GetVertexId() << " -> " << jt.GetVertexId()
+							<< "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "\""
+							<< (it.IsPositiveStrand() ? "color=blue" : "color=red") << "]\n";
+						visit.push_back(pr);
+					}
+
+					jt = it;
+				}
+			}
+
+			for (auto kt = JunctionStorage::JunctionIterator(id); kt.Valid(); ++kt)
+			{
+				auto it = kt.SequentialIterator();
+				for (int64_t i = 0; i < cnt; i++)
+				{
+					auto jt = it + 1;
+					auto pr = std::make_pair(it, jt);
+					if (jt.Valid() && std::find(visit.begin(), visit.end(), pr) == visit.end())
+					{
+						out << it.GetVertexId() << " -> " << jt.GetVertexId()
+							<< "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "\""
+							<< (it.IsPositiveStrand() ? "color=blue" : "color=red") << "]\n";
+						visit.push_back(pr);
+					}
+
+					it = jt;
+				}
+			}
+		}
+
+
 		template<class P>
 		bool TryFinalizeBlock(P & currentPath, std::pair<int64_t, std::vector<Path::Instance> > & goodInstance, std::ostream & log)
 		{

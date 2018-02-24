@@ -1,8 +1,7 @@
 #ifndef _TRASERVAL_H_
 #define _TRAVERSAL_H_
 
-//#define _DEBUG_OUT
-
+#define _DEBUG_OUT_
 
 #include <set>
 #include <map>
@@ -210,13 +209,19 @@ namespace Sibelia
 					}
 					
 					int64_t score;
-					int64_t vid = shuffle[i];				
+					int64_t vid = shuffle[i];
+#ifdef _DEBUG_OUT_
+					std::cerr << "Vid: " << vid << std::endl;
+#endif
 					for (bool explore = true; explore;)
 					{
 						currentPath.Init(vid);
 						int64_t bestScore = 0;
 						size_t bestRightSize = currentPath.RightSize();
 						size_t bestLeftSize = currentPath.LeftSize();
+#ifdef _DEBUG_OUT_
+						std::cerr << "Going forward:" << std::endl;
+#endif
 						while (true)
 						{
 							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
@@ -231,7 +236,10 @@ namespace Sibelia
 						{
 							currentPath.PointPopBack();
 						}
-			
+
+#ifdef _DEBUG_OUT_
+						std::cerr << "Going backward:" << std::endl;
+#endif
 						while (true)
 						{
 							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
@@ -753,7 +761,6 @@ namespace Sibelia
 			return std::make_pair(bestVid, ret);
 		}
 
-
 		bool ExtendPathDijkstraForward(Path & currentPath,
 			std::vector<uint32_t> & count,
 			std::vector<uint32_t> & data,
@@ -776,9 +783,17 @@ namespace Sibelia
 			{				
 				for(auto it = nextForwardVid.second.origin; it.GetVertexId() != nextForwardVid.first; ++it)
 				{
+#ifdef _DEBUG_OUT_
+					std::cerr << "Attempting to push back the vertex:" << it.GetVertexId() << std::endl;
+#endif
 					if (currentPath.PointPushBack(it.OutgoingEdge()))
 					{
 						nowScore = currentPath.Score(scoreFullChains_);
+#ifdef _DEBUG_OUT_
+						std::cerr << "Success! New score:" << nowScore << std::endl;
+						currentPath.DumpPath(std::cerr);
+						currentPath.DumpInstances(std::cerr);
+#endif												
 						if (nowScore > bestScore)
 						{
 							bestScore = nowScore;
@@ -819,10 +834,18 @@ namespace Sibelia
 			if (nextBackwardVid.first != 0)
 			{
 				for (auto it = nextBackwardVid.second.origin; it.GetVertexId() != nextBackwardVid.first; --it)
-				{				
+				{			
+#ifdef _DEBUG_OUT_
+					std::cerr << "Attempting to push front the vertex:" << it.GetVertexId() << std::endl;
+#endif
 					if (currentPath.PointPushFront(it.IngoingEdge()))
 					{
 						nowScore = currentPath.Score(scoreFullChains_);
+#ifdef _DEBUG_OUT_
+						std::cerr << "Success! New score:" << nowScore << std::endl;
+						currentPath.DumpPath(std::cerr);
+						currentPath.DumpInstances(std::cerr);
+#endif		
 						if (nowScore > bestScore)
 						{
 							bestScore = nowScore;

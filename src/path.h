@@ -300,6 +300,21 @@ namespace Sibelia
 			return leftBody_.back().GetEdge().GetStartVertex();
 		}
 
+		void DumpPath(std::ostream & out) const
+		{
+			out << "Left:" << std::endl;
+			for (auto it = leftBody_.rbegin(); it != leftBody_.rend(); ++it)
+			{
+				out << it->GetEdge().GetStartVertex() << " -> " << it->GetEdge().GetEndVertex() << ", " << it->GetEdge().GetChar() << ", " << it->StartDistance() << ", " << it->EndDistance() << std::endl;
+			}
+
+			out << "Right:" << std::endl;
+			for (auto it = rightBody_.begin(); it != rightBody_.end(); ++it)
+			{
+				out << it->GetEdge().GetStartVertex() << " -> " << it->GetEdge().GetEndVertex() << ", " << it->GetEdge().GetChar() << ", " << it->StartDistance() << ", " << it->EndDistance() << std::endl;
+			}
+		}
+
 		void DumpInstances(std::ostream & out) const
 		{
 			for (auto & instanceSet : instance_)

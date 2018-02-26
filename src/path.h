@@ -321,7 +321,9 @@ namespace Sibelia
 			{
 				for (auto inst : instanceSet)
 				{
-					out << "(" << (inst.Front().IsPositiveStrand() ? '+' : '-') << inst.Front().GetChrId() << ' ' << inst.Front().GetIndex() << ' ' << inst.Back().GetIndex() << ')' << std::endl;
+					int64_t start = inst.Front().GetPosition();
+					int64_t end = inst.Back().GetPosition();
+					out << "(" << (inst.Front().IsPositiveStrand() ? '+' : '-') << inst.Front().GetChrId() << ' ' << start << ' ' << end << ' ' << start - end << ')' << std::endl;
 				}
 			}			
 		}
@@ -511,8 +513,10 @@ namespace Sibelia
 			for (auto nowIt : allInstance_)
 			{
 				int64_t nextLength = abs(nowIt->Back().GetPosition() - nowIt->Front().GetPosition());
+				int64_t rightFlankSize = rightBodyFlank_ - nowIt->RightFlankDistance();
 				int64_t leftFlankSize = -(leftBodyFlank_ - nowIt->LeftFlankDistance());
-				if (nextLength >= minBlockSize_ && leftFlankSize > maxFlankingSize_)
+				assert(rightFlankSize >= 0 && rightFlankSize >= 0);
+				if (nextLength >= minBlockSize_ && (leftFlankSize > maxFlankingSize_ || rightFlankSize > maxFlankingSize_))
 				{
 					failFlag = true;
 					break;
@@ -548,8 +552,9 @@ namespace Sibelia
 			{
 				int64_t nextLength = abs(nowIt->Front().GetPosition() - nowIt->Back().GetPosition());
 				int64_t rightFlankSize = rightBodyFlank_ - nowIt->RightFlankDistance();
-				assert(rightFlankSize >= 0);
-				if (nextLength >= minBlockSize_ && rightFlankSize > maxFlankingSize_)
+				int64_t leftFlankSize = -(leftBodyFlank_ - nowIt->LeftFlankDistance());
+				assert(rightFlankSize >= 0 && rightFlankSize >= 0);
+				if (nextLength >= minBlockSize_ && (leftFlankSize > maxFlankingSize_ || rightFlankSize > maxFlankingSize_))
 				{
 					failFlag = true;
 					break;

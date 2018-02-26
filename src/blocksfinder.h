@@ -1,7 +1,7 @@
 #ifndef _TRASERVAL_H_
 #define _TRAVERSAL_H_
 
-#define _DEBUG_OUT_
+//#define _DEBUG_OUT_
 
 #include <set>
 #include <map>

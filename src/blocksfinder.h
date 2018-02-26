@@ -21,7 +21,6 @@
 
 namespace Sibelia
 {
-
 	extern const std::string DELIMITER;
 
 	class BlockInstance
@@ -767,7 +766,8 @@ namespace Sibelia
 			size_t & bestRightSize,
 			int64_t & bestScore,
 			int64_t & nowScore)
-		{				
+		{	
+			bool success = false;
 			int64_t origin = currentPath.Origin();
 			std::pair<int32_t, NextVertex> nextForwardVid;
 			if (sampleSize_ == 0 || storage_.GetInstancesCount(currentPath.RightVertex()) <= sampleSize_)
@@ -786,7 +786,8 @@ namespace Sibelia
 #ifdef _DEBUG_OUT_
 					std::cerr << "Attempting to push back the vertex:" << it.GetVertexId() << std::endl;
 #endif
-					if (currentPath.PointPushBack(it.OutgoingEdge()))
+					success = currentPath.PointPushBack(it.OutgoingEdge());
+					if (success)
 					{
 						nowScore = currentPath.Score(scoreFullChains_);
 #ifdef _DEBUG_OUT_
@@ -799,19 +800,11 @@ namespace Sibelia
 							bestScore = nowScore;
 							bestRightSize = currentPath.RightSize();
 						}
-					}
-					else
-					{
-						return false;
-					}
+					}					
 				}
 			}
-			else
-			{
-				return false;
-			}
 
-			return true;
+			return success;
 		}
 
 		bool ExtendPathDijkstraBackward(Path & currentPath,
@@ -820,7 +813,8 @@ namespace Sibelia
 			size_t & bestLeftSize,
 			int64_t & bestScore,
 			int64_t & nowScore)
-		{	
+		{
+			bool success = false;
 			std::pair<int32_t, NextVertex> nextBackwardVid;
 			if (sampleSize_ == 0 || storage_.GetInstancesCount(currentPath.RightVertex()) <= sampleSize_)
 			{
@@ -834,11 +828,12 @@ namespace Sibelia
 			if (nextBackwardVid.first != 0)
 			{
 				for (auto it = nextBackwardVid.second.origin; it.GetVertexId() != nextBackwardVid.first; --it)
-				{			
+				{
 #ifdef _DEBUG_OUT_
 					std::cerr << "Attempting to push front the vertex:" << it.GetVertexId() << std::endl;
 #endif
-					if (currentPath.PointPushFront(it.IngoingEdge()))
+					success = currentPath.PointPushFront(it.IngoingEdge());
+					if (success)
 					{
 						nowScore = currentPath.Score(scoreFullChains_);
 #ifdef _DEBUG_OUT_
@@ -849,21 +844,13 @@ namespace Sibelia
 						if (nowScore > bestScore)
 						{
 							bestScore = nowScore;
-							bestLeftSize = currentPath.LeftSize();							
+							bestLeftSize = currentPath.LeftSize();
 						}
-					}
-					else
-					{
-						return false;
 					}
 				}
 			}
-			else
-			{
-				return false;
-			}
-
-			return true;
+						
+			return success;
 		}
 
 		int64_t k_;

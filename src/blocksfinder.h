@@ -505,8 +505,9 @@ namespace Sibelia
 					auto pr = std::make_pair(it, jt);
 					if (it.Valid() && std::find(visit.begin(), visit.end(), pr) == visit.end())
 					{
+						int64_t length = it.GetPosition() - jt.GetPosition();
 						out << it.GetVertexId() << " -> " << jt.GetVertexId()
-							<< "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "\""
+							<< "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "," << length << "\""
 							<< (it.IsPositiveStrand() ? "color=blue" : "color=red") << "]\n";
 						visit.push_back(pr);
 					}
@@ -524,8 +525,9 @@ namespace Sibelia
 					auto pr = std::make_pair(it, jt);
 					if (jt.Valid() && std::find(visit.begin(), visit.end(), pr) == visit.end())
 					{
+						int64_t length = it.GetPosition() - jt.GetPosition();
 						out << it.GetVertexId() << " -> " << jt.GetVertexId()
-							<< "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "\""
+							<< "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "," << length << "\""
 							<< (it.IsPositiveStrand() ? "color=blue" : "color=red") << "]\n";
 						visit.push_back(pr);
 					}

@@ -225,7 +225,7 @@ namespace Sibelia
 						{
 							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
 							bool ret = finder.ExtendPathDijkstraForward(currentPath, count, data, bestRightSize, bestScore, score);
-							if (!ret || score < 0 || (score == 0 && currentPath.MiddlePathLength() >= finder.minBlockSize_))
+							if (!ret || score < 0 || (score == 0 && currentPath.MiddlePathLength() >= finder.minBlockSize_ * 2))
 							{
 								break;
 							}
@@ -243,7 +243,7 @@ namespace Sibelia
 						{
 							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
 							bool ret = finder.ExtendPathDijkstraBackward(currentPath, count, data, bestLeftSize, bestScore, score);
-							if (!ret || score < 0 || (score == 0 && currentPath.MiddlePathLength() >= finder.minBlockSize_))
+							if (!ret || score < 0 || (score == 0 && currentPath.MiddlePathLength() >= finder.minBlockSize_ * 2))
 							{
 								break;
 							}
@@ -706,7 +706,7 @@ namespace Sibelia
 				int64_t nowVid = forward ?  inst->Back().GetVertexId() : inst->Front().GetVertexId();
 				if (nowVid == startVid)
 				{
-					int64_t weight = abs(inst->Front().GetPosition() - inst->Back().GetPosition());
+					int64_t weight = abs(inst->Front().GetPosition() - inst->Back().GetPosition()) + 1;
 					auto origin = forward ? inst->Back() : inst->Front();
 					auto it = forward ? origin.Next() : origin.Prev();
 					for (size_t d = 1; it.Valid() && (d < lookingDepth_); d++)
@@ -720,7 +720,7 @@ namespace Sibelia
 								data.push_back(adjVid);
 							}
 
-							count[adjVid]++;
+							count[adjVid] += weight;
 							auto diff = abs(it.GetAbsolutePosition() - origin.GetAbsolutePosition());
 							if (count[adjVid] > ret.count || (count[adjVid] == ret.count && diff < ret.diff))
 							{

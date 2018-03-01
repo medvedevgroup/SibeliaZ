@@ -653,51 +653,6 @@ namespace Sibelia
 
 		std::pair<int32_t, NextVertex> MostPopularVertex(const Path & currentPath, bool forward, std::vector<uint32_t> & count, std::vector<uint32_t> & data)
 		{
-			/*
-			NextVertex ret;
-			int32_t bestVid = 0;
-			int64_t startVid = forward ? currentPath.RightVertex() : currentPath.LeftVertex();
-			for (JunctionStorage::JunctionIterator nowIt(startVid); nowIt.Valid(); nowIt++)
-			{
-				auto origin = nowIt.SequentialIterator();
-				auto it = forward ? origin.Next() : origin.Prev();
-				for (size_t d = 1; it.Valid() && (d < lookingDepth_); d++)
-				{
-					int32_t vid = it.GetVertexId();
-					if (!currentPath.IsInPath(vid) && !it.IsUsed())
-					{
-						auto adjVid = vid + storage_.GetVerticesNumber();
-						if (count[adjVid] == 0)
-						{
-							data.push_back(adjVid);
-						}
-
-						count[adjVid]++;
-						auto diff = abs(it.GetAbsolutePosition() - origin.GetAbsolutePosition());
-						if (count[adjVid] > ret.count || (count[adjVid] == ret.count && diff < ret.diff))
-						{
-							ret.diff = diff;
-							ret.origin = origin;
-							ret.count = count[adjVid];
-							bestVid = vid;
-						}
-					}
-					else
-					{
-						break;
-					}
-
-					if (forward)
-					{
-						++it;
-					}
-					else
-					{
-						--it;
-					}
-				}
-			}*/
-
 			NextVertex ret;
 			int32_t bestVid = 0;
 			int64_t startVid = forward ? currentPath.RightVertex() : currentPath.LeftVertex();

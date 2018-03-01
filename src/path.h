@@ -508,20 +508,7 @@ namespace Sibelia
 			PointPushBackWorker(this, vertex, endVertexDistance, e, failFlag)();
 			rightBody_.push_back(Point(e, startVertexDistance));
 			distanceKeeper_.Set(e.GetEndVertex(), endVertexDistance);
-			rightBodyFlank_ = rightBody_.back().EndDistance();
-
-			for (auto nowIt : allInstance_)
-			{
-				int64_t nextLength = abs(nowIt->Back().GetPosition() - nowIt->Front().GetPosition());
-				int64_t rightFlankSize = rightBodyFlank_ - nowIt->RightFlankDistance();
-				int64_t leftFlankSize = -(leftBodyFlank_ - nowIt->LeftFlankDistance());
-				assert(rightFlankSize >= 0 && rightFlankSize >= 0);
-				if (nextLength >= minBlockSize_ && (leftFlankSize > maxFlankingSize_ || rightFlankSize > maxFlankingSize_))
-				{
-					failFlag = true;
-					break;
-				}
-			}
+			rightBodyFlank_ = rightBody_.back().EndDistance();			
 
 			if (failFlag)
 			{
@@ -546,20 +533,7 @@ namespace Sibelia
 			PointPushFrontWorker(this, vertex, startVertexDistance, e, failFlag)();
 			leftBody_.push_back(Point(e, startVertexDistance));
 			distanceKeeper_.Set(e.GetStartVertex(), startVertexDistance);
-			leftBodyFlank_ = leftBody_.back().StartDistance();
-
-			for (auto nowIt : allInstance_)
-			{
-				int64_t nextLength = abs(nowIt->Front().GetPosition() - nowIt->Back().GetPosition());
-				int64_t rightFlankSize = rightBodyFlank_ - nowIt->RightFlankDistance();
-				int64_t leftFlankSize = -(leftBodyFlank_ - nowIt->LeftFlankDistance());
-				assert(rightFlankSize >= 0 && rightFlankSize >= 0);
-				if (nextLength >= minBlockSize_ && (leftFlankSize > maxFlankingSize_ || rightFlankSize > maxFlankingSize_))
-				{
-					failFlag = true;
-					break;
-				}
-			}
+			leftBodyFlank_ = leftBody_.back().StartDistance();			
 
 			if (failFlag)
 			{
@@ -573,20 +547,20 @@ namespace Sibelia
 		{
 			int64_t score;
 			int64_t length;
-			int64_t ret = 0;
-			int64_t middlePath = MiddlePathLength();
+			int64_t ret = 0;			
+			int64_t middlePath = MiddlePathLength();	
+			int64_t penaltyMultiplier = GoodInstances() - 1;
 			for(auto & instanceIt : allInstance_)
 			{
-				auto & inst = *instanceIt;
-				InstanceScore(inst, length, score, middlePath);
-				if (!final || length >= minBlockSize_)
+				int64_t length = length = abs(instanceIt->Front().GetPosition() - instanceIt->Back().GetPosition());
+				if (length >= minBlockSize_)
 				{
-					ret += score;
+					ret += length - (middlePath - length) * penaltyMultiplier;
 				}
 			}
 
 			return ret;
-		}
+		}		
 
 		int64_t GoodInstances() const
 		{
@@ -620,20 +594,18 @@ namespace Sibelia
 			}
 		}
 
-		bool IsGoodInstance(const Instance & it) const
-		{
-			int64_t score;
-			int64_t length;
-			InstanceScore(it, length, score, MiddlePathLength());
+		bool IsGoodInstance(const Instance & inst) const
+		{			
+			int64_t length = length = abs(inst.Front().GetPosition() - inst.Back().GetPosition());
 			return length >= minBlockSize_;
 		}
-
+		/*
 		void InstanceScore(const Instance & inst, int64_t & length, int64_t & score, int64_t middlePath) const
 		{			
 			length = abs(inst.Front().GetPosition() - inst.Back().GetPosition());
 			score = length - (middlePath - length);
 		}		
-
+		*/
 		void PointPopBack()
 		{
 			int64_t lastVertex = rightBody_.back().GetEdge().GetEndVertex();

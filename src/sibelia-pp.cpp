@@ -66,14 +66,6 @@ int main(int argc, char * argv[])
 			"integer",
 			cmd);
 
-		TCLAP::ValueArg<unsigned int> maxFlankingSize("f",
-			"flanksize",
-			"Maximum flank size",
-			false,
-			25,
-			"integer",
-			cmd);
-
 		TCLAP::ValueArg<unsigned int> lookingDepth("",
 			"depth",
 			"Looking depth",
@@ -152,7 +144,6 @@ int main(int argc, char * argv[])
 		Sibelia::BlocksFinder finder(storage, kvalue.getValue());		
 		finder.FindBlocks(minBlockSize.getValue(),
 			maxBranchSize.getValue(),
-			maxFlankingSize.getValue(),
 			lookingDepth.getValue(),
 			sampleSize.getValue(),
 			threads.getValue(),

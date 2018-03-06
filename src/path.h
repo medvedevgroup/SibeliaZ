@@ -37,11 +37,9 @@ namespace Sibelia
 		Path(const JunctionStorage & storage,			
 			int64_t maxBranchSize,
 			int64_t minBlockSize,
-			int64_t maxFlankingSize,
 			bool checkConsistency = false) :
 			maxBranchSize_(maxBranchSize),
 			minBlockSize_(minBlockSize),
-			maxFlankingSize_(maxFlankingSize),
 			storage_(&storage),
 			distanceKeeper_(storage.GetVerticesNumber()),
 			instance_(storage.GetChrNumber())
@@ -739,7 +737,6 @@ namespace Sibelia
 		int64_t origin_;
 		int64_t minBlockSize_;
 		int64_t maxBranchSize_;
-		int64_t maxFlankingSize_;
 		int64_t leftBodyFlank_;
 		int64_t rightBodyFlank_;		
 		DistanceKeeper distanceKeeper_;

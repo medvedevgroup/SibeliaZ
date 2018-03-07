@@ -37,9 +37,10 @@ namespace Sibelia
 		Path(const JunctionStorage & storage,			
 			int64_t maxBranchSize,
 			int64_t minBlockSize,
-			bool checkConsistency = false) :
+			int64_t minScoringUnit) :
 			maxBranchSize_(maxBranchSize),
 			minBlockSize_(minBlockSize),
+			minScoringUnit_(minScoringUnit),
 			storage_(&storage),
 			distanceKeeper_(storage.GetVerticesNumber()),
 			instance_(storage.GetChrNumber())
@@ -551,7 +552,7 @@ namespace Sibelia
 			for(auto & instanceIt : allInstance_)
 			{
 				int64_t length = length = abs(instanceIt->Front().GetPosition() - instanceIt->Back().GetPosition());
-				if (length >= minBlockSize_)
+				if (length >= minScoringUnit_)
 				{
 					ret += length - (middlePath - length) * penaltyMultiplier;
 				}
@@ -736,6 +737,7 @@ namespace Sibelia
 
 		int64_t origin_;
 		int64_t minBlockSize_;
+		int64_t minScoringUnit_;
 		int64_t maxBranchSize_;
 		int64_t leftBodyFlank_;
 		int64_t rightBodyFlank_;		

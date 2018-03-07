@@ -200,21 +200,20 @@ namespace Sibelia
 		double totalCoveredBp = 0;
 		for (size_t chr = 0; chr < storage_.GetChrNumber(); chr++)
 		{
+			double nowCoveredBp = 0;
 			totalBp += storage_.GetChrSequence(chr).size();
-			cover.assign(storage_.GetChrSequence(chr).size(), 0);
 			for (GroupedBlockList::const_iterator it = start; it != end; ++it)
 			{
 				for (size_t i = 0; i < it->second.size(); i++)
 				{
 					if (it->second[i].GetChrId() == chr)
 					{
-						std::fill(cover.begin() + it->second[i].GetStart(), cover.begin() + it->second[i].GetEnd(), COVERED);
+						nowCoveredBp += it->second[i].GetLength();
 					}
-				}
+				}				
 			}
-
-			double nowCoveredBp = static_cast<double>(std::count(cover.begin(), cover.end(), COVERED));
-			ret.push_back(nowCoveredBp / cover.size() * 100);
+			
+			ret.push_back((nowCoveredBp / storage_.GetChrSequence(chr).size()) * 100);
 			totalCoveredBp += nowCoveredBp;
 		}
 

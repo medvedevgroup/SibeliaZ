@@ -221,11 +221,12 @@ namespace Sibelia
 #ifdef _DEBUG_OUT_
 						std::cerr << "Going forward:" << std::endl;
 #endif
+						int64_t minRun = max(finder.minBlockSize_, finder.maxBranchSize_) * 3;
 						while (true)
 						{
 							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
 							bool ret = finder.ExtendPathDijkstraForward(currentPath, count, data, bestRightSize, bestScore, score);
-							if (!ret || (score <= 0 && currentPath.MiddlePathLength() >= finder.minBlockSize_ * 2))
+							if (!ret || (score <= 0 && currentPath.MiddlePathLength() >= minRun))
 							{
 								break;
 							}
@@ -243,7 +244,7 @@ namespace Sibelia
 						{
 							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
 							bool ret = finder.ExtendPathDijkstraBackward(currentPath, count, data, bestLeftSize, bestScore, score);
-							if (!ret || (score <= 0 && currentPath.MiddlePathLength() >= finder.minBlockSize_ * 2))
+							if (!ret || (score <= 0 && currentPath.MiddlePathLength() >= minRun))
 							{
 								break;
 							}

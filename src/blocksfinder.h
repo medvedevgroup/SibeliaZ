@@ -1,7 +1,7 @@
 #ifndef _TRASERVAL_H_
 #define _TRAVERSAL_H_
 
-//#define _DEBUG_OUT_
+#define _DEBUG_OUT_
 
 #include <set>
 #include <map>
@@ -210,7 +210,11 @@ namespace Sibelia
 					int64_t score;
 					int64_t vid = shuffle[i];
 #ifdef _DEBUG_OUT_
-					std::cerr << "Vid: " << vid << std::endl;
+					finder.debug_ = finder.missingVertex_.count(vid);
+					if (finder.debug_)
+					{
+						std::cerr << "Vid: " << vid << std::endl;
+					}
 #endif
 					for (bool explore = true; explore;)
 					{
@@ -219,7 +223,10 @@ namespace Sibelia
 						size_t bestRightSize = currentPath.RightSize();
 						size_t bestLeftSize = currentPath.LeftSize();
 #ifdef _DEBUG_OUT_
-						std::cerr << "Going forward:" << std::endl;
+						if (finder.debug_)
+						{
+							std::cerr << "Going forward:" << std::endl;
+						}
 #endif
 						int64_t minRun = max(finder.minBlockSize_, finder.maxBranchSize_) * 3;
 						while (true)
@@ -238,7 +245,10 @@ namespace Sibelia
 						}
 
 #ifdef _DEBUG_OUT_
-						std::cerr << "Going backward:" << std::endl;
+						if (finder.debug_)
+						{
+							std::cerr << "Going backward:" << std::endl;
+						}
 #endif
 						while (true)
 						{
@@ -283,6 +293,44 @@ namespace Sibelia
 			}
 		};
 
+		void MissingSet(const std::string & fileName, std::set<int64_t> & result) const
+		{
+			std::string buf;
+			std::ifstream oldCoordsIn(fileName);
+			if (oldCoordsIn)
+			{
+				std::ofstream missingDot("missing.dot");
+				while (std::getline(oldCoordsIn, buf) && buf[0] != '-')
+				{
+					std::string seq;
+					std::stringstream ss(buf);
+					char sign;
+					int seqId, start, length, end, seqSize;
+					ss >> seq >> seq >> start >> length >> sign >> seqSize;
+					seqId = atoi(seq.substr(2).c_str()) - 1;
+					end = start + length;
+					if (sign == '-')
+					{
+						start = seqSize - start;
+						end = seqSize - end;
+						std::swap(start, end);
+						assert(start < end);
+					}
+
+					for (auto it = storage_.Begin(seqId); it.Valid(); ++it)
+					{
+						int64_t pos = it.GetPosition();
+						if (pos >= start && pos < end)
+						{
+							result.insert(it.GetVertexId());
+							result.insert(-it.GetVertexId());
+						}
+					}
+
+				}
+			}
+		}
+
 
 		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t lookingDepth, int64_t sampleSize, int64_t threads, const std::string & debugOut)
 		{
@@ -310,6 +358,19 @@ namespace Sibelia
 				}
 			}
 			
+#ifdef _DEBUG_OUT_
+			MissingSet("missing.maf", missingVertex_);
+			std::ofstream missingDot("missing.dot");
+			missingDot << "digraph G\n{\nrankdir = LR" << std::endl;
+			std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > vvisit;
+			for (auto vid : missingVertex_)
+			{
+				DumpVertex(vid, missingDot, vvisit, 10);
+				missingDot << vid << "[shape=square]" << std::endl;
+			}
+
+			missingDot << "}" << std::endl;
+#endif
 			srand(time(0));
 			//std::random_shuffle(shuffle.begin(), shuffle.end());			
 			time_t mark = time(0);
@@ -419,52 +480,7 @@ namespace Sibelia
 			CreateOutDirectory(outDir);			
 			ListBlocksIndices(instance, outDir + "/" + "blocks_coords.txt");
 			ListBlocksSequences(instance, outDir + "/" + "blocks_sequences.fasta");
-			GenerateReport(instance, outDir + "/" + "coverage_report.txt");
-
-			std::string buf;
-			std::set<int64_t> vertex;
-			std::ifstream oldCoordsIn(outDir + "/missing.maf");
-			if (oldCoordsIn)
-			{
-				std::ofstream missingDot(outDir + "/missing.dot");
-				while (std::getline(oldCoordsIn, buf) && buf[0] != '-')
-				{
-					std::string seq;
-					std::stringstream ss(buf);
-					char sign;
-					int seqId, start, length, end, seqSize;
-					ss >> seq >> seq >> start >> length >> sign >> seqSize;
-					seqId = atoi(seq.substr(2).c_str()) - 1;
-					end = start + length;
-					if (sign == '-')
-					{
-						start = seqSize - start;
-						end = seqSize - end;
-						std::swap(start, end);
-						assert(start < end);
-					}
-
-					for (auto it = storage_.Begin(seqId); it.Valid(); ++it)
-					{
-						int64_t pos = it.GetPosition();
-						if (pos >= start && pos < end)
-						{
-							vertex.insert(it.GetVertexId());
-						}
-					}
-
-				}
-
-				missingDot << "digraph G\n{\nrankdir = LR" << std::endl;
-				std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > vvisit;
-				for (auto vid : vertex)
-				{
-					DumpVertex(vid, missingDot, vvisit);
-					missingDot << vid << "[shape=square]" << std::endl;
-				}
-
-				missingDot << "}" << std::endl;
-			}			
+			GenerateReport(instance, outDir + "/" + "coverage_report.txt");			
 		}
 
 
@@ -742,16 +758,27 @@ namespace Sibelia
 				for(auto it = nextForwardVid.second.origin; it.GetVertexId() != nextForwardVid.first; ++it)
 				{
 #ifdef _DEBUG_OUT_
-					std::cerr << "Attempting to push back the vertex:" << it.GetVertexId() << std::endl;
+					if (debug_)
+					{
+						std::cerr << "Attempting to push back the vertex:" << it.GetVertexId() << std::endl;
+					}
+					
+					if (missingVertex_.count(it.GetVertexId()))
+					{
+						std::cerr << "Alert: " << it.GetVertexId() << ", origin: " << currentPath.Origin() << std::endl;
+					}
 #endif
 					success = currentPath.PointPushBack(it.OutgoingEdge());
 					if (success)
 					{
 						nowScore = currentPath.Score(scoreFullChains_);
 #ifdef _DEBUG_OUT_
-						std::cerr << "Success! New score:" << nowScore << std::endl;
-						currentPath.DumpPath(std::cerr);
-						currentPath.DumpInstances(std::cerr);
+						if (debug_)
+						{
+							std::cerr << "Success! New score:" << nowScore << std::endl;
+							currentPath.DumpPath(std::cerr);
+							currentPath.DumpInstances(std::cerr);
+						}						
 #endif												
 						if (nowScore > bestScore)
 						{
@@ -788,16 +815,27 @@ namespace Sibelia
 				for (auto it = nextBackwardVid.second.origin; it.GetVertexId() != nextBackwardVid.first; --it)
 				{
 #ifdef _DEBUG_OUT_
-					std::cerr << "Attempting to push front the vertex:" << it.GetVertexId() << std::endl;
+					if (debug_)
+					{
+						std::cerr << "Attempting to push front the vertex:" << it.GetVertexId() << std::endl;
+					}					
+
+					if (missingVertex_.count(it.GetVertexId()))
+					{
+						std::cerr << "Alert: " << it.GetVertexId() << ", origin: " << currentPath.Origin() << std::endl;
+					}
 #endif
 					success = currentPath.PointPushFront(it.IngoingEdge());
 					if (success)
 					{
 						nowScore = currentPath.Score(scoreFullChains_);
 #ifdef _DEBUG_OUT_
-						std::cerr << "Success! New score:" << nowScore << std::endl;
-						currentPath.DumpPath(std::cerr);
-						currentPath.DumpInstances(std::cerr);
+						if(debug_)
+						{
+							std::cerr << "Success! New score:" << nowScore << std::endl;
+							currentPath.DumpPath(std::cerr);
+							currentPath.DumpInstances(std::cerr);
+						}
 #endif		
 						if (nowScore > bestScore)
 						{
@@ -823,6 +861,10 @@ namespace Sibelia
 		JunctionStorage & storage_;
 		std::vector<std::vector<Edge> > syntenyPath_;
 		std::vector<std::vector<Assignment> > blockId_;
+#ifdef _DEBUG_OUT_
+		bool debug_;
+		std::set<int64_t> missingVertex_;
+#endif
 	};
 }
 

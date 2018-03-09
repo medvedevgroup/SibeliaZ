@@ -1,7 +1,7 @@
 #ifndef _TRASERVAL_H_
 #define _TRAVERSAL_H_
 
-#define _DEBUG_OUT_
+//#define _DEBUG_OUT_
 
 #include <set>
 #include <map>
@@ -13,6 +13,7 @@
 #include <numeric>
 #include <sstream>
 #include <iostream>
+#include <functional>
 #include <unordered_map>
 
 #include <tbb/parallel_for.h>
@@ -266,7 +267,17 @@ namespace Sibelia
 						}
 						
 						if (bestScore > 0)
-						{							
+						{			
+
+#ifdef _DEBUG_OUT_
+							if (finder.debug_)
+							{
+								std::cerr << "Setting a new block. Best score:" << bestScore << std::endl;
+								currentPath.DumpPath(std::cerr);
+								currentPath.DumpInstances(std::cerr);
+							}
+#endif
+
 							goodInstance.second.clear();
 							goodInstance.first = bestScore;
 							for (auto it : currentPath.AllInstances())
@@ -331,6 +342,10 @@ namespace Sibelia
 			}
 		}
 
+		static bool DegreeCompare(const JunctionStorage & storage, int64_t v1, int64_t v2)
+		{
+			return storage.GetInstancesCount(v1) > storage.GetInstancesCount(v2);
+		}
 
 		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t lookingDepth, int64_t sampleSize, int64_t threads, const std::string & debugOut)
 		{
@@ -358,6 +373,9 @@ namespace Sibelia
 				}
 			}
 			
+			using namespace std::placeholders;
+			std::sort(shuffle.begin(), shuffle.end(), std::bind(DegreeCompare, std::cref(storage_), _1, _2));
+			
 #ifdef _DEBUG_OUT_
 			MissingSet("missing.maf", missingVertex_);
 			std::ofstream missingDot("missing.dot");
@@ -372,7 +390,7 @@ namespace Sibelia
 			missingDot << "}" << std::endl;
 #endif
 			srand(time(0));
-			//std::random_shuffle(shuffle.begin(), shuffle.end());			
+					
 			time_t mark = time(0);
 			count_ = 0;
 			tbb::task_scheduler_init init(threads);

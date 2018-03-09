@@ -322,7 +322,9 @@ namespace Sibelia
 				{
 					int64_t start = inst.Front().GetPosition();
 					int64_t end = inst.Back().GetPosition();
-					out << "(" << (inst.Front().IsPositiveStrand() ? '+' : '-') << inst.Front().GetChrId() << ' ' << start << ' ' << end << ' ' << start - end << ')' << std::endl;
+					out << "(" << (inst.Front().IsPositiveStrand() ? '+' : '-') <<
+						inst.Front().GetChrId() <<' ' << start << ' ' << end << ' ' << end - start << ';' <<
+						inst.LeftFlankDistance() << ' ' << inst.RightFlankDistance() << ')' << std::endl;
 				}
 			}			
 		}
@@ -598,13 +600,7 @@ namespace Sibelia
 			int64_t length = length = abs(inst.Front().GetPosition() - inst.Back().GetPosition());
 			return length >= minBlockSize_;
 		}
-		/*
-		void InstanceScore(const Instance & inst, int64_t & length, int64_t & score, int64_t middlePath) const
-		{			
-			length = abs(inst.Front().GetPosition() - inst.Back().GetPosition());
-			score = length - (middlePath - length);
-		}		
-		*/
+		
 		void PointPopBack()
 		{
 			int64_t lastVertex = rightBody_.back().GetEdge().GetEndVertex();

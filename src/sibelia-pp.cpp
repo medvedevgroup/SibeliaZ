@@ -140,7 +140,25 @@ int main(int argc, char * argv[])
 
 		cmd.parse(argc, argv);
 
-		Sibelia::JunctionStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue(), threads.getValue(), abundanceThreshold.getValue());
+		Sibelia::JunctionStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue(), threads.getValue(), 1 << 31);
+		for (int64_t vid = 1; vid != storage.GetVerticesNumber(); vid++)
+		{
+			if (storage.GetInstancesCount(vid) >= abundanceThreshold.getValue())
+			{
+				for (Sibelia::JunctionStorage::JunctionIterator it(vid); it.Valid(); ++it)
+				{
+					auto jt = it.SequentialIterator();
+					auto kt = it + 1;
+					if (kt.Valid())
+					{
+						size_t start = min(jt.GetPosition(), kt.GetPosition());
+						size_t end = max(jt.GetPosition(), kt.GetPosition());
+						std::cerr << storage.GetSequence(jt.GetChrId()).substr(start, end - start) << std::endl;
+					}
+				}
+			}
+		}
+
 		Sibelia::BlocksFinder finder(storage, kvalue.getValue());		
 		finder.FindBlocks(minBlockSize.getValue(),
 			maxBranchSize.getValue(),

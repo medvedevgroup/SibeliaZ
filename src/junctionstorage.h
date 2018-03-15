@@ -711,6 +711,11 @@ namespace Sibelia
 			list.erase(std::unique(list.begin(), list.end()), list.end());
 		}
 
+		const std::string& GetSequence(size_t idx) const
+		{
+			return sequence_[idx];
+		}
+
 		void Init(const std::string & inFileName, const std::string & genomesFileName, int64_t threads, int64_t abundanceThreshold)
 		{
 			this_ = this;

@@ -1,0 +1,15 @@
+| m129s1svimj_gene_ensembl__gene__main                            |
+| maj_gene_ensembl__gene__main                                    |
+| makrj_gene_ensembl__gene__main                                  |
+| mbalbcj_gene_ensembl__gene__main                                |
+| mc3hhej_gene_ensembl__gene__main                                |
+| mc57bl6nj_gene_ensembl__gene__main                              |
+| mcasteij_gene_ensembl__gene__main                               |
+| mcbaj_gene_ensembl__gene__main                                  |
+| mdba2j_gene_ensembl__gene__main                                 |
+| mfvbnj_gene_ensembl__gene__main                                 |
+| mlpj_gene_ensembl__gene__main                                   |
+| mnodshiltj_gene_ensembl__gene__main                             |
+| mnzohlltj_gene_ensembl__gene__main                              |
+| mpwkphj_gene_ensembl__gene__main                                |
+| mwsbeij_gene_ensembl__gene__main                                |

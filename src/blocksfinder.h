@@ -428,30 +428,34 @@ namespace Sibelia
 			out << "}" << std::endl;
 		}
 
-		void ListBlocksSequences(const BlockList & block, const std::string & fileName) const
+		void ListBlocksSequences(const BlockList & block, const std::string & directory) const
 		{
-			std::ofstream out;
-			TryOpenFile(fileName, out);
 			std::vector<IndexPair> group;
 			BlockList blockList = block;
 			GroupBy(blockList, compareById, std::back_inserter(group));
 			for (std::vector<IndexPair>::iterator it = group.begin(); it != group.end(); ++it)
 			{
+				std::ofstream out;
+				std::stringstream ss;
+				ss << directory << "/" << blockList[it->first].GetBlockId() << ".fa";
+				TryOpenFile(ss.str(), out);
 				for (size_t block = it->first; block < it->second; block++)
 				{
 					size_t length = blockList[block].GetLength();
-					char strand = blockList[block].GetSignedBlockId() > 0 ? '+' : '-';
 					size_t chr = blockList[block].GetChrId();
-					out << ">Seq=\"" << storage_.GetChrDescription(chr) << "\",Strand='" << strand << "',";
-					out << "Block_id=" << blockList[block].GetBlockId() << ",Start=";
-					out << blockList[block].GetConventionalStart() << ",End=" << blockList[block].GetConventionalEnd() << std::endl;
-
-					if (blockList[block].GetSignedBlockId() > 0)
+					size_t chrSize = storage_.GetChrSequence(chr).size();
+					out << ">" << blockList[block].GetBlockId() << "_" << block - it->first << " ";
+					out << storage_.GetChrDescription(chr) << ";" << chrSize << ";";
+					if (blockList[block].GetBlockId() > 0)
 					{
+						out << blockList[block].GetStart() + 1 << ";" << blockList[block].GetEnd() + 1 << ";" << "1" << std::endl;
 						OutputLines(storage_.GetChrSequence(chr).begin() + blockList[block].GetStart(), length, out);
 					}
 					else
 					{
+						size_t start = chrSize - (blockList[block].GetEnd() + 1);
+						size_t end = chrSize - (blockList[block].GetStart() + 1);
+						out << start << ";" << end << ";" << "-1" << std::endl;
 						std::string::const_reverse_iterator it(storage_.GetChrSequence(chr).begin() + blockList[block].GetEnd());
 						OutputLines(CFancyIterator(it, TwoPaCo::DnaChar::ReverseChar, ' '), length, out);
 					}
@@ -495,9 +499,12 @@ namespace Sibelia
 				}
 			}
 
-			CreateOutDirectory(outDir);			
+			
+			CreateOutDirectory(outDir);
+			std::string blocksDir = outDir + "/blocks";
+			CreateOutDirectory(blocksDir);
 			ListBlocksIndices(instance, outDir + "/" + "blocks_coords.txt");
-			ListBlocksSequences(instance, outDir + "/" + "blocks_sequences.fasta");
+			ListBlocksSequences(instance, blocksDir);
 			GenerateReport(instance, outDir + "/" + "coverage_report.txt");			
 		}
 

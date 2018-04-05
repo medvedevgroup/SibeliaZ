@@ -445,21 +445,21 @@ namespace Sibelia
 					size_t chr = blockList[block].GetChrId();
 					size_t chrSize = storage_.GetChrSequence(chr).size();
 					out << ">" << blockList[block].GetBlockId() << "_" << block - it->first << " ";
-					out << storage_.GetChrDescription(chr) << ";" << chrSize << ";";
-					if (blockList[block].GetBlockId() > 0)
+					out << storage_.GetChrDescription(chr) << ";";
+					if (blockList[block].GetSignedBlockId() > 0)
 					{
-						out << blockList[block].GetStart() + 1 << ";" << blockList[block].GetEnd() + 1 << ";" << "1" << std::endl;
+						out << blockList[block].GetStart() << ";" << length << ";" << "1;" << chrSize << std::endl;
 						OutputLines(storage_.GetChrSequence(chr).begin() + blockList[block].GetStart(), length, out);
 					}
 					else
 					{
 						size_t start = chrSize - (blockList[block].GetEnd() + 1);
-						size_t end = chrSize - (blockList[block].GetStart() + 1);
-						out << start << ";" << end << ";" << "-1" << std::endl;
+						out << start << ";" << length << ";" << "-1;" << chrSize << std::endl;
 						std::string::const_reverse_iterator it(storage_.GetChrSequence(chr).begin() + blockList[block].GetEnd());
 						OutputLines(CFancyIterator(it, TwoPaCo::DnaChar::ReverseChar, ' '), length, out);
 					}
 
+					
 					out << std::endl;
 				}
 			}
@@ -525,7 +525,7 @@ namespace Sibelia
 		}
 
 		void GenerateReport(const BlockList & block, const std::string & fileName) const;
-		void CalculateCoverage(GroupedBlockList::const_iterator start, GroupedBlockList::const_iterator end, std::vector<bool> & cover, std::vector<double> & ret) const;
+		void CalculateCoverage(GroupedBlockList::const_iterator start, GroupedBlockList::const_iterator end, std::vector<double> & ret) const;
 		std::string OutputIndex(const BlockInstance & block) const;
 		void OutputBlocks(const std::vector<BlockInstance>& block, std::ofstream& out) const;
 		void ListBlocksIndices(const BlockList & block, const std::string & fileName) const;

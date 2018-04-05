@@ -163,10 +163,15 @@ namespace Sibelia
 			out << "\tSeq " << i + 1;
 		}
 
+		size_t totalSize = 0;
+		for (size_t i = 0; i < storage_.GetChrNumber(); i++)
+		{
+			totalSize += storage_.GetChrSequence(i).size();
+		}
+
 		out << std::endl;
 		group.clear();
-		std::vector<bool> cover;
-		std::vector<double> coverage;
+		std::vector<size_t> coverage;
 		GroupBy(sepBlock, ByFirstElement, std::back_inserter(group));
 		group.push_back(IndexPair(0, sepBlock.size()));
 		for (std::vector<IndexPair>::iterator it = group.begin(); it != group.end(); ++it)
@@ -182,43 +187,27 @@ namespace Sibelia
 
 			out.precision(2);
 			out.setf(std::ostream::fixed);
-			CalculateCoverage(sepBlock.begin() + it->first, sepBlock.begin() + it->second, cover, coverage);
-			std::copy(coverage.begin(), coverage.end(), std::ostream_iterator<double>(out, "%\t"));
-			out << std::endl;
-		}
-
-		out << DELIMITER << std::endl;
-	}
-
-	void BlocksFinder::CalculateCoverage(GroupedBlockList::const_iterator start,
-		GroupedBlockList::const_iterator end,
-		std::vector<bool> & cover,
-		std::vector<double> & ret) const
-	{
-		ret.clear();
-		double totalBp = 0;
-		double totalCoveredBp = 0;
-		for (size_t chr = 0; chr < storage_.GetChrNumber(); chr++)
-		{
-			double nowCoveredBp = 0;
-			totalBp += storage_.GetChrSequence(chr).size();
-			for (GroupedBlockList::const_iterator it = start; it != end; ++it)
+			coverage.assign(storage_.GetChrNumber(), 0);
+			for (GroupedBlockList::const_iterator jt = sepBlock.begin() + it->first; jt != sepBlock.begin() + it->second; ++jt)
 			{
-				for (size_t i = 0; i < it->second.size(); i++)
+				for (size_t i = 0; i < jt->second.size(); i++)
 				{
-					if (it->second[i].GetChrId() == chr)
-					{
-						nowCoveredBp += it->second[i].GetLength();
-					}
+					coverage[jt->second[i].GetChrId()] += jt->second[i].GetLength();
 				}				
 			}
-			
-			ret.push_back((nowCoveredBp / storage_.GetChrSequence(chr).size()) * 100);
-			totalCoveredBp += nowCoveredBp;
-		}
 
-		ret.insert(ret.begin(), totalCoveredBp / totalBp * 100);
+			size_t total = std::accumulate(coverage.begin(), coverage.end(), size_t(0));
+			out << double(total) / totalSize * 100 << '%';
+			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
+			{
+				out << '\t' << double(coverage[i]) / storage_.GetChrSequence(i).size() * 100 << '%';
+			}
+
+			out << std::endl;
+		}
 	}
+
+
 
 
 	std::string BlocksFinder::OutputIndex(const BlockInstance & block) const

@@ -140,7 +140,9 @@ int main(int argc, char * argv[])
 
 		cmd.parse(argc, argv);
 
-		Sibelia::JunctionStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue(), threads.getValue(), 1 << 31);
+	
+		Sibelia::JunctionStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue(), threads.getValue(), abundanceThreshold.getValue());
+		/*
 		struct Coord
 		{
 			size_t chr;
@@ -195,7 +197,7 @@ int main(int argc, char * argv[])
 		for (auto & c : coord)
 		{
 			std::cerr << storage.GetSequence(c.chr).substr(c.start, c.end - c.start) << std::endl;
-		}
+		}*/
 
 		Sibelia::BlocksFinder finder(storage, kvalue.getValue());		
 		finder.FindBlocks(minBlockSize.getValue(),

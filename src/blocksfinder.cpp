@@ -26,6 +26,7 @@ namespace Sibelia
 	}
 
 	JunctionStorage * JunctionStorage::this_;
+	extern const std::string VERSION = "0.0.1";
 
 	bool compareById(const BlockInstance & a, const BlockInstance & b)
 	{
@@ -271,6 +272,55 @@ namespace Sibelia
 		}
 	}
 
+	template<class It>
+	std::string Join(It start, It end, const std::string & delimiter)
+	{
+		It last = --end;
+		std::stringstream ss;
+		for (; start != end; ++start)
+		{
+			ss << *start << delimiter;
+		}
+
+		ss << *last;
+		return ss.str();
+	}
+
+
+	void BlocksFinder::ListBlocksIndicesGFF(const BlockList & blockList, const std::string & fileName) const
+	{
+		std::ofstream out;
+		TryOpenFile(fileName, out);
+		BlockList block(blockList);
+		std::sort(block.begin(), block.end(), compareById);
+		const std::string header[] =
+		{
+			"##gff-version 2",
+			std::string("##source-version L-Sibelia ") + VERSION,
+			"##Type DNA"
+		};
+
+		out << Join(header, header + 3, "\n") << std::endl;
+		for (BlockList::const_iterator it = block.begin(); it != block.end(); ++it)
+		{
+			size_t start = it->GetStart() + 1;
+			size_t end = it->GetEnd();
+			const std::string record[] =
+			{
+				storage_.GetChrDescription(it->GetChrId()), 
+				"L-Sibelia",
+				"LCB_copy",
+				IntToStr(start),
+				IntToStr(end),
+				".",
+				(it->GetDirection() ? "+" : "-"),
+				".",
+				"id=" + IntToStr(static_cast<size_t>(it->GetBlockId()))
+			};
+
+			out << Join(record, record + sizeof(record) / sizeof(record[0]), "\t") << std::endl;
+		}
+	}
 
 	void BlocksFinder::TryOpenFile(const std::string & fileName, std::ofstream & stream) const
 	{

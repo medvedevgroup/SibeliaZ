@@ -40,7 +40,7 @@ int main(int argc, char * argv[])
 
 	try
 	{
-		TCLAP::CmdLine cmd("Program for construction of synteny blocks from complete genomes", ' ', "0.0.1");
+		TCLAP::CmdLine cmd("Program for construction of synteny blocks from complete genomes", ' ', Sibelia::VERSION);
 
 		TCLAP::ValueArg<unsigned int> kvalue("k",
 			"kvalue",

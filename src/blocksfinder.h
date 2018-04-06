@@ -23,6 +23,7 @@
 namespace Sibelia
 {
 	extern const std::string DELIMITER;
+	extern const std::string VERSION;
 
 	class BlockInstance
 	{
@@ -503,7 +504,7 @@ namespace Sibelia
 			CreateOutDirectory(outDir);
 			std::string blocksDir = outDir + "/blocks";
 			CreateOutDirectory(blocksDir);
-			ListBlocksIndices(instance, outDir + "/" + "blocks_coords.txt");
+			ListBlocksIndicesGFF(instance, outDir + "/" + "blocks_coords.txt");
 			ListBlocksSequences(instance, blocksDir);
 			GenerateReport(instance, outDir + "/" + "coverage_report.txt");			
 		}
@@ -529,6 +530,7 @@ namespace Sibelia
 		std::string OutputIndex(const BlockInstance & block) const;
 		void OutputBlocks(const std::vector<BlockInstance>& block, std::ofstream& out) const;
 		void ListBlocksIndices(const BlockList & block, const std::string & fileName) const;
+		void ListBlocksIndicesGFF(const BlockList & blockList, const std::string & fileName) const;
 		void ListChromosomesAsPermutations(const BlockList & block, const std::string & fileName) const;
 		void TryOpenFile(const std::string & fileName, std::ofstream & stream) const;
 		void ListChrs(std::ostream & out) const;

@@ -453,7 +453,7 @@ namespace Sibelia
 					}
 					else
 					{
-						size_t start = chrSize - (blockList[block].GetEnd() + 1);
+						size_t start = chrSize - blockList[block].GetEnd();
 						out << start << ";" << length << ";" << "-1;" << chrSize << std::endl;
 						std::string::const_reverse_iterator it(storage_.GetChrSequence(chr).begin() + blockList[block].GetEnd());
 						OutputLines(CFancyIterator(it, TwoPaCo::DnaChar::ReverseChar, ' '), length, out);

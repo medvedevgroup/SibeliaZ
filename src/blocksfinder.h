@@ -506,7 +506,8 @@ namespace Sibelia
 			CreateOutDirectory(outDir);
 			std::string blocksDir = outDir + "/blocks";
 			CreateOutDirectory(blocksDir);
-			ListBlocksIndicesGFF(instance, outDir + "/" + "blocks_coords.txt");
+			ListBlocksIndicesGFF(instance, outDir + "/" + "blocks_coords.gff");
+			ListBlocksIndices(instance, outDir + "/" + "blocks_coords.txt");
 			ListBlocksSequences(instance, blocksDir);
 			GenerateReport(instance, outDir + "/" + "coverage_report.txt");			
 		}

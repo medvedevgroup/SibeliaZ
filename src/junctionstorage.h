@@ -777,6 +777,10 @@ namespace Sibelia
 						vertex_[absId].push_back(Vertex(junction));
 						vertex_[absId].back().idx = idx++;
 					}
+					else
+					{
+						
+					}
 				}
 			}
 

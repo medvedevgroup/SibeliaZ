@@ -312,21 +312,34 @@ namespace Sibelia
 			{
 				out << it->GetEdge().GetStartVertex() << " -> " << it->GetEdge().GetEndVertex() << ", " << it->GetEdge().GetChar() << ", " << it->StartDistance() << ", " << it->EndDistance() << std::endl;
 			}
-		}
+		} 
 
 		void DumpInstances(std::ostream & out) const
 		{
+			size_t total = 0;
 			for (auto & instanceSet : instance_)
 			{
+				total += instanceSet.size();
 				for (auto inst : instanceSet)
 				{
+					int64_t add = 0;
+					int64_t middlePath = MiddlePathLength();
+					int64_t penaltyMultiplier = GoodInstances() - 1;
+					int64_t length = abs(inst.Front().GetPosition() - inst.Back().GetPosition());
+					if (length >= minScoringUnit_)
+					{
+						add = length - (middlePath - length) * penaltyMultiplier;
+					}
+
 					int64_t start = inst.Front().GetPosition();
 					int64_t end = inst.Back().GetPosition();
 					out << "(" << (inst.Front().IsPositiveStrand() ? '+' : '-') <<
 						inst.Front().GetChrId() <<' ' << start << ' ' << end << ' ' << end - start << ';' <<
-						inst.LeftFlankDistance() << ' ' << inst.RightFlankDistance() << ')' << std::endl;
+						inst.LeftFlankDistance() << ' ' << inst.RightFlankDistance() << ')' << ' ' << add << std::endl;
 				}
-			}			
+			}
+
+			out << "Total: " << total << std::endl;
 		}
 
 		void DumpPath(std::vector<Edge> & ret) const
@@ -553,10 +566,11 @@ namespace Sibelia
 			int64_t penaltyMultiplier = GoodInstances() - 1;
 			for(auto & instanceIt : allInstance_)
 			{
-				int64_t length = length = abs(instanceIt->Front().GetPosition() - instanceIt->Back().GetPosition());
+				int64_t length = abs(instanceIt->Front().GetPosition() - instanceIt->Back().GetPosition());
 				if (length >= minScoringUnit_)
 				{
-					ret += length - (middlePath - length) * penaltyMultiplier;
+					int64_t penalty = (middlePath - length);
+					ret += length - penalty * 2;
 				}
 			}
 

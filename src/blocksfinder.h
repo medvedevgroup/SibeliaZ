@@ -373,7 +373,9 @@ namespace Sibelia
 					}					
 				}
 			}
-			
+					
+//			shuffle.push_back(209379);
+//			missingVertex_.insert(209379);
 			using namespace std::placeholders;
 			std::sort(shuffle.begin(), shuffle.end(), std::bind(DegreeCompare, std::cref(storage_), _1, _2));
 			

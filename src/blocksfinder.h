@@ -251,7 +251,7 @@ namespace Sibelia
 						{
 							std::cerr << "Going backward:" << std::endl;
 						}
-#endif
+#endif/*
 						while (true)
 						{
 							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
@@ -266,7 +266,7 @@ namespace Sibelia
 						{
 							currentPath.PointPopFront();
 						}
-						
+						*/
 						if (bestScore > 0)
 						{			
 
@@ -377,7 +377,7 @@ namespace Sibelia
 //			shuffle.push_back(209379);
 //			missingVertex_.insert(209379);
 			using namespace std::placeholders;
-			std::sort(shuffle.begin(), shuffle.end(), std::bind(DegreeCompare, std::cref(storage_), _1, _2));
+	//		std::sort(shuffle.begin(), shuffle.end(), std::bind(DegreeCompare, std::cref(storage_), _1, _2));
 			
 #ifdef _DEBUG_OUT_
 			MissingSet("missing.maf", missingVertex_);
@@ -636,6 +636,7 @@ namespace Sibelia
 
 				if (result.size() > 1)
 				{
+					currentPath.Score();
 					ret = true;
 					int64_t instanceCount = 0;
 					int64_t currentBlock = ++blocksFound_;

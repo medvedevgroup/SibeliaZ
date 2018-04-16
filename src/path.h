@@ -562,7 +562,7 @@ namespace Sibelia
 		{
 			int64_t length;
 			int64_t ret = 0;		
-			int64_t multiplier = sqrt(GoodInstances());
+			int64_t multiplier = GoodInstances();
 			for(auto & instanceIt : allInstance_)
 			{
 				int64_t length = abs(instanceIt->Front().GetPosition() - instanceIt->Back().GetPosition());
@@ -570,7 +570,7 @@ namespace Sibelia
 				{
 					int64_t score = length;
 					int64_t penalty = MiddlePathLength() - score;
-					//if (penalty >= maxFlankingSize_)
+					if (penalty >= maxFlankingSize_)
 					{
 						score -= penalty * multiplier;
 					}

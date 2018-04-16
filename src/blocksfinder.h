@@ -201,7 +201,7 @@ namespace Sibelia
 				std::vector<uint32_t> data;
 				std::vector<uint32_t> count(finder.storage_.GetVerticesNumber() * 2 + 1, 0);
 				std::pair<int64_t, std::vector<Path::Instance> > goodInstance;
-				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.k_);
+				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.k_, finder.k_);
 				for (size_t i = range.begin(); i != range.end(); i++)
 				{
 					if (finder.count_++ % 1000 == 0)

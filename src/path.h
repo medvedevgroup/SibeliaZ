@@ -37,7 +37,8 @@ namespace Sibelia
 		Path(const JunctionStorage & storage,			
 			int64_t maxBranchSize,
 			int64_t minBlockSize,
-			int64_t minScoringUnit) :
+			int64_t minScoringUnit,
+			int64_t maxFlankingSize) :
 			maxBranchSize_(maxBranchSize),
 			minBlockSize_(minBlockSize),
 			minScoringUnit_(minScoringUnit),
@@ -559,18 +560,22 @@ namespace Sibelia
 
 		int64_t Score(bool final = false) const
 		{
-			int64_t score;
 			int64_t length;
-			int64_t ret = 0;			
-			int64_t middlePath = MiddlePathLength();	
-			int64_t penaltyMultiplier = GoodInstances() - 1;
+			int64_t ret = 0;		
+			int64_t multiplier = sqrt(GoodInstances());
 			for(auto & instanceIt : allInstance_)
 			{
 				int64_t length = abs(instanceIt->Front().GetPosition() - instanceIt->Back().GetPosition());
 				if (length >= minScoringUnit_)
 				{
-					int64_t penalty = (middlePath - length);
-					ret += length - penalty * 2;
+					int64_t score = length;
+					int64_t penalty = MiddlePathLength() - score;
+					//if (penalty >= maxFlankingSize_)
+					{
+						score -= penalty * multiplier;
+					}
+
+					ret += score;
 				}
 			}
 
@@ -745,12 +750,13 @@ namespace Sibelia
 		std::vector<InstanceSet> instance_;
 		std::vector<InstanceSet::iterator> allInstance_;
 
-		int64_t origin_;
+		int64_t origin_;		
 		int64_t minBlockSize_;
 		int64_t minScoringUnit_;
 		int64_t maxBranchSize_;
 		int64_t leftBodyFlank_;
-		int64_t rightBodyFlank_;		
+		int64_t rightBodyFlank_;
+		int64_t maxFlankingSize_;
 		DistanceKeeper distanceKeeper_;
 		const JunctionStorage * storage_;
 		friend class BestPath;

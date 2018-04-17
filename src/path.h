@@ -334,7 +334,7 @@ namespace Sibelia
 					int64_t length = abs(inst.Front().GetPosition() - inst.Back().GetPosition());
 					if (length >= minScoringUnit_)
 					{
-						add = max(0, middlePath - length);
+		//				add = max(0, middlePath - length);
 					}
 
 					if (add < 0)
@@ -571,7 +571,7 @@ namespace Sibelia
 		int64_t Score(bool final = false) const
 		{
 			int64_t length;
-			int64_t ret = 0;		
+			int64_t ret = 0;
 			int64_t multiplier = GoodInstances();
 			for(auto & instanceIt : allInstance_)
 			{

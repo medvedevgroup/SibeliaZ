@@ -201,7 +201,7 @@ namespace Sibelia
 				std::vector<uint32_t> data;
 				std::vector<uint32_t> count(finder.storage_.GetVerticesNumber() * 2 + 1, 0);
 				std::pair<int64_t, std::vector<Path::Instance> > goodInstance;
-				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.k_, finder.k_);
+				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.k_ * 3);
 				for (size_t i = range.begin(); i != range.end(); i++)
 				{
 					if (finder.count_++ % 1000 == 0)
@@ -370,13 +370,14 @@ namespace Sibelia
 					{
 						shuffle.push_back(v);
 						break;
-					}					
+					}
 				}
 			}
-					
+
 	//		shuffle.push_back(209379);
 	//		missingVertex_.insert(209379);
 			using namespace std::placeholders;
+	//		std::random_shuffle(shuffle.begin(), shuffle.end());
 	//		std::sort(shuffle.begin(), shuffle.end(), std::bind(DegreeCompare, std::cref(storage_), _1, _2));
 			
 #ifdef _DEBUG_OUT_

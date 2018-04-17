@@ -42,6 +42,7 @@ namespace Sibelia
 			maxBranchSize_(maxBranchSize),
 			minBlockSize_(minBlockSize),
 			minScoringUnit_(minScoringUnit),
+			maxFlankingSize_(maxFlankingSize),
 			storage_(&storage),
 			distanceKeeper_(storage.GetVerticesNumber()),
 			instance_(storage.GetChrNumber())
@@ -147,6 +148,11 @@ namespace Sibelia
 			int64_t RightFlankDistance() const
 			{
 				return backDistance_;
+			}
+
+			int64_t UtilityLength() const
+			{
+				return backDistance_ - frontDistance_;
 			}
 
 			bool Within(const JunctionStorage::JunctionIterator it) const
@@ -325,11 +331,15 @@ namespace Sibelia
 				{
 					int64_t add = 0;
 					int64_t middlePath = MiddlePathLength();
-					int64_t penaltyMultiplier = GoodInstances() - 1;
 					int64_t length = abs(inst.Front().GetPosition() - inst.Back().GetPosition());
 					if (length >= minScoringUnit_)
 					{
-						add = length - (middlePath - length) * penaltyMultiplier;
+						add = max(0, middlePath - length);
+					}
+
+					if (add < 0)
+					{
+						std::cout << middlePath << ' ' << length << std::endl;
 					}
 
 					int64_t start = inst.Front().GetPosition();
@@ -565,7 +575,7 @@ namespace Sibelia
 			int64_t multiplier = GoodInstances();
 			for(auto & instanceIt : allInstance_)
 			{
-				int64_t length = abs(instanceIt->Front().GetPosition() - instanceIt->Back().GetPosition());
+				int64_t length = instanceIt->UtilityLength();
 				if (length >= minScoringUnit_)
 				{
 					int64_t score = length;

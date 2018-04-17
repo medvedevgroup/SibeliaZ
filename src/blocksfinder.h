@@ -1,7 +1,7 @@
 #ifndef _TRASERVAL_H_
 #define _TRAVERSAL_H_
 
-//#define _DEBUG_OUT_
+#define _DEBUG_OUT_
 
 #include <set>
 #include <map>
@@ -251,7 +251,7 @@ namespace Sibelia
 						{
 							std::cerr << "Going backward:" << std::endl;
 						}
-#endif/*
+#endif
 						while (true)
 						{
 							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
@@ -266,7 +266,7 @@ namespace Sibelia
 						{
 							currentPath.PointPopFront();
 						}
-						*/
+
 						if (bestScore > 0)
 						{			
 
@@ -374,8 +374,8 @@ namespace Sibelia
 				}
 			}
 					
-//			shuffle.push_back(209379);
-//			missingVertex_.insert(209379);
+	//		shuffle.push_back(209379);
+	//		missingVertex_.insert(209379);
 			using namespace std::placeholders;
 	//		std::sort(shuffle.begin(), shuffle.end(), std::bind(DegreeCompare, std::cref(storage_), _1, _2));
 			

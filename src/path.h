@@ -324,29 +324,38 @@ namespace Sibelia
 		void DumpInstances(std::ostream & out) const
 		{
 			size_t total = 0;
+			int64_t multiplier = GoodInstances();			
 			for (auto & instanceSet : instance_)
 			{
 				total += instanceSet.size();
 				for (auto inst : instanceSet)
 				{
-					int64_t add = 0;
 					int64_t middlePath = MiddlePathLength();
-					int64_t length = abs(inst.Front().GetPosition() - inst.Back().GetPosition());
+					int64_t length = inst.UtilityLength();
+					int64_t score = 0;
+					int64_t penalty = 0;
+
 					if (length >= minScoringUnit_)
 					{
-		//				add = max(0, middlePath - length);
-					}
+						score = length;
+						penalty = (MiddlePathLength() - length);
+						if (penalty >= maxFlankingSize_)
+						{
+							
+						}
+						else
+						{
+							penalty = 0;
+						}
 
-					if (add < 0)
-					{
-						std::cout << middlePath << ' ' << length << std::endl;
+						score -= penalty * multiplier;
 					}
 
 					int64_t start = inst.Front().GetPosition();
 					int64_t end = inst.Back().GetPosition();
 					out << "(" << (inst.Front().IsPositiveStrand() ? '+' : '-') <<
 						inst.Front().GetChrId() <<' ' << start << ' ' << end << ' ' << end - start << ';' <<
-						inst.LeftFlankDistance() << ' ' << inst.RightFlankDistance() << ')' << ' ' << add << std::endl;
+						inst.LeftFlankDistance() << ' ' << inst.RightFlankDistance() << ')' << ' ' << score << ' ' << penalty << std::endl;
 				}
 			}
 
@@ -570,7 +579,6 @@ namespace Sibelia
 
 		int64_t Score(bool final = false) const
 		{
-			int64_t length;
 			int64_t ret = 0;
 			int64_t multiplier = GoodInstances();
 			for(auto & instanceIt : allInstance_)
@@ -578,8 +586,8 @@ namespace Sibelia
 				int64_t length = instanceIt->UtilityLength();
 				if (length >= minScoringUnit_)
 				{
-					int64_t score = length;
-					int64_t penalty = MiddlePathLength() - score;
+					int64_t score = abs(instanceIt->Front().GetPosition() - instanceIt->Back().GetPosition());
+					int64_t penalty = MiddlePathLength() - length;
 					if (penalty >= maxFlankingSize_)
 					{
 						score -= penalty * multiplier;

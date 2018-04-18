@@ -1,7 +1,7 @@
 #ifndef _TRASERVAL_H_
 #define _TRAVERSAL_H_
 
-#define _DEBUG_OUT_
+//#define _DEBUG_OUT_
 
 #include <set>
 #include <map>
@@ -201,7 +201,7 @@ namespace Sibelia
 				std::vector<uint32_t> data;
 				std::vector<uint32_t> count(finder.storage_.GetVerticesNumber() * 2 + 1, 0);
 				std::pair<int64_t, std::vector<Path::Instance> > goodInstance;
-				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.k_ * 3);
+				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.k_);
 				for (size_t i = range.begin(); i != range.end(); i++)
 				{
 					if (finder.count_++ % 1000 == 0)
@@ -230,7 +230,7 @@ namespace Sibelia
 							std::cerr << "Going forward:" << std::endl;
 						}
 #endif
-						int64_t minRun = max(finder.minBlockSize_, finder.maxBranchSize_) * 3;
+						int64_t minRun = max(finder.minBlockSize_, finder.maxBranchSize_) * 10;
 						while (true)
 						{
 							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
@@ -378,10 +378,10 @@ namespace Sibelia
 	//		missingVertex_.insert(209379);
 			using namespace std::placeholders;
 	//		std::random_shuffle(shuffle.begin(), shuffle.end());
-	//		std::sort(shuffle.begin(), shuffle.end(), std::bind(DegreeCompare, std::cref(storage_), _1, _2));
+			std::sort(shuffle.begin(), shuffle.end(), std::bind(DegreeCompare, std::cref(storage_), _1, _2));
 			
 #ifdef _DEBUG_OUT_
-			MissingSet("missing.maf", missingVertex_);
+			MissingSet("test/test11/missing.maf", missingVertex_);
 			std::ofstream missingDot("missing.dot");
 			missingDot << "digraph G\n{\nrankdir = LR" << std::endl;
 			std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > vvisit;

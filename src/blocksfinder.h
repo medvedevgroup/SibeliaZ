@@ -280,8 +280,6 @@ namespace Sibelia
 				}
 			}
 			
-			using namespace std::placeholders;
-			std::sort(shuffle.begin(), shuffle.end(), std::bind(DegreeCompare, std::cref(storage_), _1, _2));
 			
 #ifdef _DEBUG_OUT_
 			MissingSet("missing.maf", missingVertex_);
@@ -335,86 +333,7 @@ namespace Sibelia
 			out << "}" << std::endl;
 		}
 
-		void ListBlocksSequences(const BlockList & block, const std::string & directory) const
-		{
-			std::vector<IndexPair> group;
-			BlockList blockList = block;
-			GroupBy(blockList, compareById, std::back_inserter(group));
-			for (std::vector<IndexPair>::iterator it = group.begin(); it != group.end(); ++it)
-			{
-				std::ofstream out;
-				std::stringstream ss;
-				ss << directory << "/" << blockList[it->first].GetBlockId() << ".fa";
-				TryOpenFile(ss.str(), out);
-				for (size_t block = it->first; block < it->second; block++)
-				{
-					size_t length = blockList[block].GetLength();
-					size_t chr = blockList[block].GetChrId();
-					size_t chrSize = storage_.GetChrSequence(chr).size();
-					out << ">" << blockList[block].GetBlockId() << "_" << block - it->first << " ";
-					out << storage_.GetChrDescription(chr) << ";" << chrSize << ";";
-					if (blockList[block].GetBlockId() > 0)
-					{
-						out << blockList[block].GetStart() + 1 << ";" << blockList[block].GetEnd() + 1 << ";" << "1" << std::endl;
-						OutputLines(storage_.GetChrSequence(chr).begin() + blockList[block].GetStart(), length, out);
-					}
-					else
-					{
-						size_t start = chrSize - (blockList[block].GetEnd() + 1);
-						size_t end = chrSize - (blockList[block].GetStart() + 1);
-						out << start << ";" << end << ";" << "-1" << std::endl;
-						std::string::const_reverse_iterator it(storage_.GetChrSequence(chr).begin() + blockList[block].GetEnd());
-						OutputLines(CFancyIterator(it, TwoPaCo::DnaChar::ReverseChar, ' '), length, out);
-					}
-
-					out << std::endl;
-				}
-			}
-		}
-
-
-		void GenerateLegacyOutput(const std::string & outDir) const
-		{
-			BlockList instance;
-			std::vector<std::vector<bool> > covered(storage_.GetChrNumber());
-			for (size_t i = 0; i < covered.size(); i++)
-			{
-				covered[i].assign(storage_.GetChrSequence(i).size(), false);
-			}
-
-			for (size_t chr = 0; chr < blockId_.size(); chr++)
-			{
-				for (size_t i = 0; i < blockId_[chr].size();)
-				{
-					if (storage_.GetIterator(chr, i).IsUsed())
-					{
-						int64_t bid = blockId_[chr][i].block;
-						size_t j = i;
-						for (; j < blockId_[chr].size() && blockId_[chr][i] == blockId_[chr][j]; j++);
-						j--;
-						int64_t cstart = storage_.GetIterator(chr, i, bid > 0).GetPosition();
-						int64_t cend = storage_.GetIterator(chr, j, bid > 0).GetPosition() + (bid > 0 ? k_ : -k_);
-						int64_t start = min(cstart, cend);
-						int64_t end = max(cstart, cend);
-						instance.push_back(BlockInstance(bid, chr, start, end));
-						i = j + 1;
-					}
-					else
-					{
-						++i;
-					}
-				}
-			}
-
-			
-			CreateOutDirectory(outDir);
-			std::string blocksDir = outDir + "/blocks";
-			CreateOutDirectory(blocksDir);
-			ListBlocksIndices(instance, outDir + "/" + "blocks_coords.txt");
-			ListBlocksSequences(instance, blocksDir);
-			GenerateReport(instance, outDir + "/" + "coverage_report.txt");			
-		}
-
+		void GenerateLegacyOutput(const std::string & outDir) const;
 
 	private:
 
@@ -436,6 +355,7 @@ namespace Sibelia
 		std::string OutputIndex(const BlockInstance & block) const;
 		void OutputBlocks(const std::vector<BlockInstance>& block, std::ofstream& out) const;
 		void ListBlocksIndices(const BlockList & block, const std::string & fileName) const;
+		void ListBlocksSequences(const BlockList & block, const std::string & directory) const;
 		void ListChromosomesAsPermutations(const BlockList & block, const std::string & fileName) const;
 		void TryOpenFile(const std::string & fileName, std::ofstream & stream) const;
 		void ListChrs(std::ostream & out) const;

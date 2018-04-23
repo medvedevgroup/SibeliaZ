@@ -140,63 +140,7 @@ int main(int argc, char * argv[])
 
 		cmd.parse(argc, argv);
 
-		Sibelia::JunctionStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue(), threads.getValue(), 1 << 31);
-		struct Coord
-		{
-			size_t chr;
-			size_t start;
-			size_t end;
-
-			bool operator < (const Coord & c) const
-			{
-				size_t length = end - start;
-				size_t clength = c.end - c.start;
-				return length > clength;
-			}
-		};
-
-		std::vector<Coord> coord;
-
-		for (int64_t vid = 1; vid != storage.GetVerticesNumber(); vid++)
-		{
-			if (storage.GetInstancesCount(vid) >= abundanceThreshold.getValue())
-			{
-				for (Sibelia::JunctionStorage::JunctionIterator it(vid); it.Valid(); ++it)
-				{
-					size_t start;
-					size_t end;
-					auto jt = it.SequentialIterator();
-					auto kt = jt + 1;
-					if (kt.Valid())
-					{
-						if (jt.IsPositiveStrand())
-						{
-							start = jt.GetPosition();
-							end = kt.GetPosition() + kvalue.getValue();
-						}
-						else
-						{
-							start = kt.GetPosition() - kvalue.getValue() + 1;
-							end = jt.GetPosition() + 1;
-						}
-
-						assert(end > start);
-						Coord c;
-						c.chr = jt.GetChrId();
-						c.start = start;
-						c.end = end;
-						coord.push_back(c);
-					}
-				}
-			}
-		}
-
-		std::sort(coord.begin(), coord.end());
-		for (auto & c : coord)
-		{
-			std::cerr << storage.GetSequence(c.chr).substr(c.start, c.end - c.start) << std::endl;
-		}
-
+		Sibelia::JunctionStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue(), threads.getValue(), abundanceThreshold.getValue());
 		Sibelia::BlocksFinder finder(storage, kvalue.getValue());		
 		finder.FindBlocks(minBlockSize.getValue(),
 			maxBranchSize.getValue(),

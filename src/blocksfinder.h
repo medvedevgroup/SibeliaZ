@@ -261,15 +261,16 @@ namespace Sibelia
 
 					finder.BubbledBranchesForward(vertex, instance, forwardBubble);
 					finder.BubbledBranchesBackward(vertex, instance, backwardBubble);
-
-					for (size_t i = 0; i < forwardBubble.size(); i++)
+					bool isFork = false;
+					for (size_t i = 0; i < forwardBubble.size() && !isFork; i++)
 					{
-						for (size_t j = 0; j < forwardBubble[i].size(); j++)
+						for (size_t j = 0; j < forwardBubble[i].size() && !isFork; j++)
 						{
 							size_t k = forwardBubble[i][j];
 							if (std::find(backwardBubble[i].begin(), backwardBubble[i].end(), k) == backwardBubble[i].end())
 							{
 								finder.source_.push_back(vertex);
+								isFork = true;
 							}
 						}
 					}
@@ -321,6 +322,18 @@ namespace Sibelia
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexDijkstra(*this, shuffle));
 			std::cout << source_.size() << ' ' << shuffle.size() << std::endl;
 			std::cout << "Time: " << time(0) - mark << std::endl;
+			source_.clear();
+			for (int64_t vertex : source_)
+			{
+				std::stringstream fn;
+				fn << "plot/" << vertex << ".dot";
+				std::ofstream missingDot(fn.str());
+				missingDot << "digraph G\n{\nrankdir = LR" << std::endl;
+				std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > vvisit;
+				DumpVertex(vertex, missingDot, vvisit, 10);
+				missingDot << vertex << "[shape=square]" << std::endl;
+				missingDot << "}" << std::endl;
+			}
 		}
 
 		void Dump(std::ostream & out) const
@@ -475,25 +488,6 @@ namespace Sibelia
 			}
 
 			return source;
-		}
-
-		template<class T>
-		void PlotPath(const Fork & source, const Fork & sink, std::ostream & out, T & visit) const
-		{
-			for (int j = 0; j < 2; j++)
-			{
-				out << source.branch[j].GetVertexId(&storage_) << "[shape=box]" << std::endl;
-				out << sink.branch[j].GetVertexId(&storage_) << "[shape=box]" << std::endl;
-				for (auto it = source.branch[j]; it != sink.branch[j]; ++it)
-				{
-					auto jt = it + 1;
-					auto pr = std::make_pair(it, jt);
-					out << it.GetVertexId(&storage_) << " -> " << jt.GetVertexId(&storage_)
-						<< "[label=\"" << it.GetChar(&storage_) << ", " << it.GetChrId() << ", " << it.GetPosition(&storage_) << ", " << abs(it.GetPosition(&storage_) - jt.GetPosition(&storage_)) << "\""
-						<< (it.IsPositiveStrand() ? "color=lightskyblue" : "color=orange") << "]\n";
-					visit.push_back(pr);
-				}
-			}
 		}
 
 		Fork TakeBubbleStep(const Fork & source) const

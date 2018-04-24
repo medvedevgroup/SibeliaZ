@@ -16,6 +16,7 @@
 #include <functional>
 #include <unordered_map>
 
+#include <tbb/mutex.h>
 #include <tbb/parallel_for.h>
 #include <tbb/concurrent_vector.h>
 
@@ -249,6 +250,7 @@ namespace Sibelia
 				{
 					if (finder.count_++ % 1000 == 0)
 					{
+						tbb::mutex::scoped_lock lock(finder.globalMutex_);
 						std::cout << finder.count_ << '\t' << shuffle.size() << std::endl;
 					}
 
@@ -317,6 +319,7 @@ namespace Sibelia
 
 			missingDot << "}" << std::endl;
 #endif
+			count_ = 0;
 			time_t mark = time(0);
 			tbb::task_scheduler_init init(threads);
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexDijkstra(*this, shuffle));
@@ -650,6 +653,7 @@ namespace Sibelia
 		std::vector<std::vector<Edge> > syntenyPath_;
 		std::vector<std::vector<Assignment> > blockId_;
 		tbb::concurrent_vector<int64_t> source_;
+		tbb::mutex globalMutex_;
 #ifdef _DEBUG_OUT_
 		bool debug_;
 		std::set<int64_t> missingVertex_;

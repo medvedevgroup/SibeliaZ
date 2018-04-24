@@ -524,7 +524,7 @@ namespace Sibelia
 			for (size_t i = 0; i < instance.size(); i++)
 			{
 				auto vertex = instance[i];
-				if ((vertex + 1).Valid())
+				if ((vertex + 1).Valid() && TwoPaCo::DnaChar::IsDefinite(vertex.GetChar()))
 				{
 					parallelEdge[TwoPaCo::DnaChar::MakeUpChar(vertex.GetChar())].push_back(i);
 				}
@@ -586,7 +586,7 @@ namespace Sibelia
 			{
 				auto vertex = instance[i];
 				auto prev = vertex - 1;
-				if (prev.Valid())
+				if (prev.Valid() && TwoPaCo::DnaChar::IsDefinite(prev.GetChar()))
 				{
 					parallelEdge[TwoPaCo::DnaChar::MakeUpChar(prev.GetChar())].push_back(i);
 				}

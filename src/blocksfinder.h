@@ -230,13 +230,18 @@ namespace Sibelia
 							std::cerr << "Going forward:" << std::endl;
 						}
 #endif
-						int64_t minRun = max(finder.minBlockSize_, finder.maxBranchSize_) * 5;
+						int64_t minRun = max(finder.minBlockSize_, finder.maxBranchSize_) * 6;
 						while (true)
 						{
+							bool ret = true;
+							bool positive = false;
 							int64_t prevLength = currentPath.MiddlePathLength();
-							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);							
-							bool ret = finder.ExtendPathDijkstraForward(currentPath, count, data, bestRightSize, bestScore, score);
-							if (!ret || (score <= 0 && (currentPath.MiddlePathLength() - prevLength) >= minRun))
+							while ((ret = finder.ExtendPathDijkstraForward(currentPath, count, data, bestRightSize, bestScore, score)) && currentPath.MiddlePathLength() - prevLength <= minRun)
+							{
+								positive = positive || (score > 0);
+							}
+
+							if (!ret || !positive)
 							{
 								break;
 							}
@@ -255,10 +260,15 @@ namespace Sibelia
 #endif
 						while (true)
 						{
+							bool ret = true;
+							bool positive = false;
 							int64_t prevLength = currentPath.MiddlePathLength();
-							int64_t prevBestScore = currentPath.Score(finder.scoreFullChains_);
-							bool ret = finder.ExtendPathDijkstraBackward(currentPath, count, data, bestLeftSize, bestScore, score);
-							if (!ret || (score <= 0 && (currentPath.MiddlePathLength() - prevLength) >= minRun))
+							while ((ret = finder.ExtendPathDijkstraBackward(currentPath, count, data, bestLeftSize, bestScore, score)) && currentPath.MiddlePathLength() - prevLength <= minRun);
+							{
+								positive = positive || (score > 0);
+							}
+
+							if (!ret || !positive)
 							{
 								break;
 							}

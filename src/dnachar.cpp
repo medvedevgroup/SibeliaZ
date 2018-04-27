@@ -29,7 +29,7 @@ namespace TwoPaCo
 			return 3;
 		}
 
-		return -1;
+		return 4;
 	}
 
 	char DnaChar::UnMakeUpChar(size_t ch)

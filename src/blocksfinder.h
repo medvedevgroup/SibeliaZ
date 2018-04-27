@@ -280,6 +280,14 @@ namespace Sibelia
 			}
 		};
 
+		static void AddIfNotExists(std::vector<int64_t> & adj, int64_t value)
+		{
+			if (std::find(adj.begin(), adj.end(), value) == adj.end())
+			{
+				adj.push_back(value);
+			}
+		}
+
 		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t lookingDepth, int64_t sampleSize, int64_t threads, const std::string & debugOut)
 		{
 			blocksFound_ = 0;
@@ -324,18 +332,123 @@ namespace Sibelia
 			tbb::task_scheduler_init init(threads);
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexDijkstra(*this, shuffle));
 			std::cout << source_.size() << ' ' << shuffle.size() << std::endl;
-			std::cout << "Time: " << time(0) - mark << std::endl;
-			source_.clear();
-			for (int64_t vertex : source_)
+			
+			std::vector<std::vector<int64_t> > adj(source_.size());
+			{
+				std::vector<std::vector<int64_t> > visit(source_.size());
+				std::vector<int64_t> sourceLabel(storage_.GetVerticesNumber() * 2 + 1, -1);
+				for (size_t i = 0; i < source_.size(); i++)
+				{
+					sourceLabel[source_[i] + storage_.GetVerticesNumber()] = i;
+				}
+				
+				for (size_t chr = 0; chr < storage_.GetChrNumber(); chr++)
+				{
+					for (size_t strand = 0; strand < 2; strand++)
+					{
+						for (JunctionStorage::JunctionSequentialIterator it = storage_.Begin(chr, strand == 0); it.Valid(); ++it)
+						{
+							int64_t itSrcId = sourceLabel[it.GetVertexId() + storage_.GetVerticesNumber()];
+							if (itSrcId == -1)
+							{
+								continue;
+							}
+
+							for (auto jt = it + 1; jt.Valid() && abs(it.GetPosition() - jt.GetPosition()) <= maxBranchSize_; ++jt)
+							{
+								int64_t jtSrcId = sourceLabel[jt.GetVertexId() + storage_.GetVerticesNumber()];
+								if (jtSrcId == -1)
+								{
+									continue;
+								}
+
+								AddIfNotExists(adj[itSrcId], jtSrcId);
+								AddIfNotExists(adj[jtSrcId], itSrcId);
+								AddIfNotExists(visit[jtSrcId], itSrcId);
+							}
+						}
+					}
+				}
+
+				for (auto & v : visit)
+				{
+					for (size_t i = 0; i < v.size(); i++)
+					{
+						for (size_t j = 0; j < v.size(); j++)
+						{
+							AddIfNotExists(adj[v[i]], v[j]);
+							AddIfNotExists(adj[v[i]], v[j]);
+						}
+					}
+				}
+			}
+
+			int components = 0;
+			std::vector<int> visit(source_.size(), -1);
+			{
+				for (int v = 0; v < source_.size(); v++)
+				{
+					if (visit[v] == -1)
+					{
+						auto nowComponent = components++;
+						std::vector<int64_t> stack;
+						stack.push_back(v);
+						while (stack.size() > 0)
+						{
+							auto now = stack.back();
+							stack.pop_back();
+							if (visit[now] == -1)
+							{
+								visit[now] = nowComponent;
+								for (auto next : adj[now])
+								{
+									if (visit[next] == -1)
+									{
+										stack.push_back(next);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+
+			std::vector<std::vector<int64_t> > componentContent(components);
+			std::cout << "Components: " << components << std::endl;
+			for (size_t i = 0; i < visit.size(); i++)
+			{
+				componentContent[visit[i]].push_back(i);
+			}
+
+
+			for(int i = 0; i < components; i++)
 			{
 				std::stringstream fn;
-				fn << "plot/" << vertex << ".dot";
-				std::ofstream missingDot(fn.str());
-				missingDot << "digraph G\n{\nrankdir = LR" << std::endl;
+				fn << "comps/" << i << ".dot";
+				std::ofstream out(fn.str().c_str());
+				out << "strict graph G\n{\nrankdir = LR" << std::endl;
+				fn.str("");
+				fn << "comps/" << i << "_graph.dot";
+				std::ofstream grout(fn.str().c_str());
+				grout << "digraph G\n{\nrankdir = LR" << std::endl;
+
 				std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > vvisit;
-				DumpVertex(vertex, missingDot, vvisit, 10);
-				missingDot << vertex << "[shape=square]" << std::endl;
-				missingDot << "}" << std::endl;
+				for (auto v : componentContent[i])
+				{
+					auto vLabel = source_[v];
+					out << vLabel << std::endl;
+					for (auto u : adj[v])
+					{
+						auto uLabel = source_[u];
+						out << vLabel << " -- " << uLabel << std::endl;
+					}
+
+					DumpVertex(vLabel, grout, vvisit, 10);
+					grout << vLabel << "[shape=square]" << std::endl;
+				}
+
+				out << "}" << std::endl;
+				grout << "}" << std::endl;
 			}
 		}
 
@@ -518,13 +631,13 @@ namespace Sibelia
 
 		void BubbledBranchesForward(int64_t vertexId, const std::vector<JunctionStorage::JunctionSequentialIterator> & instance, BubbledBranches & bulges) const
 		{
-			std::vector<size_t> parallelEdge[4];
+			std::vector<size_t> parallelEdge[5];
 			std::map<int64_t, BranchData> visit;
 			bulges.assign(instance.size(), std::vector<size_t>());
 			for (size_t i = 0; i < instance.size(); i++)
 			{
 				auto vertex = instance[i];
-				if ((vertex + 1).Valid() && TwoPaCo::DnaChar::IsDefinite(vertex.GetChar()))
+				if ((vertex + 1).Valid())
 				{
 					parallelEdge[TwoPaCo::DnaChar::MakeUpChar(vertex.GetChar())].push_back(i);
 				}
@@ -546,7 +659,7 @@ namespace Sibelia
 				}
 			}
 
-			for (size_t i = 0; i < 4; i++)
+			for (size_t i = 0; i < 5; i++)
 			{
 				for (size_t j = 0; j < parallelEdge[i].size(); j++)
 				{
@@ -579,14 +692,14 @@ namespace Sibelia
 
 		void BubbledBranchesBackward(int64_t vertexId, const std::vector<JunctionStorage::JunctionSequentialIterator> & instance, BubbledBranches & bulges) const
 		{
-			std::vector<size_t> parallelEdge[4];
+			std::vector<size_t> parallelEdge[5];
 			std::map<int64_t, BranchData> visit;
 			bulges.assign(instance.size(), std::vector<size_t>());
 			for (size_t i = 0; i < instance.size(); i++)
 			{
 				auto vertex = instance[i];
 				auto prev = vertex - 1;
-				if (prev.Valid() && TwoPaCo::DnaChar::IsDefinite(prev.GetChar()))
+				if (prev.Valid())
 				{
 					parallelEdge[TwoPaCo::DnaChar::MakeUpChar(prev.GetChar())].push_back(i);
 				}
@@ -608,7 +721,7 @@ namespace Sibelia
 				}
 			}
 
-			for (size_t i = 0; i < 4; i++)
+			for (size_t i = 0; i < 5; i++)
 			{
 				for (size_t j = 0; j < parallelEdge[i].size(); j++)
 				{

@@ -201,7 +201,7 @@ namespace Sibelia
 				std::vector<uint32_t> data;
 				std::vector<uint32_t> count(finder.storage_.GetVerticesNumber() * 2 + 1, 0);
 				std::pair<int64_t, std::vector<Path::Instance> > goodInstance;
-				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.k_);
+				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_);
 				for (size_t i = range.begin(); i != range.end(); i++)
 				{
 					if (finder.count_++ % 1000 == 0)
@@ -360,13 +360,14 @@ namespace Sibelia
 			return storage.GetInstancesCount(v1) > storage.GetInstancesCount(v2);
 		}
 
-		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t lookingDepth, int64_t sampleSize, int64_t threads, const std::string & debugOut)
+		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t maxFlankingSize, int64_t lookingDepth, int64_t sampleSize, int64_t threads, const std::string & debugOut)
 		{
 			blocksFound_ = 0;
 			sampleSize_ = sampleSize;
 			lookingDepth_ = lookingDepth;
 			minBlockSize_ = minBlockSize;
-			maxBranchSize_ = maxBranchSize;		
+			maxBranchSize_ = maxBranchSize;	
+			maxFlankingSize_ = maxFlankingSize;
 			blockId_.resize(storage_.GetChrNumber());
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
@@ -386,10 +387,7 @@ namespace Sibelia
 				}
 			}
 
-	//		shuffle.push_back(209379);
-	//		missingVertex_.insert(209379);
 			using namespace std::placeholders;
-	//		std::random_shuffle(shuffle.begin(), shuffle.end());
 			std::sort(shuffle.begin(), shuffle.end(), std::bind(DegreeCompare, std::cref(storage_), _1, _2));
 			
 #ifdef _DEBUG_OUT_
@@ -902,6 +900,7 @@ namespace Sibelia
 		int64_t lookingDepth_;
 		int64_t minBlockSize_;
 		int64_t maxBranchSize_;
+		int64_t maxFlankingSize_;
 		JunctionStorage & storage_;
 		std::vector<std::vector<Edge> > syntenyPath_;
 		std::vector<std::vector<Assignment> > blockId_;

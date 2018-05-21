@@ -1,6 +1,7 @@
 #ifndef _JUNCTION_STORAGE_H_
 #define _JUNCTION_STORAGE_H_
 
+#include <set>
 #include <atomic>
 #include <string>
 #include <vector>
@@ -499,7 +500,7 @@ namespace Sibelia
 			}
 
 		private:			
-			
+
 			JunctionIterator(int64_t vid, size_t iidx) : iidx_(iidx), vid_(vid)
 			{
 			}
@@ -507,6 +508,37 @@ namespace Sibelia
 			friend class JunctionStorage;
 			size_t iidx_;
 			int64_t vid_;
+
+		};
+
+		class Buffer
+		{
+		private:
+			int64_t loopThreshold_;
+			std::multiset<int64_t> inBuffer;
+			std::deque<TwoPaCo::JunctionPosition> buffer;
+		public:
+
+			Buffer(int64_t loopThreshold) : loopThreshold_(loopThreshold)
+			{
+
+			}
+
+			bool AddAndCheck(TwoPaCo::JunctionPosition junction)
+			{
+				return true;
+
+				while (buffer.size() > 0 && (buffer.front().GetChr() != junction.GetChr() || junction.GetPos() - buffer.front().GetPos() >= loopThreshold_))
+				{
+					inBuffer.erase(inBuffer.find(buffer.front().GetId()));
+					buffer.pop_front();
+				}
+				
+				bool ret = inBuffer.find(junction.GetId()) == inBuffer.end();
+				buffer.push_back(junction);
+				inBuffer.insert(junction.GetId());
+				return ret;
+			}
 
 		};
 
@@ -716,7 +748,7 @@ namespace Sibelia
 			return sequence_[idx];
 		}
 
-		void Init(const std::string & inFileName, const std::string & genomesFileName, int64_t threads, int64_t abundanceThreshold)
+		void Init(const std::string & inFileName, const std::string & genomesFileName, int64_t threads, int64_t abundanceThreshold, int64_t loopThreshold)
 		{
 			this_ = this;
 			std::vector<size_t> abundance;
@@ -739,13 +771,14 @@ namespace Sibelia
 					++abundance[absId];
 				}
 			}
-
+			
 			{
+				Buffer buffer(loopThreshold);
 				TwoPaCo::JunctionPositionReader reader(inFileName);
 				for (TwoPaCo::JunctionPosition junction; reader.NextJunctionPosition(junction);)
 				{
 					size_t absId = abs(junction.GetId());
-					if (abundance[absId] < abundanceThreshold)
+					if (abundance[absId] < abundanceThreshold && buffer.AddAndCheck(junction))
 					{
 						++chrSize_[junction.GetChr()];
 					}
@@ -761,6 +794,7 @@ namespace Sibelia
 			{
 				size_t idx = 0;
 				size_t chr = 0;
+				Buffer buffer(loopThreshold);
 				TwoPaCo::JunctionPositionReader reader(inFileName);
 				for (TwoPaCo::JunctionPosition junction; reader.NextJunctionPosition(junction);)
 				{
@@ -771,7 +805,7 @@ namespace Sibelia
 					}
 
 					size_t absId = abs(junction.GetId());					
-					if (abundance[absId] < abundanceThreshold)
+					if (abundance[absId] < abundanceThreshold && buffer.AddAndCheck(junction))
 					{
 						position_[junction.GetChr()][idx].Assign(junction);
 						vertex_[absId].push_back(Vertex(junction));
@@ -819,9 +853,9 @@ namespace Sibelia
 		}					
 
 		JunctionStorage() {}
-		JunctionStorage(const std::string & fileName, const std::string & genomesFileName, uint64_t k, int64_t threads, int64_t abundanceThreshold) : k_(k)
+		JunctionStorage(const std::string & fileName, const std::string & genomesFileName, uint64_t k, int64_t threads, int64_t abundanceThreshold, int64_t loopThreshold) : k_(k)
 		{
-			Init(fileName, genomesFileName, threads, abundanceThreshold);
+			Init(fileName, genomesFileName, threads, abundanceThreshold, loopThreshold);
 		}
 
 

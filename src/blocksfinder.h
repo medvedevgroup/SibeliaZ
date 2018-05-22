@@ -230,7 +230,7 @@ namespace Sibelia
 							std::cerr << "Going forward:" << std::endl;
 						}
 #endif
-						int64_t minRun = max(finder.minBlockSize_, finder.maxBranchSize_) * 6;
+						int64_t minRun = max(finder.minBlockSize_, finder.maxBranchSize_) * 2;
 						while (true)
 						{
 							bool ret = true;

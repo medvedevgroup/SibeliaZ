@@ -56,8 +56,9 @@ int main(int argc, char * argv[])
 			false,
 			125,
 			"integer",
-			cmd);	
+			cmd);
 
+		/*
 		TCLAP::ValueArg<unsigned int> maxFlankingSize("f",
 			"flankingsize",
 			"Maximum flanking size",
@@ -65,6 +66,7 @@ int main(int argc, char * argv[])
 			125,
 			"integer",
 			cmd);
+		*/
 
 		TCLAP::ValueArg<unsigned int> minBlockSize("m",
 			"blocksize",
@@ -158,7 +160,7 @@ int main(int argc, char * argv[])
 		Sibelia::BlocksFinder finder(storage, kvalue.getValue());		
 		finder.FindBlocks(minBlockSize.getValue(),
 			maxBranchSize.getValue(),
-			maxFlankingSize.getValue(),
+			maxBranchSize.getValue(),
 			lookingDepth.getValue(),
 			sampleSize.getValue(),
 			threads.getValue(),

@@ -214,7 +214,6 @@ namespace Sibelia
 		{
 			return instance_;
 		}
-		
 
 		const std::vector<InstanceSet::iterator> & AllInstances() const
 		{
@@ -332,30 +331,12 @@ namespace Sibelia
 				{
 					int64_t middlePath = MiddlePathLength();
 					int64_t length = inst.UtilityLength();
-					int64_t score = 0;
-					int64_t penalty = 0;
-
-					if (length >= minScoringUnit_)
-					{
-						score = length;
-						penalty = (MiddlePathLength() - length);
-						if (penalty >= maxFlankingSize_)
-						{
-							
-						}
-						else
-						{
-							penalty = 0;
-						}
-
-						score -= penalty * multiplier;
-					}
 
 					int64_t start = inst.Front().GetPosition();
 					int64_t end = inst.Back().GetPosition();
 					out << "(" << (inst.Front().IsPositiveStrand() ? '+' : '-') <<
 						inst.Front().GetChrId() <<' ' << start << ' ' << end << ' ' << end - start << ';' <<
-						inst.LeftFlankDistance() << ' ' << inst.RightFlankDistance() << ')' << ' ' << score << ' ' << penalty << std::endl;
+						inst.LeftFlankDistance() << ' ' << inst.RightFlankDistance() << ')' << std::endl;
 				}
 			}
 
@@ -580,7 +561,8 @@ namespace Sibelia
 		int64_t Score(bool final = false) const
 		{
 			int64_t ret = 0;
-			int64_t multiplier = GoodInstances();
+			int64_t multiplier = GoodInstances() - 1;
+			multiplier = multiplier > 0 ? multiplier : 1;
 			for(auto & instanceIt : allInstance_)
 			{
 				int64_t length = instanceIt->UtilityLength();
@@ -588,9 +570,14 @@ namespace Sibelia
 				{
 					int64_t score = abs(instanceIt->Front().GetPosition() - instanceIt->Back().GetPosition());
 					int64_t penalty = MiddlePathLength() - length;
+					
 					if (penalty >= maxFlankingSize_)
 					{
 						score -= penalty * multiplier;
+					}
+					else
+					{
+						score -= penalty;
 					}
 
 					ret += score;
@@ -634,8 +621,7 @@ namespace Sibelia
 
 		bool IsGoodInstance(const Instance & inst) const
 		{			
-			int64_t length = length = abs(inst.Front().GetPosition() - inst.Back().GetPosition());
-			return length >= minBlockSize_;
+			return inst.UtilityLength() >= minBlockSize_;
 		}
 		
 		void PointPopBack()

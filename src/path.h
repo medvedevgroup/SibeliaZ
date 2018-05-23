@@ -109,6 +109,7 @@ namespace Sibelia
 			{
 				front_ = it;
 				frontDistance_ = distance;
+				assert(backDistance_ >= frontDistance_);
 				if (!back_.IsPositiveStrand())
 				{
 					compareIdx_ = front_.GetIndex();
@@ -119,6 +120,7 @@ namespace Sibelia
 			{
 				back_ = it;
 				backDistance_ = distance;
+				assert(backDistance_ >= frontDistance_);
 				if (back_.IsPositiveStrand())
 				{
 					compareIdx_ = back_.GetIndex();
@@ -648,7 +650,7 @@ namespace Sibelia
 						while (true)
 						{
 							auto vid = jt.GetVertexId();
-							if (distanceKeeper_.IsSet(jt.GetVertexId()))
+							if (distanceKeeper_.IsSet(jt.GetVertexId()) && !jt.IsUsed())
 							{
 								const_cast<Instance&>(*it).ChangeBack(jt, distanceKeeper_.Get(jt.GetVertexId()));
 								break;
@@ -695,7 +697,7 @@ namespace Sibelia
 						while (true)
 						{
 							assert(jt.Valid());
-							if (distanceKeeper_.IsSet(jt.GetVertexId()))
+							if (distanceKeeper_.IsSet(jt.GetVertexId()) && !jt.IsUsed())
 							{
 								const_cast<Instance&>(*it).ChangeFront(jt, distanceKeeper_.Get(jt.GetVertexId()));
 								break;

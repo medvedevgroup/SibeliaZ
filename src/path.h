@@ -650,7 +650,7 @@ namespace Sibelia
 						while (true)
 						{
 							auto vid = jt.GetVertexId();
-							if (distanceKeeper_.IsSet(jt.GetVertexId()) && !jt.IsUsed())
+							if (distanceKeeper_.IsSet(jt.GetVertexId()) && distanceKeeper_.Get(jt.GetVertexId()) >= it->LeftFlankDistance())
 							{
 								const_cast<Instance&>(*it).ChangeBack(jt, distanceKeeper_.Get(jt.GetVertexId()));
 								break;
@@ -697,7 +697,7 @@ namespace Sibelia
 						while (true)
 						{
 							assert(jt.Valid());
-							if (distanceKeeper_.IsSet(jt.GetVertexId()) && !jt.IsUsed())
+							if (distanceKeeper_.IsSet(jt.GetVertexId()) && distanceKeeper_.Get(jt.GetVertexId()) <= it->RightFlankDistance())
 							{
 								const_cast<Instance&>(*it).ChangeFront(jt, distanceKeeper_.Get(jt.GetVertexId()));
 								break;

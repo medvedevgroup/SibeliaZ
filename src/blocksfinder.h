@@ -412,7 +412,8 @@ namespace Sibelia
 			count_ = 0;
 			tbb::task_scheduler_init init(threads);
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexIsFork(*this, shuffle));
-			count_ = 0;			
+			count_ = 0;
+			std::sort(source_.begin(), source_.end());
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, source_.size()), ProcessVertexDijkstra(*this));
 			std::cout << "Time: " << time(0) - mark << std::endl;
 		}
@@ -1037,7 +1038,7 @@ namespace Sibelia
 		JunctionStorage & storage_;
 		std::vector<std::vector<Edge> > syntenyPath_;
 		std::vector<std::vector<Assignment> > blockId_;
-		tbb::concurrent_vector<std::pair<int64_t, int64_t> > source_;
+		std::vector<std::pair<int64_t, int64_t> > source_;
 #ifdef _DEBUG_OUT_
 		bool debug_;
 		std::set<int64_t> missingVertex_;

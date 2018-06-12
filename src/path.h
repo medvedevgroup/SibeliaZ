@@ -525,13 +525,7 @@ namespace Sibelia
 			PointPushBackWorker(this, vertex, endVertexDistance, e, failFlag)();
 			rightBody_.push_back(Point(e, startVertexDistance));
 			distanceKeeper_.Set(e.GetEndVertex(), endVertexDistance);
-			rightBodyFlank_ = rightBody_.back().EndDistance();			
-
-			if (failFlag)
-			{
-				PointPopBack();
-			}
-
+			rightBodyFlank_ = rightBody_.back().EndDistance();		
 			return !failFlag;
 		}
 
@@ -550,13 +544,7 @@ namespace Sibelia
 			PointPushFrontWorker(this, vertex, startVertexDistance, e, failFlag)();
 			leftBody_.push_back(Point(e, startVertexDistance));
 			distanceKeeper_.Set(e.GetStartVertex(), startVertexDistance);
-			leftBodyFlank_ = leftBody_.back().StartDistance();			
-
-			if (failFlag)
-			{
-				PointPopFront();
-			}
-
+			leftBodyFlank_ = leftBody_.back().StartDistance();
 			return !failFlag;
 		}
 
@@ -625,101 +613,6 @@ namespace Sibelia
 		{			
 			return inst.UtilityLength() >= minBlockSize_;
 		}
-		
-		void PointPopBack()
-		{
-			int64_t lastVertex = rightBody_.back().GetEdge().GetEndVertex();
-			rightBody_.pop_back();
-			distanceKeeper_.Unset(lastVertex);
-			assert(distanceKeeper_.IsSet(origin_));
-			rightBodyFlank_ = rightBody_.empty() ? 0 : rightBody_.back().EndDistance();
-			for (int64_t i = allInstance_.size() - 1; i >= 0; i--)
-			{
-				auto it = *(allInstance_.begin() + i);
-				if (it->Back().GetVertexId() == lastVertex)
-				{
-					if (it->Front() == it->Back())
-					{
-						assert(i == allInstance_.size() - 1);
-						instance_[it->Back().GetChrId()].erase(it);
-						allInstance_.pop_back();
-					}
-					else
-					{
-						auto jt = it->Back();
-						while (true)
-						{
-							auto vid = jt.GetVertexId();
-							if (distanceKeeper_.IsSet(jt.GetVertexId()) && distanceKeeper_.Get(jt.GetVertexId()) >= it->LeftFlankDistance())
-							{
-								const_cast<Instance&>(*it).ChangeBack(jt, distanceKeeper_.Get(jt.GetVertexId()));
-								break;
-							}
-							else
-							{
-								if (jt == it->Front())
-								{
-									assert(i == allInstance_.size() - 1);
-									instance_[it->Back().GetChrId()].erase(it);
-									allInstance_.pop_back();
-									break;
-								}
-
-								--jt;
-							}
-						}
-					}
-				}
-			}
-		}
-
-
-		void PointPopFront()
-		{
-			int64_t lastVertex = leftBody_.back().GetEdge().GetStartVertex();
-			leftBody_.pop_back();
-			distanceKeeper_.Unset(lastVertex);
-			leftBodyFlank_ = leftBody_.empty() ? 0 : leftBody_.back().StartDistance();
-			for (int64_t i = allInstance_.size() - 1; i >= 0; i--)
-			{
-				auto it = *(allInstance_.begin() + i);
-				if (it->Front().GetVertexId() == lastVertex)
-				{
-					if (it->Front() == it->Back())
-					{
-						assert(i == allInstance_.size() - 1);
-						instance_[it->Back().GetChrId()].erase(it);
-						allInstance_.pop_back();
-					}
-					else
-					{
-						auto jt = it->Front();
-						while (true)
-						{
-							assert(jt.Valid());
-							if (distanceKeeper_.IsSet(jt.GetVertexId()) && distanceKeeper_.Get(jt.GetVertexId()) <= it->RightFlankDistance())
-							{
-								const_cast<Instance&>(*it).ChangeFront(jt, distanceKeeper_.Get(jt.GetVertexId()));
-								break;
-							}
-							else
-							{
-								if (jt == it->Back())
-								{
-									assert(i == allInstance_.size() - 1);
-									instance_[it->Back().GetChrId()].erase(it);
-									allInstance_.pop_back();
-									break;
-								}
-
-								++jt;
-							}
-						}
-					}
-				}
-			}
-		}
-
 
 		void Clear()
 		{

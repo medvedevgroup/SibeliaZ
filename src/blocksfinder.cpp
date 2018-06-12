@@ -208,9 +208,6 @@ namespace Sibelia
 		}
 	}
 
-
-
-
 	std::string BlocksFinder::OutputIndex(const BlockInstance & block) const
 	{
 		std::stringstream out;

@@ -16,7 +16,10 @@
 #include <functional>
 #include <unordered_map>
 
+
+#include <tbb/mutex.h>
 #include <tbb/parallel_for.h>
+#include <tbb/concurrent_vector.h>
 
 #include "path.h"
 
@@ -186,31 +189,83 @@ namespace Sibelia
 			scoreFullChains_ = true;
 		}		
 
-		struct ProcessVertexDijkstra
+		struct ProcessVertexIsFork
 		{
 		public:
 			BlocksFinder & finder;
 			std::vector<int64_t> & shuffle;
 
-			ProcessVertexDijkstra(BlocksFinder & finder, std::vector<int64_t> & shuffle) : finder(finder), shuffle(shuffle)
+			ProcessVertexIsFork(BlocksFinder & finder, std::vector<int64_t> & shuffle) : finder(finder), shuffle(shuffle)
 			{
 			}
 
 			void operator()(tbb::blocked_range<size_t> & range) const
 			{
-				std::vector<uint32_t> data;
-				std::vector<uint32_t> count(finder.storage_.GetVerticesNumber() * 2 + 1, 0);
-				std::pair<int64_t, std::vector<Path::Instance> > goodInstance;
-				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_);
+				BubbledBranches forwardBubble;
+				BubbledBranches backwardBubble;
+				std::vector<JunctionStorage::JunctionSequentialIterator> instance;				
 				for (size_t i = range.begin(); i != range.end(); i++)
 				{
 					if (finder.count_++ % 1000 == 0)
 					{
 						std::cout << finder.count_ << '\t' << shuffle.size() << std::endl;
 					}
+
+					instance.clear();
+					int64_t minStart = INT64_MAX;
+					int64_t vertex = shuffle[i];
+					for (auto it = JunctionStorage::JunctionIterator(vertex); it.Valid(); ++it)
+					{
+						instance.push_back(it.SequentialIterator());
+						auto pos = it.GetPosition();
+						if (pos < minStart)
+						{
+							minStart = pos;
+						}
+					}
+
+					finder.BubbledBranchesForward(vertex, instance, forwardBubble);
+					finder.BubbledBranchesBackward(vertex, instance, backwardBubble);
+					bool isFork = false;
+					for (size_t i = 0; i < forwardBubble.size() && !isFork; i++)
+					{
+						for (size_t j = 0; j < forwardBubble[i].size() && !isFork; j++)
+						{
+							size_t k = forwardBubble[i][j];
+							if (std::find(backwardBubble[i].begin(), backwardBubble[i].end(), k) == backwardBubble[i].end())
+							{
+								finder.source_.push_back(std::make_pair(minStart, vertex));
+								isFork = true;
+							}
+						}
+					}
+				}
+			}
+		};
+
+		struct ProcessVertexDijkstra
+		{
+		public:
+			BlocksFinder & finder;
+
+			ProcessVertexDijkstra(BlocksFinder & finder) : finder(finder)
+			{
+			}
+
+			void operator()(tbb::blocked_range<size_t> & range) const
+			{
+				std::vector<uint32_t> data;
+				std::pair<int64_t, std::vector<Path::Instance> > goodInstance;
+				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_);
+				for (size_t i = range.begin(); i != range.end(); i++)
+				{
+					if (finder.count_++ % 1000 == 0)
+					{
+						std::cout << finder.count_ << '\t' << finder.source_.size() << std::endl;
+					}
 					
 					int64_t score;
-					int64_t vid = shuffle[i];
+					int64_t vid = finder.source_[i].second;
 #ifdef _DEBUG_OUT_
 					finder.debug_ = finder.missingVertex_.count(vid);
 					if (finder.debug_)
@@ -223,20 +278,21 @@ namespace Sibelia
 						currentPath.Init(vid);
 						int64_t bestScore = 0;
 						size_t bestRightSize = currentPath.RightSize();
-						size_t bestLeftSize = currentPath.LeftSize();
 #ifdef _DEBUG_OUT_
 						if (finder.debug_)
 						{
 							std::cerr << "Going forward:" << std::endl;
 						}
 #endif
+						goodInstance.first = 0;
+						goodInstance.second.clear();
 						int64_t minRun = max(finder.minBlockSize_, finder.maxBranchSize_) * 2;
 						while (true)
 						{
 							bool ret = true;
 							bool positive = false;
 							int64_t prevLength = currentPath.MiddlePathLength();
-							while ((ret = finder.ExtendPathDijkstraForward(currentPath, count, data, bestRightSize, bestScore, score)) && currentPath.MiddlePathLength() - prevLength <= minRun)
+							while ((ret = finder.ExtendPathDijkstraForward(currentPath, bestRightSize, bestScore, score, goodInstance)) && currentPath.MiddlePathLength() - prevLength <= minRun)
 							{
 								positive = positive || (score > 0);
 							}
@@ -247,38 +303,6 @@ namespace Sibelia
 							}
 						}
 						
-						while (currentPath.RightSize() > bestRightSize)
-						{
-							currentPath.PointPopBack();
-						}
-
-#ifdef _DEBUG_OUT_
-						if (finder.debug_)
-						{
-							std::cerr << "Going backward:" << std::endl;
-						}
-#endif
-						while (true)
-						{
-							bool ret = true;
-							bool positive = false;
-							int64_t prevLength = currentPath.MiddlePathLength();
-							while ((ret = finder.ExtendPathDijkstraBackward(currentPath, count, data, bestLeftSize, bestScore, score)) && currentPath.MiddlePathLength() - prevLength <= minRun);
-							{
-								positive = positive || (score > 0);
-							}
-
-							if (!ret || !positive)
-							{
-								break;
-							}
-						}
-
-						while (currentPath.LeftSize() > bestLeftSize)
-						{
-							currentPath.PointPopFront();
-						}
-
 						if (bestScore > 0)
 						{			
 
@@ -290,20 +314,14 @@ namespace Sibelia
 								currentPath.DumpInstances(std::cerr);
 							}
 #endif
-
-							goodInstance.second.clear();
-							goodInstance.first = bestScore;
-							for (auto it : currentPath.AllInstances())
-							{
-								if (currentPath.IsGoodInstance(*it))
-								{
-									goodInstance.second.push_back(*it);
-								}
-							}
-
+				
 							if (!finder.TryFinalizeBlock(currentPath, goodInstance, std::cerr))
 							{
 								explore = false;
+							}
+							else
+							{
+								int x = 1;
 							}
 						}
 						else
@@ -389,26 +407,13 @@ namespace Sibelia
 
 			using namespace std::placeholders;
 			std::sort(shuffle.begin(), shuffle.end(), std::bind(DegreeCompare, std::cref(storage_), _1, _2));
-			
-#ifdef _DEBUG_OUT_
-			MissingSet("test/test11/missing.maf", missingVertex_);
-			std::ofstream missingDot("missing.dot");
-			missingDot << "digraph G\n{\nrankdir = LR" << std::endl;
-			std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > vvisit;
-			for (auto vid : missingVertex_)
-			{
-				DumpVertex(vid, missingDot, vvisit, 10);
-				missingDot << vid << "[shape=square]" << std::endl;
-			}
-
-			missingDot << "}" << std::endl;
-#endif
 			srand(time(0));
-					
 			time_t mark = time(0);
 			count_ = 0;
 			tbb::task_scheduler_init init(threads);
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexDijkstra(*this, shuffle));
+			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexIsFork(*this, shuffle));
+			count_ = 0;			
+			tbb::parallel_for(tbb::blocked_range<size_t>(0, source_.size()), ProcessVertexDijkstra(*this));
 			std::cout << "Time: " << time(0) - mark << std::endl;
 		}
 
@@ -708,7 +713,7 @@ namespace Sibelia
 		};
 
 
-		std::pair<int32_t, NextVertex> MostPopularVertex(const Path & currentPath, bool forward, std::vector<uint32_t> & count, std::vector<uint32_t> & data)
+		std::pair<int32_t, NextVertex> MostPopularVertex(const Path & currentPath, bool forward, std::unordered_map<int32_t, int32_t> & count)
 		{
 			NextVertex ret;
 			int32_t bestVid = 0;
@@ -727,11 +732,6 @@ namespace Sibelia
 						if (!currentPath.IsInPath(vid) && !it.IsUsed())
 						{
 							auto adjVid = vid + storage_.GetVerticesNumber();
-							if (count[adjVid] == 0)
-							{
-								data.push_back(adjVid);
-							}
-
 							count[adjVid] += weight;
 							auto diff = abs(it.GetAbsolutePosition() - origin.GetAbsolutePosition());
 							if (count[adjVid] > ret.count || (count[adjVid] == ret.count && diff < ret.diff))
@@ -759,42 +759,20 @@ namespace Sibelia
 				}
 			}
 			
-
-			for (auto vid : data)
-			{
-				count[vid] = 0;
-			}
-
-			data.clear();
 			return std::make_pair(bestVid, ret);
 		}				
 
-		std::pair<int32_t, NextVertex> MostPopularVertexSampling(const Path & currentPath, bool forward, std::vector<uint32_t> & count, std::vector<uint32_t> & data)
-		{
-			NextVertex ret;
-			int32_t bestVid = 0;
-			return std::make_pair(bestVid, ret);
-		}
-
 		bool ExtendPathDijkstraForward(Path & currentPath,
-			std::vector<uint32_t> & count,
-			std::vector<uint32_t> & data,
 			size_t & bestRightSize,
 			int64_t & bestScore,
-			int64_t & nowScore)
+			int64_t & nowScore,
+			std::pair<int64_t, std::vector<Path::Instance> > & goodInstance)
 		{	
 			bool success = false;
 			int64_t origin = currentPath.Origin();
 			std::pair<int32_t, NextVertex> nextForwardVid;
-			if (sampleSize_ == 0 || storage_.GetInstancesCount(currentPath.RightVertex()) <= sampleSize_)
-			{
-				nextForwardVid = MostPopularVertex(currentPath, true, count, data);
-			}
-			else
-			{
-				nextForwardVid = MostPopularVertexSampling(currentPath, true, count, data);
-			}
-			
+			std::unordered_map<int32_t, int32_t> count;
+			nextForwardVid = MostPopularVertex(currentPath, true, count);
 			if (nextForwardVid.first != 0)
 			{				
 				for(auto it = nextForwardVid.second.origin; it.GetVertexId() != nextForwardVid.first; ++it)
@@ -826,6 +804,19 @@ namespace Sibelia
 						{
 							bestScore = nowScore;
 							bestRightSize = currentPath.RightSize();
+
+							if (bestScore > 0)
+							{
+								goodInstance.second.clear();
+								goodInstance.first = bestScore;
+								for (auto it : currentPath.AllInstances())
+								{
+									if (currentPath.IsGoodInstance(*it))
+									{
+										goodInstance.second.push_back(*it);
+									}
+								}
+							}							
 						}
 					}					
 				}
@@ -834,61 +825,203 @@ namespace Sibelia
 			return success;
 		}
 
-		bool ExtendPathDijkstraBackward(Path & currentPath,
-			std::vector<uint32_t> & count,
-			std::vector<uint32_t> & data,
-			size_t & bestLeftSize,
-			int64_t & bestScore,
-			int64_t & nowScore)
+		struct BranchData
 		{
-			bool success = false;
-			std::pair<int32_t, NextVertex> nextBackwardVid;
-			if (sampleSize_ == 0 || storage_.GetInstancesCount(currentPath.RightVertex()) <= sampleSize_)
-			{
-				nextBackwardVid = MostPopularVertex(currentPath, false, count, data);
-			}
-			else
-			{
-				nextBackwardVid = MostPopularVertexSampling(currentPath, false, count, data);
-			}
+			std::vector<size_t> branchId;
+		};
 
-			if (nextBackwardVid.first != 0)
+		typedef std::vector<std::vector<size_t> > BubbledBranches;
+
+		struct Fork
+		{
+			Fork(JunctionStorage::JunctionSequentialIterator it, JunctionStorage::JunctionSequentialIterator jt)
 			{
-				for (auto it = nextBackwardVid.second.origin; it.GetVertexId() != nextBackwardVid.first; --it)
+				if (it < jt)
 				{
-#ifdef _DEBUG_OUT_
-					if (debug_)
-					{
-						std::cerr << "Attempting to push front the vertex:" << it.GetVertexId() << std::endl;
-					}					
+					branch[0] = it;
+					branch[1] = jt;
+				}
+				else
+				{
+					branch[0] = jt;
+					branch[1] = it;
+				}
+			}
 
-					if (missingVertex_.count(it.GetVertexId()))
+			JunctionStorage::JunctionSequentialIterator branch[2];
+		};
+
+		int64_t ChainLength(const Fork & now, const Fork & next) const
+		{
+			return min(abs(now.branch[0].GetPosition() - next.branch[0].GetPosition()), abs(now.branch[1].GetPosition() - next.branch[1].GetPosition()));
+		}
+
+		Fork ExpandSourceFork(const Fork & source) const
+		{
+			for (auto now = source; ; )
+			{
+				auto next = TakeBubbleStep(now);
+				if (next.branch[0].Valid())
+				{
+					int64_t vid0 = now.branch[0].GetVertexId();
+					int64_t vid1 = now.branch[1].GetVertexId();
+					assert(vid0 == vid1 && abs(now.branch[0].GetPosition() - next.branch[0].GetPosition()) < maxBranchSize_ &&
+						abs(now.branch[1].GetPosition() - next.branch[1].GetPosition()) < maxBranchSize_);
+					now = next;
+				}
+				else
+				{
+					return now;
+				}
+			}
+
+			return source;
+		}
+
+		Fork TakeBubbleStep(const Fork & source) const
+		{
+			auto it = source.branch[0];
+			std::map<int64_t, int64_t> firstBranch;
+			for (int64_t i = 1; abs(it.GetPosition() - source.branch[0].GetPosition()) < maxBranchSize_ && (++it).Valid(); i++)
+			{
+				int64_t d = abs(it.GetPosition() - source.branch[0].GetPosition());
+				firstBranch[it.GetVertexId()] = i;
+			}
+
+			it = source.branch[1];
+			for (int64_t i = 1; abs(it.GetPosition() - source.branch[1].GetPosition()) < maxBranchSize_ && (++it).Valid(); i++)
+			{
+				auto kt = firstBranch.find(it.GetVertexId());
+				if (kt != firstBranch.end())
+				{
+					return Fork(source.branch[0] + kt->second, it);
+				}
+			}
+
+			return Fork(JunctionStorage::JunctionSequentialIterator(), JunctionStorage::JunctionSequentialIterator());
+		}
+
+		void BubbledBranchesForward(int64_t vertexId, const std::vector<JunctionStorage::JunctionSequentialIterator> & instance, BubbledBranches & bulges) const
+		{
+			std::vector<size_t> parallelEdge[5];
+			std::map<int64_t, BranchData> visit;
+			bulges.assign(instance.size(), std::vector<size_t>());
+			for (size_t i = 0; i < instance.size(); i++)
+			{
+				auto vertex = instance[i];
+				if ((vertex + 1).Valid())
+				{
+					parallelEdge[TwoPaCo::DnaChar::MakeUpChar(vertex.GetChar())].push_back(i);
+				}
+
+				for (int64_t startPosition = vertex++.GetPosition(); vertex.Valid() && abs(startPosition - vertex.GetPosition()) <= maxBranchSize_; ++vertex)
+				{
+					int64_t nowVertexId = vertex.GetVertexId();
+					auto point = visit.find(nowVertexId);
+					if (point == visit.end())
 					{
-						std::cerr << "Alert: " << it.GetVertexId() << ", origin: " << currentPath.Origin() << std::endl;
+						BranchData bData;
+						bData.branchId.push_back(i);
+						visit[nowVertexId] = bData;
 					}
-#endif
-					success = currentPath.PointPushFront(it.IngoingEdge());
-					if (success)
+					else
 					{
-						nowScore = currentPath.Score(scoreFullChains_);
-#ifdef _DEBUG_OUT_
-						if(debug_)
+						point->second.branchId.push_back(i);
+					}
+				}
+			}
+
+			for (size_t i = 0; i < 5; i++)
+			{
+				for (size_t j = 0; j < parallelEdge[i].size(); j++)
+				{
+					for (size_t k = j + 1; k < parallelEdge[i].size(); k++)
+					{
+						size_t smallBranch = parallelEdge[i][j];
+						size_t largeBranch = parallelEdge[i][k];
+						bulges[smallBranch].push_back(largeBranch);
+					}
+				}
+			}
+
+			for (auto point = visit.begin(); point != visit.end(); ++point)
+			{
+				std::sort(point->second.branchId.begin(), point->second.branchId.end());
+				for (size_t j = 0; j < point->second.branchId.size(); j++)
+				{
+					for (size_t k = j + 1; k < point->second.branchId.size(); k++)
+					{
+						size_t smallBranch = point->second.branchId[j];
+						size_t largeBranch = point->second.branchId[k];
+						if (smallBranch != largeBranch && std::find(bulges[smallBranch].begin(), bulges[smallBranch].end(), largeBranch) == bulges[smallBranch].end())
 						{
-							std::cerr << "Success! New score:" << nowScore << std::endl;
-							currentPath.DumpPath(std::cerr);
-							currentPath.DumpInstances(std::cerr);
-						}
-#endif		
-						if (nowScore > bestScore)
-						{
-							bestScore = nowScore;
-							bestLeftSize = currentPath.LeftSize();
+							bulges[smallBranch].push_back(largeBranch);
 						}
 					}
 				}
 			}
-						
-			return success;
+		}
+
+		void BubbledBranchesBackward(int64_t vertexId, const std::vector<JunctionStorage::JunctionSequentialIterator> & instance, BubbledBranches & bulges) const
+		{
+			std::vector<size_t> parallelEdge[5];
+			std::map<int64_t, BranchData> visit;
+			bulges.assign(instance.size(), std::vector<size_t>());
+			for (size_t i = 0; i < instance.size(); i++)
+			{
+				auto vertex = instance[i];
+				auto prev = vertex - 1;
+				if (prev.Valid())
+				{
+					parallelEdge[TwoPaCo::DnaChar::MakeUpChar(prev.GetChar())].push_back(i);
+				}
+
+				for (int64_t startPosition = vertex--.GetPosition(); vertex.Valid() && abs(startPosition - vertex.GetPosition()) <= maxBranchSize_; --vertex)
+				{
+					int64_t nowVertexId = vertex.GetVertexId();
+					auto point = visit.find(nowVertexId);
+					if (point == visit.end())
+					{
+						BranchData bData;
+						bData.branchId.push_back(i);
+						visit[nowVertexId] = bData;
+					}
+					else
+					{
+						point->second.branchId.push_back(i);
+					}
+				}
+			}
+
+			for (size_t i = 0; i < 5; i++)
+			{
+				for (size_t j = 0; j < parallelEdge[i].size(); j++)
+				{
+					for (size_t k = j + 1; k < parallelEdge[i].size(); k++)
+					{
+						size_t smallBranch = parallelEdge[i][j];
+						size_t largeBranch = parallelEdge[i][k];
+						bulges[smallBranch].push_back(largeBranch);
+					}
+				}
+			}
+
+			for (auto point = visit.begin(); point != visit.end(); ++point)
+			{
+				std::sort(point->second.branchId.begin(), point->second.branchId.end());
+				for (size_t j = 0; j < point->second.branchId.size(); j++)
+				{
+					for (size_t k = j + 1; k < point->second.branchId.size(); k++)
+					{
+						size_t smallBranch = point->second.branchId[j];
+						size_t largeBranch = point->second.branchId[k];
+						if (smallBranch != largeBranch && std::find(bulges[smallBranch].begin(), bulges[smallBranch].end(), largeBranch) == bulges[smallBranch].end())
+						{
+							bulges[smallBranch].push_back(largeBranch);
+						}
+					}
+				}
+			}
 		}
 
 		int64_t k_;
@@ -904,6 +1037,7 @@ namespace Sibelia
 		JunctionStorage & storage_;
 		std::vector<std::vector<Edge> > syntenyPath_;
 		std::vector<std::vector<Assignment> > blockId_;
+		tbb::concurrent_vector<std::pair<int64_t, int64_t> > source_;
 #ifdef _DEBUG_OUT_
 		bool debug_;
 		std::set<int64_t> missingVertex_;

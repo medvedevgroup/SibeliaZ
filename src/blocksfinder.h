@@ -226,16 +226,30 @@ namespace Sibelia
 
 					finder.BubbledBranchesForward(vertex, instance, forwardBubble);
 					finder.BubbledBranchesBackward(vertex, instance, backwardBubble);
-					bool isFork = false;
-					for (size_t i = 0; i < forwardBubble.size() && !isFork; i++)
+					bool isSource = false;
+					for (size_t i = 0; i < forwardBubble.size() && !isSource; i++)
 					{
-						for (size_t j = 0; j < forwardBubble[i].size() && !isFork; j++)
+						for (size_t j = 0; j < forwardBubble[i].size() && !isSource; j++)
 						{
 							size_t k = forwardBubble[i][j];
 							if (std::find(backwardBubble[i].begin(), backwardBubble[i].end(), k) == backwardBubble[i].end())
 							{
 								finder.source_.push_back(std::make_pair(minStart, vertex));
-								isFork = true;
+								isSource = true;
+							}
+						}
+					}
+
+					bool isSink = false;
+					for (size_t i = 0; i < backwardBubble.size() && !isSink; i++)
+					{
+						for (size_t j = 0; j < backwardBubble[i].size() && !isSink; j++)
+						{
+							size_t k = backwardBubble[i][j];
+							if (std::find(forwardBubble[i].begin(), forwardBubble[i].end(), k) == forwardBubble[i].end())
+							{
+								finder.sink_.push_back(std::make_pair(minStart, vertex));
+								isSink = true;
 							}
 						}
 					}
@@ -247,8 +261,9 @@ namespace Sibelia
 		{
 		public:
 			BlocksFinder & finder;
+			const std::vector<std::pair<int64_t, int64_t> > & shuffle;
 
-			ProcessVertexDijkstra(BlocksFinder & finder) : finder(finder)
+			ProcessVertexDijkstra(BlocksFinder & finder, std::vector<std::pair<int64_t, int64_t> > & shuffle) : finder(finder), shuffle(shuffle)
 			{
 			}
 
@@ -265,7 +280,7 @@ namespace Sibelia
 					}
 					
 					int64_t score;
-					int64_t vid = finder.source_[i].second;
+					int64_t vid = shuffle[i].second;
 #ifdef _DEBUG_OUT_
 					finder.debug_ = finder.missingVertex_.count(vid);
 					if (finder.debug_)
@@ -411,10 +426,13 @@ namespace Sibelia
 			time_t mark = time(0);
 			count_ = 0;
 			tbb::task_scheduler_init init(threads);
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexIsFork(*this, shuffle));
-			count_ = 0;
+			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexIsFork(*this, shuffle));			
 			std::sort(source_.begin(), source_.end());
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, source_.size()), ProcessVertexDijkstra(*this));
+			std::sort(sink_.begin(), sink_.end());
+			count_ = 0;
+			tbb::parallel_for(tbb::blocked_range<size_t>(0, source_.size()), ProcessVertexDijkstra(*this, source_));
+			count_ = 0;
+			tbb::parallel_for(tbb::blocked_range<size_t>(0, sink_.size()), ProcessVertexDijkstra(*this, sink_));
 			std::cout << "Time: " << time(0) - mark << std::endl;
 		}
 
@@ -833,74 +851,6 @@ namespace Sibelia
 
 		typedef std::vector<std::vector<size_t> > BubbledBranches;
 
-		struct Fork
-		{
-			Fork(JunctionStorage::JunctionSequentialIterator it, JunctionStorage::JunctionSequentialIterator jt)
-			{
-				if (it < jt)
-				{
-					branch[0] = it;
-					branch[1] = jt;
-				}
-				else
-				{
-					branch[0] = jt;
-					branch[1] = it;
-				}
-			}
-
-			JunctionStorage::JunctionSequentialIterator branch[2];
-		};
-
-		int64_t ChainLength(const Fork & now, const Fork & next) const
-		{
-			return min(abs(now.branch[0].GetPosition() - next.branch[0].GetPosition()), abs(now.branch[1].GetPosition() - next.branch[1].GetPosition()));
-		}
-
-		Fork ExpandSourceFork(const Fork & source) const
-		{
-			for (auto now = source; ; )
-			{
-				auto next = TakeBubbleStep(now);
-				if (next.branch[0].Valid())
-				{
-					int64_t vid0 = now.branch[0].GetVertexId();
-					int64_t vid1 = now.branch[1].GetVertexId();
-					assert(vid0 == vid1 && abs(now.branch[0].GetPosition() - next.branch[0].GetPosition()) < maxBranchSize_ &&
-						abs(now.branch[1].GetPosition() - next.branch[1].GetPosition()) < maxBranchSize_);
-					now = next;
-				}
-				else
-				{
-					return now;
-				}
-			}
-
-			return source;
-		}
-
-		Fork TakeBubbleStep(const Fork & source) const
-		{
-			auto it = source.branch[0];
-			std::map<int64_t, int64_t> firstBranch;
-			for (int64_t i = 1; abs(it.GetPosition() - source.branch[0].GetPosition()) < maxBranchSize_ && (++it).Valid(); i++)
-			{
-				int64_t d = abs(it.GetPosition() - source.branch[0].GetPosition());
-				firstBranch[it.GetVertexId()] = i;
-			}
-
-			it = source.branch[1];
-			for (int64_t i = 1; abs(it.GetPosition() - source.branch[1].GetPosition()) < maxBranchSize_ && (++it).Valid(); i++)
-			{
-				auto kt = firstBranch.find(it.GetVertexId());
-				if (kt != firstBranch.end())
-				{
-					return Fork(source.branch[0] + kt->second, it);
-				}
-			}
-
-			return Fork(JunctionStorage::JunctionSequentialIterator(), JunctionStorage::JunctionSequentialIterator());
-		}
 
 		void BubbledBranchesForward(int64_t vertexId, const std::vector<JunctionStorage::JunctionSequentialIterator> & instance, BubbledBranches & bulges) const
 		{
@@ -1038,6 +988,7 @@ namespace Sibelia
 		JunctionStorage & storage_;
 		std::vector<std::vector<Edge> > syntenyPath_;
 		std::vector<std::vector<Assignment> > blockId_;
+		std::vector<std::pair<int64_t, int64_t> > sink_;
 		std::vector<std::pair<int64_t, int64_t> > source_;
 #ifdef _DEBUG_OUT_
 		bool debug_;

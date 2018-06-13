@@ -157,6 +157,11 @@ namespace Sibelia
 				return backDistance_ - frontDistance_;
 			}
 
+			int64_t RealLength() const
+			{
+				return abs(front_.GetPosition() - back_.GetPosition());
+			}
+
 			bool Within(const JunctionStorage::JunctionIterator it) const
 			{
 				int64_t left = min(front_.GetIndex(), back_.GetIndex());
@@ -335,7 +340,6 @@ namespace Sibelia
 		void DumpInstances(std::ostream & out) const
 		{
 			size_t total = 0;
-			int64_t multiplier = GoodInstances();
 			for (auto & instanceSet : instance_)
 			{
 				total += instanceSet.size();
@@ -633,7 +637,7 @@ namespace Sibelia
 
 		bool IsGoodInstance(const Instance & inst) const
 		{
-			return inst.UtilityLength() >= minBlockSize_;
+			return inst.RealLength() >= minBlockSize_;
 		}
 
 		void PointPopBack()

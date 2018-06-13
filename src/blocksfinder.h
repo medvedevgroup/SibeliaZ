@@ -246,13 +246,20 @@ namespace Sibelia
 							}
 						}
 
-						while (currentPath.RightSize() > bestRightSize)
 						{
-							currentPath.PointPopBack();
+							std::vector<Edge> bestEdge;
+							for (size_t i = 0; i < bestRightSize - 1; i++)
+							{
+								bestEdge.push_back(currentPath.RightPoint(i).GetEdge());
+							}
+
+							currentPath.Clear();
+							currentPath.Init(vid);
+							for (auto & e : bestEdge)
+							{
+								currentPath.PointPushBack(e);
+							}
 						}
-
-						assert(currentPath.Score() == bestScore);
-
 #ifdef _DEBUG_OUT_
 						if (finder.debug_)
 						{
@@ -275,13 +282,6 @@ namespace Sibelia
 							}
 						}
 
-						while (currentPath.LeftSize() > bestLeftSize)
-						{
-							currentPath.PointPopFront();
-						}
-
-						assert(currentPath.Score() == bestScore);					
-
 						if (bestScore > 0)
 						{
 #ifdef _DEBUG_OUT_
@@ -292,7 +292,7 @@ namespace Sibelia
 								currentPath.DumpInstances(std::cerr);
 							}
 #endif
-							if (!finder.TryFinalizeBlock(currentPath, finalizer))
+							if (!finder.TryFinalizeBlock(currentPath, finalizer, bestRightSize, bestLeftSize))
 							{
 								explore = false;
 							}
@@ -584,76 +584,70 @@ namespace Sibelia
 			}
 		}
 
-		bool TryFinalizeBlock(const Path & currentPath, Path & finalizer)
+		bool TryFinalizeBlock(const Path & currentPath, Path & finalizer, size_t bestRightSize, size_t bestLeftSize)
 		{
 			bool ret = false;
-			std::vector<Path::InstanceSet::const_iterator> goodInstance;
+			std::vector<Path::InstanceSet::const_iterator> lockInstance;
 			for (auto it : currentPath.AllInstances())
 			{
-				if (currentPath.IsGoodInstance(*it))
-				{
-					goodInstance.push_back(it);
-				}
+				lockInstance.push_back(it);
 			}
 			
-			if (goodInstance.size() > 1)
-			{	
-				std::sort(goodInstance.begin(), goodInstance.end(), Path::CmpInstance);
-				{
-					std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
-					for (auto & instance : goodInstance)
-					{
-						if (instance->Front().IsPositiveStrand())
-						{
-							storage_.LockRange(instance->Front(), instance->Back(), idx);
-						}
-						else
-						{
-							storage_.LockRange(instance->Back().Reverse(), instance->Front().Reverse(), idx);
-						}
-					}
-				}
-		
-				finalizer.Init(currentPath.Origin());
-				for (size_t i = 0; i < currentPath.RightSize() - 1 && finalizer.PointPushBack(currentPath.RightPoint(i).GetEdge()); i++);
-				for (size_t i = 0; i < currentPath.LeftSize() - 1 && finalizer.PointPushFront(currentPath.LeftPoint(i).GetEdge()); i++);
-				if (finalizer.Score() > 0 && finalizer.GoodInstances() > 1)
-				{
-					ret = true;
-					int64_t instanceCount = 0;
-					int64_t currentBlock = ++blocksFound_;		
-					for (auto jt : finalizer.AllInstances())
-					{
-						if (finalizer.IsGoodInstance(*jt))
-						{
-							auto it = jt->Front();
-							do
-							{
-								it.MarkUsed();
-								int64_t idx = it.GetIndex();
-								int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());
-								blockId_[it.GetChrId()][it.GetIndex()].block = it.IsPositiveStrand() ? +currentBlock : -currentBlock;
-								blockId_[it.GetChrId()][it.GetIndex()].instance = instanceCount;
-
-							} while (it++ != jt->Back());
-
-							instanceCount++;
-						}
-					}
-				}
-				
-				finalizer.Clear();
+			std::sort(lockInstance.begin(), lockInstance.end(), Path::CmpInstance);
+			{
 				std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
-				for (auto & instance : goodInstance)
+				for (auto & instance : lockInstance)
 				{
 					if (instance->Front().IsPositiveStrand())
 					{
-						storage_.UnlockRange(instance->Front(), instance->Back(), idx);
+						storage_.LockRange(instance->Front(), instance->Back(), idx);
 					}
 					else
 					{
-						storage_.UnlockRange(instance->Back().Reverse(), instance->Front().Reverse(), idx);
+						storage_.LockRange(instance->Back().Reverse(), instance->Front().Reverse(), idx);
 					}
+				}
+			}
+		
+			finalizer.Init(currentPath.Origin());
+			for (size_t i = 0; i < bestRightSize - 1 && finalizer.PointPushBack(currentPath.RightPoint(i).GetEdge()); i++);
+			for (size_t i = 0; i < bestLeftSize - 1 && finalizer.PointPushFront(currentPath.LeftPoint(i).GetEdge()); i++);
+			if (finalizer.Score() > 0 && finalizer.GoodInstances() > 1)
+			{
+				ret = true;
+				int64_t instanceCount = 0;
+				int64_t currentBlock = ++blocksFound_;		
+				for (auto jt : finalizer.AllInstances())
+				{
+					if (finalizer.IsGoodInstance(*jt))
+					{
+						auto it = jt->Front();
+						do
+						{
+							it.MarkUsed();
+							int64_t idx = it.GetIndex();
+							int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());
+							blockId_[it.GetChrId()][it.GetIndex()].block = it.IsPositiveStrand() ? +currentBlock : -currentBlock;
+							blockId_[it.GetChrId()][it.GetIndex()].instance = instanceCount;
+
+						} while (it++ != jt->Back());
+
+						instanceCount++;
+					}
+				}
+			}
+				
+			finalizer.Clear();
+			std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
+			for (auto & instance : lockInstance)
+			{
+				if (instance->Front().IsPositiveStrand())
+				{
+					storage_.UnlockRange(instance->Front(), instance->Back(), idx);
+				}
+				else
+				{
+					storage_.UnlockRange(instance->Back().Reverse(), instance->Front().Reverse(), idx);
 				}
 			}
 

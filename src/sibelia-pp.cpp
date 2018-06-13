@@ -164,8 +164,8 @@ int main(int argc, char * argv[])
 			threads.getValue(),
 			outDirName.getValue() + "/paths.txt");
 		finder.GenerateLegacyOutput(outDirName.getValue());
-		std::ofstream dumpStream(outDirName.getValue() + "/graph.dot");
-		//finder.Dump(dumpStream);
+	//	std::ofstream dumpStream(outDirName.getValue() + "/graph.dot");
+	//	finder.Dump(dumpStream);
 	}
 	catch (TCLAP::ArgException & e)
 	{

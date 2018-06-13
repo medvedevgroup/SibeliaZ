@@ -380,7 +380,6 @@ namespace Sibelia
 
 			using namespace std::placeholders;
 			std::sort(shuffle.begin(), shuffle.end(), std::bind(DegreeCompare, std::cref(storage_), _1, _2));
-
 #ifdef _DEBUG_OUT_
 			MissingSet("test/test11/missing.maf", missingVertex_);
 			std::ofstream missingDot("missing.dot");
@@ -395,7 +394,7 @@ namespace Sibelia
 			missingDot << "}" << std::endl;
 #endif
 			srand(time(0));
-
+			debugOut_.open("blocks_dbg.txt");
 			time_t mark = time(0);
 			count_ = 0;
 			tbb::task_scheduler_init init(threads);
@@ -619,7 +618,12 @@ namespace Sibelia
 			{
 				ret = true;
 				int64_t instanceCount = 0;
-				int64_t currentBlock = ++blocksFound_;		
+				int64_t currentBlock = ++blocksFound_;	
+				debugMutex_.lock();
+				debugOut_ << "Block: " << currentBlock << std::endl;
+				finalizer.DumpPath(debugOut_);
+				finalizer.DumpInstances(debugOut_);
+				debugOut_ << std::string(80, '-') << std::endl;
 				for (auto jt : finalizer.AllInstances())
 				{
 					if (finalizer.IsGoodInstance(*jt))
@@ -638,6 +642,8 @@ namespace Sibelia
 						instanceCount++;
 					}
 				}
+
+				debugMutex_.unlock();
 			}
 				
 			finalizer.Clear();
@@ -839,6 +845,8 @@ namespace Sibelia
 		int64_t maxBranchSize_;
 		int64_t maxFlankingSize_;
 		JunctionStorage & storage_;
+		tbb::mutex debugMutex_;
+		std::ofstream debugOut_;
 		std::vector<std::vector<Edge> > syntenyPath_;
 		std::vector<std::vector<Assignment> > blockId_;
 #ifdef _DEBUG_OUT_

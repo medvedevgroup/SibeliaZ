@@ -262,6 +262,16 @@ namespace Sibelia
 			return rightBody_.size() + 1;
 		}
 
+		Point RightPoint(size_t idx) const
+		{
+			return rightBody_[idx];
+		}
+
+		Point LeftPoint(size_t idx) const
+		{
+			return leftBody_[idx];
+		}
+
 		int64_t RightVertex() const
 		{
 			if (rightBody_.size() == 0)

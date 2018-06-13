@@ -199,6 +199,7 @@ namespace Sibelia
 			void operator()(tbb::blocked_range<size_t> & range) const
 			{
 				std::pair<int64_t, std::vector<Path::Instance> > goodInstance;
+				Path finalizer(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_);
 				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_);
 				for (size_t i = range.begin(); i != range.end(); i++)
 				{
@@ -250,6 +251,8 @@ namespace Sibelia
 							currentPath.PointPopBack();
 						}
 
+						assert(currentPath.Score() == bestScore);
+
 #ifdef _DEBUG_OUT_
 						if (finder.debug_)
 						{
@@ -277,9 +280,10 @@ namespace Sibelia
 							currentPath.PointPopFront();
 						}
 
+						assert(currentPath.Score() == bestScore);					
+
 						if (bestScore > 0)
 						{
-
 #ifdef _DEBUG_OUT_
 							if (finder.debug_)
 							{
@@ -288,18 +292,7 @@ namespace Sibelia
 								currentPath.DumpInstances(std::cerr);
 							}
 #endif
-
-							goodInstance.second.clear();
-							goodInstance.first = bestScore;
-							for (auto it : currentPath.AllInstances())
-							{
-								if (currentPath.IsGoodInstance(*it))
-								{
-									goodInstance.second.push_back(*it);
-								}
-							}
-
-							if (!finder.TryFinalizeBlock(currentPath, goodInstance, std::cerr))
+							if (!finder.TryFinalizeBlock(currentPath, finalizer))
 							{
 								explore = false;
 							}
@@ -591,99 +584,77 @@ namespace Sibelia
 			}
 		}
 
-
-		template<class P>
-		bool TryFinalizeBlock(P & currentPath, std::pair<int64_t, std::vector<Path::Instance> > & goodInstance, std::ostream & log)
+		bool TryFinalizeBlock(const Path & currentPath, Path & finalizer)
 		{
 			bool ret = false;
-			if (goodInstance.first > 0 && goodInstance.second.size() > 1)
+			std::vector<Path::InstanceSet::const_iterator> goodInstance;
+			for (auto it : currentPath.AllInstances())
 			{
-				std::sort(goodInstance.second.begin(), goodInstance.second.end(), Path::Instance::OldComparator);
+				if (currentPath.IsGoodInstance(*it))
+				{
+					goodInstance.push_back(it);
+				}
+			}
+			
+			if (goodInstance.size() > 1)
+			{	
+				std::sort(goodInstance.begin(), goodInstance.end(), Path::CmpInstance);
 				{
 					std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
-					for (auto & instIt : goodInstance.second)
+					for (auto & instance : goodInstance)
 					{
-						auto & instance = instIt;
+						if (instance->Front().IsPositiveStrand())
 						{
-							if (instance.Front().IsPositiveStrand())
-							{
-								storage_.LockRange(instance.Front(), instance.Back(), idx);
-							}
-							else
-							{
-								storage_.LockRange(instance.Back().Reverse(), instance.Front().Reverse(), idx);
-							}
+							storage_.LockRange(instance->Front(), instance->Back(), idx);
+						}
+						else
+						{
+							storage_.LockRange(instance->Back().Reverse(), instance->Front().Reverse(), idx);
 						}
 					}
 				}
-
-				std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > result;
-				for (auto & instIt : goodInstance.second)
+		
+				finalizer.Init(currentPath.Origin());
+				for (size_t i = 0; i < currentPath.RightSize() - 1 && finalizer.PointPushBack(currentPath.RightPoint(i).GetEdge()); i++);
+				for (size_t i = 0; i < currentPath.LeftSize() - 1 && finalizer.PointPushFront(currentPath.LeftPoint(i).GetEdge()); i++);
+				if (finalizer.Score() > 0 && finalizer.GoodInstances() > 1)
 				{
-					auto & instance = instIt;
-					{
-						bool whole = true;
-						auto start = instance.Front();
-						auto end = instance.Back();
-						for (; start != end && start.IsUsed(); ++start);
-						for (; start != end && end.IsUsed(); --end);
-						for (auto it = start; it != end.Next(); it++)
-						{
-							if (it.IsUsed())
-							{
-								whole = false;
-								break;
-							}
-						}
-
-						if (whole && abs(start.GetPosition() - end.GetPosition()) + k_ >= minBlockSize_)
-						{
-							result.push_back(std::make_pair(start, end));
-						}
-					}
-				}
-
-				if (result.size() > 1)
-				{
-					currentPath.Score();
 					ret = true;
 					int64_t instanceCount = 0;
-					int64_t currentBlock = ++blocksFound_;
-					for (auto & instance : result)
+					int64_t currentBlock = ++blocksFound_;		
+					for (auto jt : finalizer.AllInstances())
 					{
-						auto it = instance.first;
-						do
+						if (finalizer.IsGoodInstance(*jt))
 						{
-							it.MarkUsed();
-							int64_t idx = it.GetIndex();
-							int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());
-							blockId_[it.GetChrId()][it.GetIndex()].block = it.IsPositiveStrand() ? +currentBlock : -currentBlock;
-							blockId_[it.GetChrId()][it.GetIndex()].instance = instanceCount;
-
-						} while (it++ != instance.second);
-
-						instanceCount++;
-					}
-				}
-
-				{
-					std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
-					for (auto & instIt : goodInstance.second)
-					{
-						auto & instance = instIt;
-						{
-							if (instance.Front().IsPositiveStrand())
+							auto it = jt->Front();
+							do
 							{
-								storage_.UnlockRange(instance.Front(), instance.Back(), idx);
-							}
-							else
-							{
-								storage_.UnlockRange(instance.Back().Reverse(), instance.Front().Reverse(), idx);
-							}
+								it.MarkUsed();
+								int64_t idx = it.GetIndex();
+								int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());
+								blockId_[it.GetChrId()][it.GetIndex()].block = it.IsPositiveStrand() ? +currentBlock : -currentBlock;
+								blockId_[it.GetChrId()][it.GetIndex()].instance = instanceCount;
+
+							} while (it++ != jt->Back());
+
+							instanceCount++;
 						}
 					}
 				}
-
+				
+				finalizer.Clear();
+				std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
+				for (auto & instance : goodInstance)
+				{
+					if (instance->Front().IsPositiveStrand())
+					{
+						storage_.UnlockRange(instance->Front(), instance->Back(), idx);
+					}
+					else
+					{
+						storage_.UnlockRange(instance->Back().Reverse(), instance->Front().Reverse(), idx);
+					}
+				}
 			}
 
 			return ret;

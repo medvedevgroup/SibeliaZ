@@ -119,13 +119,13 @@ namespace Sibelia
 	class JunctionStorage
 	{
 	private:
-		
+
 		struct Vertex
 		{
 			int32_t id;
 			int32_t chr;
 			int32_t idx;
-			int32_t pos;			
+			int32_t pos;
 			char ch;
 			char revCh;
 
@@ -133,15 +133,15 @@ namespace Sibelia
 			{
 
 			}
-		}; 
-		
+		};
+
 		struct Position
 		{
 			int32_t id;
 			int32_t pos;
 			std::atomic<bool> used;
 
-			Position() : used(false) 
+			Position() : used(false)
 			{
 
 			}
@@ -156,7 +156,7 @@ namespace Sibelia
 		typedef std::vector<Vertex> VertexVector;
 		typedef std::vector<Position> PositionVector;
 
-	public:		
+	public:
 
 		class JunctionSequentialIterator
 		{
@@ -214,18 +214,18 @@ namespace Sibelia
 			{
 				const Position & now = JunctionStorage::this_->position_[GetChrId()][idx_];
 				if (IsPositiveStrand())
-				{					
+				{
 					const Position & prev = JunctionStorage::this_->position_[GetChrId()][idx_ - 1];
 					char ch = JunctionStorage::this_->sequence_[GetChrId()][prev.pos + JunctionStorage::this_->k_];
 					char revCh = TwoPaCo::DnaChar::ReverseChar(JunctionStorage::this_->sequence_[GetChrId()][now.pos - 1]);
-					return Edge(prev.id, now.id, ch, revCh, now.pos - prev.pos, 1);				
+					return Edge(prev.id, now.id, ch, revCh, now.pos - prev.pos, 1);
 				}
 				else
 				{
 					const Position & prev = JunctionStorage::this_->position_[GetChrId()][idx_ + 1];
 					char ch = TwoPaCo::DnaChar::ReverseChar(JunctionStorage::this_->sequence_[GetChrId()][prev.pos - 1]);
 					char revCh = JunctionStorage::this_->sequence_[GetChrId()][now.pos + JunctionStorage::this_->k_];
-					return Edge(-prev.id, -now.id, ch, revCh, prev.pos - now.pos, 1);					
+					return Edge(-prev.id, -now.id, ch, revCh, prev.pos - now.pos, 1);
 				}
 			}
 
@@ -429,7 +429,7 @@ namespace Sibelia
 					return JunctionStorage::this_->vertex_[abs(vid_)][iidx_].idx;;
 				}
 
-				return JunctionStorage::this_->chrSize_[GetChrId()] - JunctionStorage::this_->vertex_[abs(vid_)][iidx_].idx; - 1;
+				return JunctionStorage::this_->chrSize_[GetChrId()] - JunctionStorage::this_->vertex_[abs(vid_)][iidx_].idx; -1;
 			}
 
 			uint64_t GetChrId() const
@@ -467,7 +467,7 @@ namespace Sibelia
 				++iidx_;
 				return *this;
 			}
-		
+
 			JunctionIterator operator++ (int)
 			{
 				JunctionIterator ret(*this);
@@ -499,7 +499,7 @@ namespace Sibelia
 			{
 			}
 
-		private:			
+		private:
 
 			JunctionIterator(int64_t vid, size_t iidx) : iidx_(iidx), vid_(vid)
 			{
@@ -533,7 +533,7 @@ namespace Sibelia
 					inBuffer.erase(inBuffer.find(buffer.front().GetId()));
 					buffer.pop_front();
 				}
-				
+
 				bool ret = inBuffer.find(junction.GetId()) == inBuffer.end();
 				buffer.push_back(junction);
 				inBuffer.insert(junction.GetId());
@@ -549,12 +549,16 @@ namespace Sibelia
 				size_t idx = MutexIdx(start.GetChrId(), start.GetIndex());
 				if (start.GetChrId() != prevIdx.first || idx != prevIdx.second)
 				{
-					mutex_[start.GetChrId()][idx].lock();
-					prevIdx.first = start.GetChrId();
-					prevIdx.second = idx;
+					if (!mutex_[start.GetChrId()][idx].isLocked)
+					{
+						mutex_[start.GetChrId()][idx].isLocked = true;
+						mutex_[start.GetChrId()][idx].mutex.lock();
+						prevIdx.first = start.GetChrId();
+						prevIdx.second = idx;
+					}
 				}
-				
-				
+
+
 			} while (start++ != end);
 		}
 
@@ -565,11 +569,15 @@ namespace Sibelia
 				size_t idx = MutexIdx(start.GetChrId(), start.GetIndex());
 				if (start.GetChrId() != prevIdx.first || idx != prevIdx.second)
 				{
-					mutex_[start.GetChrId()][idx].unlock();
-					prevIdx.first = start.GetChrId();
-					prevIdx.second = idx;
+					if (mutex_[start.GetChrId()][idx].isLocked)
+					{
+						mutex_[start.GetChrId()][idx].isLocked = false;
+						mutex_[start.GetChrId()][idx].mutex.unlock();
+						prevIdx.first = start.GetChrId();
+						prevIdx.second = idx;
+					}
 				}
-				
+
 
 			} while (start++ != end);
 		}
@@ -593,7 +601,7 @@ namespace Sibelia
 		{
 			return chrSize_[chrId];
 		}
-		
+
 		JunctionSequentialIterator GetIterator(uint64_t chrId, uint64_t idx, bool isPositiveStrand = true) const
 		{
 			return JunctionSequentialIterator(chrId, idx, isPositiveStrand);
@@ -613,17 +621,17 @@ namespace Sibelia
 		{
 			return vertex_.size();
 		}
-				
+
 		uint64_t GetInstancesCount(int64_t vertexId) const
 		{
 			return vertex_[abs(vertexId)].size();
-		}		
+		}
 
 		size_t MutexNumber() const
 		{
 			return 1 << mutexBits_;
 		}
-		
+
 		int64_t IngoingEdgesNumber(int64_t vertexId) const
 		{
 			return ingoingEdge_[vertexId + GetVerticesNumber()].size();
@@ -669,7 +677,7 @@ namespace Sibelia
 					}
 				}
 				else
-				{					
+				{
 					if (now.idx + 1 < chrSize_[now.chr])
 					{
 						const Position & prev = position_[now.chr][now.idx + 1];
@@ -685,14 +693,14 @@ namespace Sibelia
 						{
 							it->Inc();
 						}
-					}					
+					}
 				}
 			}
 
 			std::sort(list.begin(), list.end());
 			list.erase(std::unique(list.begin(), list.end()), list.end());
 		}
-				
+
 		void OutgoingEdges(int64_t vertexId, std::vector<Edge> & list) const
 		{
 			list.clear();
@@ -704,7 +712,7 @@ namespace Sibelia
 					{
 						const Position & next = position_[now.chr][now.idx + 1];
 						char ch = sequence_[now.chr][now.pos + k_];
-						char revCh = TwoPaCo::DnaChar::ReverseChar(sequence_[now.chr][next.pos - 1]);						
+						char revCh = TwoPaCo::DnaChar::ReverseChar(sequence_[now.chr][next.pos - 1]);
 						Edge newEdge = Edge(now.id, next.id, ch, revCh, next.pos - now.pos, 1);
 						auto it = std::find(list.begin(), list.end(), newEdge);
 						if (it == list.end())
@@ -715,7 +723,7 @@ namespace Sibelia
 						{
 							it->Inc();
 						}
-						
+
 					}
 				}
 				else
@@ -771,7 +779,7 @@ namespace Sibelia
 					++abundance[absId];
 				}
 			}
-			
+
 			{
 				Buffer buffer(loopThreshold);
 				TwoPaCo::JunctionPositionReader reader(inFileName);
@@ -804,7 +812,7 @@ namespace Sibelia
 						idx = 0;
 					}
 
-					size_t absId = abs(junction.GetId());					
+					size_t absId = abs(junction.GetId());
 					if (abundance[absId] < abundanceThreshold && buffer.AddAndCheck(junction))
 					{
 						position_[junction.GetChr()][idx].Assign(junction);
@@ -813,7 +821,7 @@ namespace Sibelia
 					}
 					else
 					{
-						
+
 					}
 				}
 			}
@@ -827,7 +835,7 @@ namespace Sibelia
 				for (char ch; parser.GetChar(ch); )
 				{
 					sequence_[record].push_back(ch);
-				}				
+				}
 			}
 
 			for (size_t i = 0; i < vertex_.size(); i++)
@@ -840,17 +848,17 @@ namespace Sibelia
 					vertex_[i][j].revCh = pos_ > 0 ? TwoPaCo::DnaChar::ReverseChar(sequence_[chr][pos_ - 1]) : 'N';
 				}
 			}
-			
+
 			mutex_.resize(GetChrNumber());
 			chrSizeBits_.resize(GetChrNumber(), 1);
 			for (mutexBits_ = 3; (1 << mutexBits_) < threads * (1 << 7); mutexBits_++);
-			for (size_t i = 0; i < mutex_.size(); i++) 
+			for (size_t i = 0; i < mutex_.size(); i++)
 			{
-				mutex_[i].reset(new tbb::mutex[1 << mutexBits_]);
+				mutex_[i].reset(new FlaggedMutex[1 << mutexBits_]);
 				for (; (int64_t(1) << chrSizeBits_[i]) <= chrSize_[i]; chrSizeBits_[i]++);
 				chrSizeBits_[i] = max(int64_t(0), chrSizeBits_[i] - mutexBits_);
 			}
-		}					
+		}
 
 		JunctionStorage() {}
 		JunctionStorage(const std::string & fileName, const std::string & genomesFileName, uint64_t k, int64_t threads, int64_t abundanceThreshold, int64_t loopThreshold) : k_(k)
@@ -860,7 +868,7 @@ namespace Sibelia
 
 
 	private:
-		
+
 		struct LightEdge
 		{
 			int64_t vertex;
@@ -874,6 +882,17 @@ namespace Sibelia
 			return ret;
 		}
 
+		struct FlaggedMutex
+		{
+			FlaggedMutex() : isLocked(false)
+			{
+
+			}
+
+			tbb::mutex mutex;
+			std::atomic<bool> isLocked;
+		};
+
 		int64_t k_;
 		int64_t mutexBits_;
 		std::vector<std::vector<Edge> > ingoingEdge_;
@@ -884,7 +903,7 @@ namespace Sibelia
 		std::vector<size_t> chrSize_;
 		std::vector<VertexVector> vertex_;
 		std::vector<std::unique_ptr<Position[]> > position_;
-		std::vector<std::unique_ptr<tbb::mutex[]> > mutex_;
+		std::vector<std::unique_ptr<FlaggedMutex[]> > mutex_;
 		static JunctionStorage * this_;
 	};
 }

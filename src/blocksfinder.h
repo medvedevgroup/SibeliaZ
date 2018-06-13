@@ -590,7 +590,10 @@ namespace Sibelia
 			std::vector<Path::InstanceSet::const_iterator> lockInstance;
 			for (auto it : currentPath.AllInstances())
 			{
-				lockInstance.push_back(it);
+				if (currentPath.IsGoodInstance(*it))
+				{
+					lockInstance.push_back(it);
+				}
 			}
 			
 			std::sort(lockInstance.begin(), lockInstance.end(), Path::CmpInstance);

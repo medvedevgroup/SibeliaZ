@@ -278,7 +278,6 @@ namespace Sibelia
 
 			void MarkUsed() const
 			{
-				assert(this_->mutex_[GetChrId()][this_->MutexIdx(GetChrId(), GetIndex())].isLocked);
 				JunctionStorage::this_->position_[GetChrId()][idx_].used = true;
 			}
 
@@ -550,13 +549,9 @@ namespace Sibelia
 				size_t idx = MutexIdx(start.GetChrId(), start.GetIndex());
 				if (start.GetChrId() != prevIdx.first || idx != prevIdx.second)
 				{
-					if (!mutex_[start.GetChrId()][idx].isLocked)
-					{
-						mutex_[start.GetChrId()][idx].isLocked = true;
-						mutex_[start.GetChrId()][idx].mutex.lock();
-						prevIdx.first = start.GetChrId();
-						prevIdx.second = idx;
-					}
+					mutex_[start.GetChrId()][idx].mutex.lock();
+					prevIdx.first = start.GetChrId();
+					prevIdx.second = idx;
 				}
 
 
@@ -570,13 +565,9 @@ namespace Sibelia
 				size_t idx = MutexIdx(start.GetChrId(), start.GetIndex());
 				if (start.GetChrId() != prevIdx.first || idx != prevIdx.second)
 				{
-					if (mutex_[start.GetChrId()][idx].isLocked)
-					{
-						mutex_[start.GetChrId()][idx].isLocked = false;
-						mutex_[start.GetChrId()][idx].mutex.unlock();
-						prevIdx.first = start.GetChrId();
-						prevIdx.second = idx;
-					}
+					mutex_[start.GetChrId()][idx].mutex.unlock();
+					prevIdx.first = start.GetChrId();
+					prevIdx.second = idx;
 				}
 
 
@@ -885,13 +876,12 @@ namespace Sibelia
 
 		struct FlaggedMutex
 		{
-			FlaggedMutex() : isLocked(false)
+			FlaggedMutex() 
 			{
 
 			}
 
 			tbb::mutex mutex;
-			std::atomic<bool> isLocked;
 		};
 
 		int64_t k_;

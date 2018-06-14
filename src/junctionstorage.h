@@ -278,6 +278,7 @@ namespace Sibelia
 
 			void MarkUsed() const
 			{
+				assert(this_->mutex_[GetChrId()][this_->MutexIdx(GetChrId(), GetIndex())].isLocked);
 				JunctionStorage::this_->position_[GetChrId()][idx_].used = true;
 			}
 

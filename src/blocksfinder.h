@@ -625,7 +625,7 @@ namespace Sibelia
 						auto it = jt->Front();
 						do
 						{
-							it.MarkUsed();
+							it.MarkUsed();							
 							int64_t idx = it.GetIndex();
 							int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());
 							blockId_[it.GetChrId()][it.GetIndex()].block = it.IsPositiveStrand() ? +currentBlock : -currentBlock;

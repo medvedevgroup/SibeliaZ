@@ -53,6 +53,7 @@ namespace Sibelia
 		void Init(int64_t vid)
 		{
 			origin_ = vid;
+			goodInstances_ = 0;
 			distanceKeeper_.Set(vid);
 			leftBodyFlank_ = rightBodyFlank_ = 0;
 			for (JunctionStorage::JunctionIterator it(vid); it.Valid(); ++it)
@@ -456,7 +457,14 @@ namespace Sibelia
 
 						if (!newInstance && inst->Front().GetVertexId() != vertex)
 						{
+							bool prevGoodInstance = path->IsGoodInstance(*inst);
 							const_cast<Instance&>(*inst).ChangeFront(nowIt.SequentialIterator(), distance);
+							if (!prevGoodInstance && path->IsGoodInstance(*inst))
+							{
+								++path->goodInstances_;
+							}
+
+							assert(path->goodInstances_ == path->GoodInstances());
 						}
 						else
 						{
@@ -513,7 +521,14 @@ namespace Sibelia
 
 						if (!newInstance && inst->Back().GetVertexId() != vertex)
 						{
+							bool prevGoodInstance = path->IsGoodInstance(*inst);
 							const_cast<Instance&>(*inst).ChangeBack(nowIt.SequentialIterator(), distance);
+							if (!prevGoodInstance && path->IsGoodInstance(*inst))
+							{
+								++path->goodInstances_;
+							}
+
+							assert(path->goodInstances_ == path->GoodInstances());
 						}
 						else
 						{
@@ -565,7 +580,7 @@ namespace Sibelia
 		int64_t Score(bool final = false) const
 		{
 			int64_t ret = 0;
-			int64_t multiplier = GoodInstances();
+			int64_t multiplier = goodInstances_;
 			for (auto & instanceIt : allInstance_)
 			{
 				if (IsGoodInstance(*instanceIt))
@@ -660,6 +675,8 @@ namespace Sibelia
 		std::vector<Point> rightBody_;
 		std::vector<InstanceSet> instance_;
 		std::vector<InstanceSet::iterator> allInstance_;
+
+		int goodInstances_;
 
 		int64_t origin_;
 		int64_t minBlockSize_;

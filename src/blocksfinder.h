@@ -588,12 +588,9 @@ namespace Sibelia
 		{
 			bool ret = false;
 			std::vector<Path::InstanceSet::const_iterator> lockInstance;
-			for (auto it : currentPath.AllInstances())
+			for (auto it : currentPath.GoodInstancesList())
 			{
-				if (currentPath.IsGoodInstance(*it))
-				{
-					lockInstance.push_back(it);
-				}
+				lockInstance.push_back(it);
 			}
 			
 			std::sort(lockInstance.begin(), lockInstance.end(), Path::CmpInstance);
@@ -678,6 +675,7 @@ namespace Sibelia
 			NextVertex ret;
 			int32_t bestVid = 0;
 			int64_t startVid = forward ? currentPath.RightVertex() : currentPath.LeftVertex();
+			const auto & instList = currentPath.GoodInstancesList().size() >= 2 ? currentPath.GoodInstancesList() : currentPath.AllInstances();
 			for (auto & inst : currentPath.AllInstances())
 			{
 				int64_t nowVid = forward ? inst->Back().GetVertexId() : inst->Front().GetVertexId();
@@ -744,11 +742,7 @@ namespace Sibelia
 			bool success = false;
 			int64_t origin = currentPath.Origin();
 			std::pair<int32_t, NextVertex> nextForwardVid;
-			if (sampleSize_ == 0 || storage_.GetInstancesCount(currentPath.RightVertex()) <= sampleSize_)
-			{
-				nextForwardVid = MostPopularVertex(currentPath, true, count, data);
-			}
-
+			nextForwardVid = MostPopularVertex(currentPath, true, count, data);
 			if (nextForwardVid.first != 0)
 			{
 				for (auto it = nextForwardVid.second.origin; it.GetVertexId() != nextForwardVid.first; ++it)
@@ -797,11 +791,7 @@ namespace Sibelia
 		{
 			bool success = false;
 			std::pair<int32_t, NextVertex> nextBackwardVid;
-			if (sampleSize_ == 0 || storage_.GetInstancesCount(currentPath.RightVertex()) <= sampleSize_)
-			{
-				nextBackwardVid = MostPopularVertex(currentPath, false, count, data);
-			}
-
+			nextBackwardVid = MostPopularVertex(currentPath, false, count, data);
 			if (nextBackwardVid.first != 0)
 			{
 				for (auto it = nextBackwardVid.second.origin; it.GetVertexId() != nextBackwardVid.first; --it)

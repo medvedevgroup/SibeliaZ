@@ -462,8 +462,6 @@ namespace Sibelia
 							{
 								path->goodInstance_.push_back(inst);
 							}
-
-							assert(path->goodInstances_ == path->GoodInstances());
 						}
 						else
 						{
@@ -526,8 +524,6 @@ namespace Sibelia
 							{
 								path->goodInstance_.push_back(inst);
 							}
-
-							assert(path->goodInstances_ == path->GoodInstances());
 						}
 						else
 						{
@@ -610,14 +606,9 @@ namespace Sibelia
 			return Path::Instance::OldComparator(*a, *b);
 		}
 
-		void GoodInstances(std::vector<Instance> & goodInstance) const
+		const std::vector<InstanceSet::iterator> & GoodInstancesList() const
 		{
-			goodInstance.clear();
-			for (auto & instanceIt : goodInstance_)
-			{
-				auto & inst = *instanceIt;
-				goodInstance.push_back(inst);
-			}
+			return goodInstance_;
 		}
 
 		bool IsGoodInstance(const Instance & inst) const

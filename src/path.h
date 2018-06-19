@@ -53,7 +53,7 @@ namespace Sibelia
 		void Init(int64_t vid)
 		{
 			origin_ = vid;
-			distanceKeeper_.Set(vid, 0);
+			distanceKeeper_.Set(vid);
 			leftBodyFlank_ = rightBodyFlank_ = 0;
 			for (JunctionStorage::JunctionIterator it(vid); it.Valid(); ++it)
 			{
@@ -538,7 +538,7 @@ namespace Sibelia
 			int64_t endVertexDistance = startVertexDistance + e.GetLength();
 			PointPushBackWorker(this, vertex, endVertexDistance, e, failFlag)();
 			rightBody_.push_back(Point(e, startVertexDistance));
-			distanceKeeper_.Set(e.GetEndVertex(), endVertexDistance);
+			distanceKeeper_.Set(e.GetEndVertex());
 			rightBodyFlank_ = rightBody_.back().EndDistance();
 			return !failFlag;
 		}
@@ -557,7 +557,7 @@ namespace Sibelia
 			int64_t startVertexDistance = endVertexDistance - e.GetLength();
 			PointPushFrontWorker(this, vertex, startVertexDistance, e, failFlag)();
 			leftBody_.push_back(Point(e, startVertexDistance));
-			distanceKeeper_.Set(e.GetStartVertex(), startVertexDistance);
+			distanceKeeper_.Set(e.GetStartVertex());
 			leftBodyFlank_ = leftBody_.back().StartDistance();
 			return !failFlag;
 		}

@@ -198,6 +198,8 @@ namespace Sibelia
 
 			void operator()(tbb::blocked_range<size_t> & range) const
 			{
+				std::vector<uint32_t> data;
+				std::vector<uint32_t> count(finder.storage_.GetVerticesNumber() * 2 + 1, 0);
 				std::pair<int64_t, std::vector<Path::Instance> > goodInstance;
 				Path finalizer(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_);
 				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_);
@@ -235,7 +237,7 @@ namespace Sibelia
 							bool ret = true;
 							bool positive = false;
 							int64_t prevLength = currentPath.MiddlePathLength();
-							while ((ret = finder.ExtendPathDijkstraForward(currentPath, bestRightSize, bestScore, score)) && currentPath.MiddlePathLength() - prevLength <= minRun)
+							while ((ret = finder.ExtendPathDijkstraForward(currentPath, count, data, bestRightSize, bestScore, score)) && currentPath.MiddlePathLength() - prevLength <= minRun)
 							{
 								positive = positive || (score > 0);
 							}
@@ -271,7 +273,7 @@ namespace Sibelia
 							bool ret = true;
 							bool positive = false;
 							int64_t prevLength = currentPath.MiddlePathLength();
-							while ((ret = finder.ExtendPathDijkstraBackward(currentPath, bestLeftSize, bestScore, score)) && currentPath.MiddlePathLength() - prevLength <= minRun);
+							while ((ret = finder.ExtendPathDijkstraBackward(currentPath, count, data, bestLeftSize, bestScore, score)) && currentPath.MiddlePathLength() - prevLength <= minRun);
 							{
 								positive = positive || (score > 0);
 							}
@@ -671,12 +673,10 @@ namespace Sibelia
 			}
 		};
 
-
-		std::pair<int32_t, NextVertex> MostPopularVertex(const Path & currentPath, bool forward)
+		std::pair<int32_t, NextVertex> MostPopularVertex(const Path & currentPath, bool forward, std::vector<uint32_t> & count, std::vector<uint32_t> & data)
 		{
 			NextVertex ret;
 			int32_t bestVid = 0;
-			std::unordered_map<int32_t, int32_t> count;
 			int64_t startVid = forward ? currentPath.RightVertex() : currentPath.LeftVertex();
 			for (auto & inst : currentPath.AllInstances())
 			{
@@ -692,6 +692,11 @@ namespace Sibelia
 						if (!currentPath.IsInPath(vid) && !it.IsUsed())
 						{
 							auto adjVid = vid + storage_.GetVerticesNumber();
+							if (count[adjVid] == 0)
+							{
+								data.push_back(adjVid);
+							}
+
 							count[adjVid] += weight;
 							auto diff = abs(it.GetAbsolutePosition() - origin.GetAbsolutePosition());
 							if (count[adjVid] > ret.count || (count[adjVid] == ret.count && diff < ret.diff))
@@ -720,10 +725,18 @@ namespace Sibelia
 			}
 
 
+			for (auto vid : data)
+			{
+				count[vid] = 0;
+			}
+
+			data.clear();
 			return std::make_pair(bestVid, ret);
 		}
 
 		bool ExtendPathDijkstraForward(Path & currentPath,
+			std::vector<uint32_t> & count,
+			std::vector<uint32_t> & data,
 			size_t & bestRightSize,
 			int64_t & bestScore,
 			int64_t & nowScore)
@@ -733,7 +746,7 @@ namespace Sibelia
 			std::pair<int32_t, NextVertex> nextForwardVid;
 			if (sampleSize_ == 0 || storage_.GetInstancesCount(currentPath.RightVertex()) <= sampleSize_)
 			{
-				nextForwardVid = MostPopularVertex(currentPath, true);
+				nextForwardVid = MostPopularVertex(currentPath, true, count, data);
 			}
 
 			if (nextForwardVid.first != 0)
@@ -776,6 +789,8 @@ namespace Sibelia
 		}
 
 		bool ExtendPathDijkstraBackward(Path & currentPath,
+			std::vector<uint32_t> & count,
+			std::vector<uint32_t> & data,
 			size_t & bestLeftSize,
 			int64_t & bestScore,
 			int64_t & nowScore)
@@ -784,7 +799,7 @@ namespace Sibelia
 			std::pair<int32_t, NextVertex> nextBackwardVid;
 			if (sampleSize_ == 0 || storage_.GetInstancesCount(currentPath.RightVertex()) <= sampleSize_)
 			{
-				nextBackwardVid = MostPopularVertex(currentPath, false);
+				nextBackwardVid = MostPopularVertex(currentPath, false, count, data);
 			}
 
 			if (nextBackwardVid.first != 0)

@@ -205,7 +205,7 @@ namespace Sibelia
 				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_);
 				for (size_t i = range.begin(); i != range.end(); i++)
 				{
-					if (finder.count_++ % 1000 == 0)
+					if (finder.count_++ % 10000 == 0)
 					{
 						std::cout << finder.count_ << '\t' << shuffle.size() << std::endl;
 					}
@@ -676,7 +676,7 @@ namespace Sibelia
 			int32_t bestVid = 0;
 			int64_t startVid = forward ? currentPath.RightVertex() : currentPath.LeftVertex();
 			const auto & instList = currentPath.GoodInstancesList().size() >= 2 ? currentPath.GoodInstancesList() : currentPath.AllInstances();
-			for (auto & inst : currentPath.AllInstances())
+			for (auto & inst : instList)
 			{
 				int64_t nowVid = forward ? inst->Back().GetVertexId() : inst->Front().GetVertexId();
 				if (nowVid == startVid)
@@ -684,7 +684,7 @@ namespace Sibelia
 					int64_t weight = abs(inst->Front().GetPosition() - inst->Back().GetPosition()) + 1;
 					auto origin = forward ? inst->Back() : inst->Front();
 					auto it = forward ? origin.Next() : origin.Prev();
-					for (size_t d = 1; it.Valid() && (d < lookingDepth_); d++)
+					for (size_t d = 1; it.Valid() && (d < lookingDepth_  || abs(it.GetPosition() - origin.GetPosition()) <= maxBranchSize_); d++)
 					{
 						int32_t vid = it.GetVertexId();
 						if (!currentPath.IsInPath(vid) && !it.IsUsed())

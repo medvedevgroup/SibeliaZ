@@ -53,7 +53,6 @@ namespace Sibelia
 		void Init(int64_t vid)
 		{
 			origin_ = vid;
-			goodInstances_ = 0;
 			distanceKeeper_.Set(vid);
 			leftBodyFlank_ = rightBodyFlank_ = 0;
 			for (JunctionStorage::JunctionIterator it(vid); it.Valid(); ++it)
@@ -461,7 +460,7 @@ namespace Sibelia
 							const_cast<Instance&>(*inst).ChangeFront(nowIt.SequentialIterator(), distance);
 							if (!prevGoodInstance && path->IsGoodInstance(*inst))
 							{
-								++path->goodInstances_;
+								path->goodInstance_.push_back(inst);
 							}
 
 							assert(path->goodInstances_ == path->GoodInstances());
@@ -525,7 +524,7 @@ namespace Sibelia
 							const_cast<Instance&>(*inst).ChangeBack(nowIt.SequentialIterator(), distance);
 							if (!prevGoodInstance && path->IsGoodInstance(*inst))
 							{
-								++path->goodInstances_;
+								path->goodInstance_.push_back(inst);
 							}
 
 							assert(path->goodInstances_ == path->GoodInstances());
@@ -580,25 +579,22 @@ namespace Sibelia
 		int64_t Score(bool final = false) const
 		{
 			int64_t ret = 0;
-			int64_t multiplier = goodInstances_;
-			for (auto & instanceIt : allInstance_)
+			int64_t multiplier = goodInstance_.size();
+			for (auto & instanceIt : goodInstance_)
 			{
-				if (IsGoodInstance(*instanceIt))
+				int64_t score = instanceIt->RealLength();
+				int64_t penalty = MiddlePathLength() - instanceIt->UtilityLength();
+				assert(penalty >= 0);
+				if (penalty >= maxFlankingSize_)
 				{
-					int64_t score = instanceIt->RealLength();
-					int64_t penalty = MiddlePathLength() - instanceIt->UtilityLength();
-					assert(penalty >= 0);
-					if (penalty >= maxFlankingSize_)
-					{
-						score -= penalty * multiplier;
-					}
-					else
-					{
-						score -= penalty;
-					}
-
-					ret += score;
+					score -= penalty * multiplier;
 				}
+				else
+				{
+					score -= penalty;
+				}
+
+				ret += score;
 			}
 
 			return ret;
@@ -606,17 +602,7 @@ namespace Sibelia
 
 		int64_t GoodInstances() const
 		{
-			int64_t ret = 0;
-			for (auto & instanceIt : allInstance_)
-			{
-				auto & inst = *instanceIt;
-				if (IsGoodInstance(inst))
-				{
-					ret++;
-				}
-			}
-
-			return ret;
+			return goodInstance_.size();
 		}
 
 		static bool CmpInstance(const InstanceSet::iterator & a, const InstanceSet::iterator & b)
@@ -626,13 +612,11 @@ namespace Sibelia
 
 		void GoodInstances(std::vector<Instance> & goodInstance) const
 		{
-			for (auto & instanceIt : allInstance_)
+			goodInstance.clear();
+			for (auto & instanceIt : goodInstance_)
 			{
 				auto & inst = *instanceIt;
-				if (IsGoodInstance(inst))
-				{
-					goodInstance.push_back(inst);
-				}
+				goodInstance.push_back(inst);
 			}
 		}
 
@@ -667,6 +651,7 @@ namespace Sibelia
 			}
 
 			allInstance_.clear();
+			goodInstance_.clear();
 		}
 
 	private:
@@ -675,8 +660,7 @@ namespace Sibelia
 		std::vector<Point> rightBody_;
 		std::vector<InstanceSet> instance_;
 		std::vector<InstanceSet::iterator> allInstance_;
-
-		int goodInstances_;
+		std::vector<InstanceSet::iterator> goodInstance_;
 
 		int64_t origin_;
 		int64_t minBlockSize_;

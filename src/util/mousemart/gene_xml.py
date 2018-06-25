@@ -18,6 +18,8 @@ hmlg_template = '''<?xml version="1.0" encoding="UTF-8"?>
         <Dataset name = "%s_gene_ensembl" interface = "default" >
 		<Attribute name = "ensembl_gene_id" />
 		<Attribute name = "%s_homolog_ensembl_gene" />
+		<Attribute name = "%s_homolog_perc_id" />
+		<Attribute name = "%s_homolog_perc_id_r1" />
 	</Dataset>
 </Query>'''
 
@@ -27,6 +29,8 @@ paralog_template = '''<?xml version="1.0" encoding="UTF-8"?>
         <Dataset name = "%s_gene_ensembl" interface = "default" >
                 <Attribute name = "ensembl_gene_id" />
                 <Attribute name = "%s_paralog_ensembl_gene" />
+		<Attribute name = "%s_paralog_perc_id" />
+		<Attribute name = "%s_paralog_perc_id_r1" />
         </Dataset>
 </Query>'''
 
@@ -44,9 +48,9 @@ for s in strain:
 
 for s in strain:
         file = open("./homolog/" + s + "_" + s + ".xml", "w")
-        print >> file, paralog_template % (s, s)
+        print >> file, paralog_template % (s, s, s, s)
 
 for i, s1 in enumerate(strain):
 	for j, s2 in enumerate(strain[i + 1:]):
 		file = open("./homolog/" + s1 + "_" + s2 + ".xml", "w")
-		print >> file, hmlg_template % (s1, s2)
+		print >> file, hmlg_template % (s1, s2, s2, s2)

@@ -35,16 +35,22 @@ for f in listdir(mypath):
     			strain_chr_seq[strain][record.id] = record.seq
 
 mypath = './gene/'
-print >> sys.stderr, chr_name_to_genbank
 for f in listdir(mypath):
         p = join(mypath, f)
 	if '.txt' in f:
 		strain = f.split('_')[0]
 		if not strain in strain_chr_seq:
 			continue
-		for line in open(p):
+		h = open(p)
+		for line in h:
+			backup = line
 			line = line.strip().split('\t')
-			id, chr, start, end, strand = line
+			try:
+				id, chr, start, end, strand = line
+			except ValueError:
+				print >> sys.stderr, "ERROR"
+				print >> sys.stderr, p
+				print >> sys.stderr, backup
 			start = int(start) - 1
 			end = int(end)
 			seq_length = end - start
@@ -62,4 +68,5 @@ for f in listdir(mypath):
 			file = open("./gene_seq/" + id + ".fa", "w")
 			SeqIO.write(rec, file, 'fasta')
 			file.close()
+		h.close()
 

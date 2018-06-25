@@ -4,8 +4,7 @@ from os.path import isfile, join
 
 print "##maf version=1"
 
-missing = 0
-mypath = './alignment/'
+mypath = sys.argv[1]
 for f in listdir(mypath):
         p = join(mypath, f)
         if isfile(p):
@@ -18,5 +17,4 @@ for f in listdir(mypath):
 			missing += 1
 		h.close()
 
-print >> sys.stderr, missing
 

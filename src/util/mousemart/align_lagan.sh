@@ -1,2 +1,1 @@
-#find ./gene_blocks/ -name "*.fa" -printf "%f\n" 
-find ./gene_blocks/ -name "*.fa" -printf "%f\n" | xargs -I @ -P 63 ./run_lagan.sh @
+find ./gene_blocks/ -name "*.fa" -printf "%f\n" | xargs -I @ -P 16 ./run_lagan.sh @

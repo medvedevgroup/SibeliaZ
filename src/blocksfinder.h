@@ -222,6 +222,12 @@ namespace Sibelia
 					for (bool explore = true; explore;)
 					{
 						currentPath.Init(vid);
+						if (currentPath.AllInstances().size() < 2)
+						{
+							currentPath.Clear();
+							break;
+						}
+
 						int64_t bestScore = 0;
 						size_t bestRightSize = currentPath.RightSize();
 						size_t bestLeftSize = currentPath.LeftSize();

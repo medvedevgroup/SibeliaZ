@@ -1,7 +1,7 @@
 #ifndef _TRASERVAL_H_
 #define _TRAVERSAL_H_
 
-//#define _DEBUG_OUT_
+#define _DEBUG_OUT_
 
 #include <set>
 #include <map>
@@ -310,47 +310,56 @@ namespace Sibelia
 			}
 		};
 
-		void MissingSet(const std::string & fileName, std::set<int64_t> & result) const
-		{
-			std::string buf;
-			std::ifstream oldCoordsIn(fileName);
-			if (oldCoordsIn)
-			{
-				std::ofstream missingDot("missing.dot");
-				while (std::getline(oldCoordsIn, buf) && buf[0] != '-')
-				{
-					std::string seq;
-					std::stringstream ss(buf);
-					char sign;
-					int seqId, start, length, end, seqSize;
-					ss >> seq >> seq >> start >> length >> sign >> seqSize;
-					seqId = atoi(seq.substr(2).c_str()) - 1;
-					end = start + length;
-					if (sign == '-')
-					{
-						start = seqSize - start;
-						end = seqSize - end;
-						std::swap(start, end);
-						assert(start < end);
-					}
-
-					for (auto it = storage_.Begin(seqId); it.Valid(); ++it)
-					{
-						int64_t pos = it.GetPosition();
-						if (pos >= start && pos < end)
-						{
-							result.insert(it.GetVertexId());
-							result.insert(-it.GetVertexId());
-						}
-					}
-
-				}
-			}
-		}
-
 		static bool DegreeCompare(const JunctionStorage & storage, int64_t v1, int64_t v2)
 		{
 			return storage.GetInstancesCount(v1) > storage.GetInstancesCount(v2);
+		}
+
+		void OutputMissing(const std::string & missingFile, const std::string & missingOutDir)
+		{
+			std::string buf;
+			std::string id, sign, seq;
+			std::set<int64_t> result;
+			CreateOutDirectory(missingOutDir);
+			std::ifstream oldCoordsIn(missingFile);
+			while (std::getline(oldCoordsIn, buf))
+			{
+				if (buf == "END")
+				{
+					break;
+				}
+
+				if (buf.empty())
+				{
+					std::ofstream missingDot(missingOutDir + std::string("/missing") + id + ".dot");
+					missingDot << "digraph G\n{\nrankdir = LR" << std::endl;
+					std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > vvisit;
+					for (auto vid : result)
+					{
+						DumpVertex(vid, missingDot, vvisit, 2);
+						missingDot << vid << "[shape=square]" << std::endl;
+					}
+
+					result.clear();
+					missingDot << "}" << std::endl;
+				}
+
+
+				std::stringstream ss(buf);
+				int seqId, start, end, seqSize;
+				ss >> id >> seq >> start >> end >> sign;
+				for (auto it = storage_.Begin(storage_.GetSequenceId(seq)); it.Valid(); ++it)
+				{
+					int64_t pos = it.GetPosition();
+					if (pos >= start && pos < end)
+					{
+						result.insert(it.GetVertexId());
+						result.insert(-it.GetVertexId());
+					}
+				}
+				
+			}
+
 		}
 
 		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t maxFlankingSize, int64_t lookingDepth, int64_t sampleSize, int64_t threads, const std::string & debugOut)
@@ -383,17 +392,8 @@ namespace Sibelia
 			using namespace std::placeholders;
 			std::sort(shuffle.begin(), shuffle.end(), std::bind(DegreeCompare, std::cref(storage_), _1, _2));
 #ifdef _DEBUG_OUT_
-			MissingSet("test/test11/missing.maf", missingVertex_);
-			std::ofstream missingDot("missing.dot");
-			missingDot << "digraph G\n{\nrankdir = LR" << std::endl;
-			std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > vvisit;
-			for (auto vid : missingVertex_)
-			{
-				DumpVertex(vid, missingDot, vvisit, 10);
-				missingDot << vid << "[shape=square]" << std::endl;
-			}
-
-			missingDot << "}" << std::endl;
+			OutputMissing("test/test7/segment.txt", "missing");
+			exit(0);
 #endif
 			srand(time(0));
 			time_t mark = time(0);
@@ -463,7 +463,6 @@ namespace Sibelia
 						std::string::const_reverse_iterator it(storage_.GetChrSequence(chr).begin() + blockList[block].GetEnd());
 						OutputLines(CFancyIterator(it, TwoPaCo::DnaChar::ReverseChar, ' '), length, out);
 					}
-
 
 					out << std::endl;
 				}

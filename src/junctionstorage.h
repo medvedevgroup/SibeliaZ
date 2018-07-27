@@ -824,6 +824,7 @@ namespace Sibelia
 			for (TwoPaCo::StreamFastaParser parser(genomesFileName); parser.ReadRecord(); record++)
 			{
 				sequenceDescription_.push_back(parser.GetCurrentHeader());
+				sequenceId_[parser.GetCurrentHeader()] = sequenceDescription_.size() - 1;
 				for (char ch; parser.GetChar(ch); )
 				{
 					sequence_[record].push_back(ch);
@@ -858,6 +859,10 @@ namespace Sibelia
 			Init(fileName, genomesFileName, threads, abundanceThreshold, loopThreshold);
 		}
 
+		size_t GetSequenceId(const std::string & str) const
+		{
+			return sequenceId_.find(str)->second;
+		}
 
 	private:
 
@@ -886,6 +891,7 @@ namespace Sibelia
 
 		int64_t k_;
 		int64_t mutexBits_;
+		std::map<std::string, size_t> sequenceId_;
 		std::vector<std::vector<Edge> > ingoingEdge_;
 		std::vector<std::vector<Edge> > outgoingEdge_;
 		std::vector<std::string> sequence_;

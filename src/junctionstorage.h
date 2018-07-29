@@ -859,6 +859,11 @@ namespace Sibelia
 			Init(fileName, genomesFileName, threads, abundanceThreshold, loopThreshold);
 		}
 
+		bool IsSequencePresent(const std::string & str) const
+		{
+			return sequenceId_.count(str) > 0;
+		}
+
 		size_t GetSequenceId(const std::string & str) const
 		{
 			return sequenceId_.find(str)->second;

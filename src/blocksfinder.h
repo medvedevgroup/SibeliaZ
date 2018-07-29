@@ -350,7 +350,6 @@ namespace Sibelia
 					missingDot << "}" << std::endl;
 				}
 
-
 				std::stringstream ss(buf);
 				int seqId, start, end, seqSize;
 				ss >> id >> seq >> start >> end >> sign;
@@ -365,7 +364,173 @@ namespace Sibelia
 				}
 				
 			}
+		}
 
+		struct MafRecord
+		{
+			std::string seq;
+			int64_t start;
+			int64_t bodySize;
+			int64_t seqSize;
+			bool isPositive;
+			std::string body;
+
+			int64_t PositiveStart() const
+			{
+				if (isPositive)
+				{
+					return start;
+				}
+
+				return (seqSize - (start + bodySize)) + bodySize - 1;
+			}
+		};
+
+		void Split(std::string & source, std::vector<std::string> & result)
+		{
+			std::stringstream ss;
+			ss << source;
+			result.clear();
+			while (ss >> source)
+			{
+				result.push_back(source);
+			}
+		}
+
+
+		void OutputSubgraph(const std::string & mafFile, const std::string & outFile, const std::string & pairFiles)
+		{
+			std::string buf;
+			std::ifstream mafIn(mafFile.c_str());
+			std::multimap<std::string, std::string> neighbour;
+			std::ofstream outStream(outFile.c_str());
+			{
+				std::string u, v;
+				std::ifstream pairFilesIn(pairFiles.c_str());
+				while (std::getline(pairFilesIn, buf))
+				{
+					std::ifstream pairIn(buf.c_str());
+					while (std::getline(pairIn, buf))
+					{
+						std::stringstream ss;
+						ss << buf;
+						ss >> u >> v;
+						neighbour.insert(std::make_pair(u, v));
+					}
+				}
+			}
+
+			std::cerr << "Total pairs: " << neighbour.size() << std::endl;
+
+			if (!mafIn)
+			{
+				throw std::runtime_error("Can't open the MAF file");
+			}
+
+			std::string buffer;
+			bool checkBlock = false;
+			std::vector<std::string> data;
+			std::vector<std::string> geneId;
+			std::vector<std::string> newGeneId;
+			std::vector<MafRecord> record;
+			for (bool over = false; !over;)
+			{
+				if (!std::getline(mafIn, buffer))
+				{
+					over = checkBlock = true;
+				}
+				else
+				{
+					if (buffer.size() > 0 && buffer[0] != '#')
+					{
+						if (buffer[0] == 'a')
+						{
+							newGeneId.clear();
+							size_t pos = buffer.find('=');
+							if (pos != buffer.npos)
+							{
+								std::stringstream ss(buffer.substr(pos + 1));
+								while (std::getline(ss, buf, ';'))
+								{
+									newGeneId.push_back(buf);
+								}
+							}
+							
+							checkBlock = true;
+						}
+						else
+						{
+							Split(buffer, data);
+							if (data.size() != 7)
+							{
+								std::cerr << buffer << std::endl;
+								for (auto & str : data)
+								{
+									std::cerr << str << std::endl;
+								}
+
+								throw std::runtime_error("A wrong line in the MAF file");
+							}
+
+							MafRecord nowRecord;
+							nowRecord.seq = data[1];
+							if (storage_.IsSequencePresent(nowRecord.seq))
+							{
+								nowRecord.start = std::atol(data[2].c_str());
+								nowRecord.bodySize = std::atol(data[3].c_str());
+								nowRecord.isPositive = data[4] == "+";
+								nowRecord.seqSize = std::atol(data[5].c_str());
+								nowRecord.body = data[6];
+								record.push_back(nowRecord);
+							}
+						}
+					}
+				}
+
+				if (checkBlock)
+				{
+					checkBlock = false;
+					if (record.size() > 1 && geneId.size() == record.size())
+					{
+						int total = 0;
+						int exceed = 0;
+						for(size_t k = 0; k < record.size(); ++k)
+						{
+							const auto & rec = record[k];
+							int64_t start = rec.PositiveStart();
+							int64_t end = rec.PositiveStart();
+							if (rec.isPositive)
+							{
+								end += rec.bodySize;
+							}
+							else
+							{
+								start -= rec.bodySize;
+							}
+
+							int nowNeighbours = neighbour.count(rec.seq);
+							for (auto it = storage_.Begin(storage_.GetSequenceId(rec.seq)); it.Valid(); ++it)
+							{
+								int64_t pos = it.GetPosition();
+								if (pos >= start && pos < end)
+								{
+									total++;
+									if (nowNeighbours < storage_.GetInstancesCount(it.GetVertexId()))
+									{
+										exceed++;
+									}
+							//		outStream << it.GetPosition() << ' ' << it.GetVertexId() << ' ' << storage_.GetInstancesCount(it.GetVertexId()) << ';';
+								}
+							}
+
+							outStream << double(exceed) / total << std::endl;
+						}
+					}
+
+					record.clear();
+					newGeneId.swap(geneId);
+				}
+			}
 		}
 
 		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t maxFlankingSize, int64_t lookingDepth, int64_t sampleSize, int64_t threads, const std::string & debugOut)
@@ -398,7 +563,8 @@ namespace Sibelia
 			using namespace std::placeholders;
 			std::sort(shuffle.begin(), shuffle.end(), std::bind(DegreeCompare, std::cref(storage_), _1, _2));
 #ifdef _DEBUG_OUT_
-			OutputMissing("test/test7/segment.txt", "missing");
+			//OutputMissing("test/test7/segment.txt", "missing");
+			OutputSubgraph("alignment.maf", "subgraph.txt", "pair.txt");
 			exit(0);
 #endif
 			srand(time(0));

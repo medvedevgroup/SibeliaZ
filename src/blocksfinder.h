@@ -405,17 +405,18 @@ namespace Sibelia
 			std::multimap<std::string, std::string> neighbour;
 			std::ofstream outStream(outFile.c_str());
 			{
-				std::string u, v;
+				std::vector<std::string> edgeBuf;
 				std::ifstream pairFilesIn(pairFiles.c_str());
 				while (std::getline(pairFilesIn, buf))
 				{
 					std::ifstream pairIn(buf.c_str());
 					while (std::getline(pairIn, buf))
 					{
-						std::stringstream ss;
-						ss << buf;
-						ss >> u >> v;
-						neighbour.insert(std::make_pair(u, v));
+						Split(buf, edgeBuf);
+						if (edgeBuf.size() > 1)
+						{
+							neighbour.insert(std::make_pair(edgeBuf[0], edgeBuf[1]));
+						}
 					}
 				}
 			}

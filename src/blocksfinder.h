@@ -523,7 +523,7 @@ namespace Sibelia
 								}
 							}
 
-							outStream << double(exceed) / total << std::endl;
+							outStream << geneId[0] << ';' << geneId[1] << '\t' <<  double(exceed) / total << std::endl;
 						}
 					}
 

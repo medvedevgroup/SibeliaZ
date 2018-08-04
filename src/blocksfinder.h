@@ -467,7 +467,8 @@ namespace Sibelia
 			
 			mark = time(0);
 			count_ = 0;
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, source_.size()), ProcessVertexDijkstra(*this, shuffle));
+			shuffle.assign(source_.begin(), source_.end());
+			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexDijkstra(*this, shuffle));
 			std::cout << "Time: " << time(0) - mark << std::endl;
 		}
 

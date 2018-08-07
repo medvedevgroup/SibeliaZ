@@ -187,7 +187,6 @@ namespace Sibelia
 			scoreFullChains_ = true;
 		}		
 
-
 		void MissingSet(const std::string & fileName, std::set<int64_t> & result) const
 		{
 			std::string buf;
@@ -243,10 +242,17 @@ namespace Sibelia
 
 			void operator()(tbb::blocked_range<size_t> & range) const
 			{
+				std::vector<uint32_t> data;
+				std::vector<uint32_t> count(finder.storage_.GetVerticesNumber() * 2 + 1, 0);
+				std::pair<int64_t, std::vector<Path::Instance> > goodInstance;
+				Path finalizer(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_);
+				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_);
+
+				std::vector<char> isStarter;
 				BubbledBranches forwardBubble;
 				BubbledBranches backwardBubble;
 				std::vector<JunctionStorage::JunctionSequentialIterator> instance;
-				for (size_t i = range.begin(); i != range.end(); i++)
+				for (size_t r = range.begin(); r != range.end(); r++)
 				{
 					if (finder.count_++ % 10000 == 0)
 					{
@@ -255,28 +261,114 @@ namespace Sibelia
 					}
 
 					instance.clear();
-					int64_t vertex = shuffle[i];
+					int64_t vertex = shuffle[r];
 					for (auto it = JunctionStorage::JunctionIterator(vertex); it.Valid(); ++it)
 					{
 						instance.push_back(it.SequentialIterator());
 					}
 
+					isStarter.assign(instance.size(), false);
 					finder.BubbledBranchesForward(vertex, instance, forwardBubble);
 					finder.BubbledBranchesBackward(vertex, instance, backwardBubble);
-					bool isFork = false;
-					for (size_t i = 0; i < forwardBubble.size() && !isFork; i++)
+					for (size_t i = 0; i < forwardBubble.size(); i++)
 					{
-						for (size_t j = 0; j < forwardBubble[i].size() && !isFork; j++)
+						for (size_t j = 0; j < forwardBubble[i].size(); j++)
 						{
 							size_t k = forwardBubble[i][j];
 							if (std::find(backwardBubble[i].begin(), backwardBubble[i].end(), k) == backwardBubble[i].end())
 							{
-								finder.source_.push_back(vertex);
-								isFork = true;
+								isStarter[i] = isStarter[j] = true;
 							}
 						}
 					}
+
+					for (size_t i = 0; i < isStarter.size(); i++)
+					{
+						if (isStarter[i] && instance[i].IsPositiveStrand())
+						{
+							Explore(currentPath, finalizer, vertex, data, count, instance[i]);
+						}
+					}
 				}
+			}
+
+			void Explore(Path & currentPath, Path & finalizer, int64_t vid, std::vector<uint32_t> & data, std::vector<uint32_t> & count, JunctionStorage::JunctionSequentialIterator templateIt) const
+			{
+				int64_t score;
+				currentPath.Init(vid);
+				int64_t minRun = max(finder.minBlockSize_, finder.maxBranchSize_) * 5;
+				if (currentPath.AllInstances().size() < 2)
+				{
+					currentPath.Clear();
+					return;
+				}
+
+				size_t rightRun = 0;
+				int64_t bestScore = 0;
+				size_t bestLeftSize = 0;
+				size_t bestRightSize = 0;
+				auto startIt = templateIt;
+				for (;(templateIt + 1).Valid() && currentPath.PointPushBack(templateIt.OutgoingEdge()); ++templateIt)
+				{
+					int64_t score = currentPath.Score();
+					if (score < 0 && currentPath.RightDistance() - rightRun >= minRun)
+					{
+						break;
+					}
+
+					if (score > bestScore)
+					{
+						bestScore = score;
+						rightRun = currentPath.RightDistance();
+						bestRightSize = currentPath.RightSize();
+					}
+				}
+				
+				if(bestRightSize > 0)
+				{
+					std::vector<Edge> bestEdge;
+					for (size_t i = 0; i < bestRightSize - 1; i++)
+					{
+						bestEdge.push_back(currentPath.RightPoint(i).GetEdge());
+					}
+
+					currentPath.Clear();
+					currentPath.Init(vid);
+					for (auto & e : bestEdge)
+					{
+						currentPath.PointPushBack(e);
+					}
+				}
+				else
+				{
+					currentPath.Clear();
+					currentPath.Init(vid);
+				}
+
+				size_t leftRun = 0;
+				templateIt = startIt;
+				for (; (templateIt - 1).Valid() && currentPath.PointPushFront(templateIt.IngoingEdge()); --templateIt)
+				{
+					int64_t score = currentPath.Score();
+					if (currentPath.LeftDistance() - leftRun >= minRun && score < 0)
+					{
+						break;
+					}
+
+					if (score > bestScore)
+					{
+						bestScore = score;
+						leftRun = currentPath.LeftDistance();
+						bestLeftSize = currentPath.LeftSize();
+					}
+				}
+
+				if (bestScore > 0)
+				{
+					finder.TryFinalizeBlock(currentPath, finalizer, bestRightSize, bestLeftSize);
+				}
+
+				currentPath.Clear();
 			}
 		};
 
@@ -288,6 +380,7 @@ namespace Sibelia
 			}
 		}
 
+		/*
 		struct ProcessVertexDijkstra
 		{
 		public:
@@ -416,7 +509,7 @@ namespace Sibelia
 					}
 				}
 			}
-		};
+		};*/
 
 
 		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t lookingDepth, int64_t sampleSize, int64_t threads, const std::string & debugOut)
@@ -463,14 +556,7 @@ namespace Sibelia
 			time_t mark = time(0);
 			tbb::task_scheduler_init init(threads);
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), CheckIfSource(*this, shuffle));
-			std::cout << source_.size() << ' ' << shuffle.size() << std::endl;
-			
-			mark = time(0);
-			count_ = 0;
-			shuffle.assign(source_.begin(), source_.end());
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexDijkstra(*this, shuffle));
-			std::cout << "Time: " << time(0) - mark << std::endl;
-		}
+		} 
 
 		void Dump(std::ostream & out) const
 		{
@@ -628,6 +714,11 @@ namespace Sibelia
 
 		Fork TakeBubbleStep(const Fork & source) const
 		{
+			if (source.branch[0].GetChar() == source.branch[1].GetChar() && (source.branch[0] + 1).GetVertexId() == (source.branch[1] + 1).GetVertexId())
+			{
+				return Fork(source.branch[0] + 1, source.branch[1] + 1);
+			}
+
 			auto it = source.branch[0];
 			std::map<int64_t, int64_t> firstBranch;
 			for (int64_t i = 1; abs(it.GetPosition() - source.branch[0].GetPosition()) < maxBranchSize_ && (++it).Valid(); i++)
@@ -799,8 +890,16 @@ namespace Sibelia
 			}
 
 			finalizer.Init(currentPath.Origin());
-			for (size_t i = 0; i < bestRightSize - 1 && finalizer.PointPushBack(currentPath.RightPoint(i).GetEdge()); i++);
-			for (size_t i = 0; i < bestLeftSize - 1 && finalizer.PointPushFront(currentPath.LeftPoint(i).GetEdge()); i++);
+			if (bestRightSize > 0)
+			{
+				for (size_t i = 0; i < bestRightSize - 1 && finalizer.PointPushBack(currentPath.RightPoint(i).GetEdge()); i++);
+			}
+
+			if (bestLeftSize > 0)
+			{
+				for (size_t i = 0; i < bestLeftSize - 1 && finalizer.PointPushFront(currentPath.LeftPoint(i).GetEdge()); i++);
+			}
+
 			if (finalizer.Score() > 0 && finalizer.GoodInstances() > 1)
 			{
 				ret = true;

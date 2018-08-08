@@ -308,22 +308,31 @@ namespace Sibelia
 				size_t bestLeftSize = 0;
 				size_t bestRightSize = 0;
 				auto startIt = templateIt;
-				for (;(templateIt + 1).Valid() && currentPath.PointPushBack(templateIt.OutgoingEdge()); ++templateIt)
+
+				while (true)
 				{
-					int64_t score = currentPath.Score();
-					if (score < 0 && currentPath.RightDistance() - rightRun >= minRun)
+					bool ret = true;
+					bool positive = false;
+					int64_t prevLength = currentPath.MiddlePathLength();
+					for (; (ret = ((templateIt + 1).Valid() && currentPath.PointPushBack(templateIt.OutgoingEdge()))) && currentPath.MiddlePathLength() - prevLength <= minRun; ++templateIt)
+					{
+						int64_t score = currentPath.Score();
+						positive = positive || (score > 0);
+						if (score > bestScore)
+						{
+							bestScore = score;
+							rightRun = currentPath.RightDistance();
+							bestRightSize = currentPath.RightSize();
+						}
+					}
+
+					if (!ret || !positive)
 					{
 						break;
 					}
-
-					if (score > bestScore)
-					{
-						bestScore = score;
-						rightRun = currentPath.RightDistance();
-						bestRightSize = currentPath.RightSize();
-					}
 				}
-				
+
+								
 				if(bestRightSize > 0)
 				{
 					std::vector<Edge> bestEdge;
@@ -347,19 +356,28 @@ namespace Sibelia
 
 				size_t leftRun = 0;
 				templateIt = startIt;
-				for (; (templateIt - 1).Valid() && currentPath.PointPushFront(templateIt.IngoingEdge()); --templateIt)
+
+				while (true)
 				{
-					int64_t score = currentPath.Score();
-					if (currentPath.LeftDistance() - leftRun >= minRun && score < 0)
+					bool ret = true;
+					bool positive = false;
+					int64_t prevLength = currentPath.MiddlePathLength();
+
+					for (; (ret = (templateIt - 1).Valid() && currentPath.PointPushFront(templateIt.IngoingEdge())) && currentPath.MiddlePathLength() - prevLength <= minRun; --templateIt)
 					{
-						break;
+						int64_t score = currentPath.Score();
+						positive = positive || (score > 0);
+						if (score > bestScore)
+						{
+							bestScore = score;
+							leftRun = currentPath.LeftDistance();
+							bestLeftSize = currentPath.LeftSize();
+						}
 					}
 
-					if (score > bestScore)
+					if (!ret || !positive)
 					{
-						bestScore = score;
-						leftRun = currentPath.LeftDistance();
-						bestLeftSize = currentPath.LeftSize();
+						break;
 					}
 				}
 

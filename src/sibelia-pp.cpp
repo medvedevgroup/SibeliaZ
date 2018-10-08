@@ -62,7 +62,7 @@ int main(int argc, char * argv[])
 			"flankingsize",
 			"Maximum flanking size",
 			false,
-			25,
+			125,
 			"integer",
 			cmd);
 

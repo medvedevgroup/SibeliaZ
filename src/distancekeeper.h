@@ -8,29 +8,35 @@ namespace Sibelia
 	class DistanceKeeper
 	{
 	public:
-		DistanceKeeper(int64_t vertices) : vertices_(vertices)
+		DistanceKeeper(int64_t vertices) : vertices_(vertices), NOT_SET(INT_MAX)
 		{
-			distance_.assign(vertices_ * 2, false);
+			distance_.assign(vertices_ * 2, NOT_SET);
 		}
 
 		bool IsSet(int64_t v) const
 		{
-			return distance_[v + vertices_];
+			return distance_[v + vertices_] != NOT_SET;
 		}
 
-		void Set(int64_t v)
+		void Set(int64_t v, int distance)
 		{
-			distance_[v + vertices_] = true;
+			distance_[v + vertices_] = distance;
+		}
+
+		int Get(int64_t v) const
+		{
+			return distance_[v + vertices_];
 		}
 
 		void Unset(int64_t v)
 		{
-			distance_[v + vertices_] = false;
+			distance_[v + vertices_] = NOT_SET;
 		}
 
 	private:
 		int64_t vertices_;
-		std::vector<bool> distance_;
+		const int NOT_SET;
+		std::vector<int> distance_;
 	};
 }
 

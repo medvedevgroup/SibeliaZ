@@ -53,7 +53,7 @@ namespace Sibelia
 		void Init(int64_t vid)
 		{
 			origin_ = vid;
-			distanceKeeper_.Set(vid);
+			distanceKeeper_.Set(vid, 0);
 			leftBodyFlank_ = rightBodyFlank_ = 0;
 			for (JunctionStorage::JunctionIterator it(vid); it.Valid(); ++it)
 			{
@@ -380,29 +380,31 @@ namespace Sibelia
 				return false;
 			}
 
-			int64_t diff = end.GetPosition() - start.GetPosition();
+			int64_t realDiff = end.GetPosition() - start.GetPosition();
+			int64_t ancestralDiff = distanceKeeper_.Get(end.GetVertexId()) - distanceKeeper_.Get(start.GetVertexId());
+			assert(ancestralDiff > 0);
 			if (start.IsPositiveStrand())
 			{
-				if (diff < 0)
+				if (realDiff < 0)
 				{
 					return false;
 				}
 
 				auto start1 = start.Next();
-				if (diff > maxBranchSize_ && (!start1.Valid() || start.GetChar() != e.GetChar() || end != start1 || start1.GetVertexId() != e.GetEndVertex()))
+				if ((realDiff > maxBranchSize_ || ancestralDiff > maxBranchSize_) && (!start1.Valid() || start.GetChar() != e.GetChar() || end != start1 || start1.GetVertexId() != e.GetEndVertex()))
 				{
 					return false;
 				}
 			}
 			else
 			{
-				if (-diff < 0)
+				if (-realDiff < 0)
 				{
 					return false;
 				}
 
 				auto start1 = start.Next();
-				if (-diff > maxBranchSize_ && (!start1.Valid() || start.GetChar() != e.GetChar() || end != start1 || start1.GetVertexId() != e.GetEndVertex()))
+				if ((-realDiff > maxBranchSize_ || ancestralDiff > maxBranchSize_) && (!start1.Valid() || start.GetChar() != e.GetChar() || end != start1 || start1.GetVertexId() != e.GetEndVertex()))
 				{
 					return false;
 				}
@@ -546,9 +548,9 @@ namespace Sibelia
 			bool failFlag = false;
 			int64_t startVertexDistance = rightBodyFlank_;
 			int64_t endVertexDistance = startVertexDistance + e.GetLength();
+			distanceKeeper_.Set(e.GetEndVertex(), endVertexDistance);
 			PointPushBackWorker(this, vertex, endVertexDistance, e, failFlag)();
 			rightBody_.push_back(Point(e, startVertexDistance));
-			distanceKeeper_.Set(e.GetEndVertex());
 			rightBodyFlank_ = rightBody_.back().EndDistance();
 			return !failFlag;
 		}
@@ -565,9 +567,9 @@ namespace Sibelia
 			bool failFlag = false;
 			int64_t endVertexDistance = leftBodyFlank_;
 			int64_t startVertexDistance = endVertexDistance - e.GetLength();
+			distanceKeeper_.Set(e.GetStartVertex(), startVertexDistance);
 			PointPushFrontWorker(this, vertex, startVertexDistance, e, failFlag)();
 			leftBody_.push_back(Point(e, startVertexDistance));
-			distanceKeeper_.Set(e.GetStartVertex());
 			leftBodyFlank_ = leftBody_.back().StartDistance();
 			return !failFlag;
 		}
@@ -579,15 +581,18 @@ namespace Sibelia
 			for (auto & instanceIt : goodInstance_)
 			{
 				int64_t score = instanceIt->RealLength();
-				int64_t penalty = MiddlePathLength() - instanceIt->UtilityLength();
-				assert(penalty >= 0);
-				if (penalty >= maxFlankingSize_)
+				int64_t rightPenalty = RightDistance() - instanceIt->RightFlankDistance();
+				int64_t leftPenalty = LeftDistance() + instanceIt->LeftFlankDistance();
+				assert(rightPenalty >= 0);
+				assert(leftPenalty >= 0);
+				if (leftPenalty >= maxFlankingSize_  || rightPenalty >= maxFlankingSize_)
 				{
-					score -= penalty * multiplier;
+					ret = -INT32_MAX;
+					break;
 				}
 				else
 				{
-					score -= penalty;
+					score -= rightPenalty + leftPenalty;
 				}
 
 				ret += score;

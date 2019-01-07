@@ -186,13 +186,13 @@ namespace Sibelia
 			scoreFullChains_ = true;
 		}
 
-		struct ProcessVertexDijkstra
+		struct ProcessVertex
 		{
 		public:
 			BlocksFinder & finder;
 			std::vector<int64_t> & shuffle;
 
-			ProcessVertexDijkstra(BlocksFinder & finder, std::vector<int64_t> & shuffle) : finder(finder), shuffle(shuffle)
+			ProcessVertex(BlocksFinder & finder, std::vector<int64_t> & shuffle) : finder(finder), shuffle(shuffle)
 			{
 			}
 
@@ -243,7 +243,7 @@ namespace Sibelia
 							bool ret = true;
 							bool positive = false;
 							int64_t prevLength = currentPath.MiddlePathLength();
-							while ((ret = finder.ExtendPathDijkstraForward(currentPath, count, data, bestRightSize, bestScore, score)) && currentPath.MiddlePathLength() - prevLength <= minRun)
+							while ((ret = finder.ExtendPathForward(currentPath, count, data, bestRightSize, bestScore, score)) && currentPath.MiddlePathLength() - prevLength <= minRun)
 							{
 								positive = positive || (score > 0);
 							}
@@ -279,7 +279,7 @@ namespace Sibelia
 							bool ret = true;
 							bool positive = false;
 							int64_t prevLength = currentPath.MiddlePathLength();
-							while ((ret = finder.ExtendPathDijkstraBackward(currentPath, count, data, bestLeftSize, bestScore, score)) && currentPath.MiddlePathLength() - prevLength <= minRun);
+							while ((ret = finder.ExtendPathBackward(currentPath, count, data, bestLeftSize, bestScore, score)) && currentPath.MiddlePathLength() - prevLength <= minRun);
 							{
 								positive = positive || (score > 0);
 							}
@@ -572,7 +572,7 @@ namespace Sibelia
 			time_t mark = time(0);
 			count_ = 0;
 			tbb::task_scheduler_init init(threads);
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertexDijkstra(*this, shuffle));
+			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle));
 			std::cout << "Time: " << time(0) - mark << std::endl;
 		}
 
@@ -904,7 +904,7 @@ namespace Sibelia
 			return std::make_pair(bestVid, ret);
 		}
 
-		bool ExtendPathDijkstraForward(Path & currentPath,
+		bool ExtendPathForward(Path & currentPath,
 			std::vector<uint32_t> & count,
 			std::vector<uint32_t> & data,
 			size_t & bestRightSize,
@@ -954,7 +954,7 @@ namespace Sibelia
 			return success;
 		}
 
-		bool ExtendPathDijkstraBackward(Path & currentPath,
+		bool ExtendPathBackward(Path & currentPath,
 			std::vector<uint32_t> & count,
 			std::vector<uint32_t> & data,
 			size_t & bestLeftSize,
@@ -1004,6 +1004,7 @@ namespace Sibelia
 		}
 
 		int64_t k_;
+		size_t progressCount_;
 		std::atomic<int64_t> count_;
 		std::atomic<int64_t> blocksFound_;
 		int64_t sampleSize_;
@@ -1014,7 +1015,7 @@ namespace Sibelia
 		int64_t maxBranchSize_;
 		int64_t maxFlankingSize_;
 		JunctionStorage & storage_;
-		tbb::mutex debugMutex_;
+		tbb::mutex progressMutex_;
 		std::ofstream debugOut_;
 		std::vector<std::vector<Edge> > syntenyPath_;
 		std::vector<std::vector<Assignment> > blockId_;

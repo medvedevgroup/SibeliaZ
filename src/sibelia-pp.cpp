@@ -54,23 +54,16 @@ int main(int argc, char * argv[])
 			"branchsize",
 			"Maximum branch size",
 			false,
-			125,
+			200,
 			"integer",
 			cmd);
 
-		TCLAP::ValueArg<unsigned int> maxFlankingSize("f",
-			"flankingsize",
-			"Maximum flanking size",
-			false,
-			125,
-			"integer",
-			cmd);
 
 		TCLAP::ValueArg<unsigned int> minBlockSize("m",
 			"blocksize",
 			"Minimum block size",
 			false,
-			300,
+			50,
 			"integer",
 			cmd);
 
@@ -90,29 +83,14 @@ int main(int argc, char * argv[])
 			"integer",
 			cmd);
 
-		TCLAP::ValueArg<unsigned int> sampleSize("",
-			"ssize",
-			"Sample size for randomized walk",
-			false,
-			0,
-			"integer",
-			cmd);
 
 		TCLAP::ValueArg<unsigned int> abundanceThreshold("",
 			"abundance",
 			"Max abundance of a junction",
 			false,
-			256,
+			150,
 			"integer",
 			cmd);
-
-		TCLAP::ValueArg<std::string> tmpDirName("",
-			"tmpdir",
-			"Temporary directory name",
-			false,
-			".",
-			"directory name",
-			cmd);	
 
 		TCLAP::ValueArg<std::string> inFileName("",
 			"infile",
@@ -138,14 +116,6 @@ int main(int argc, char * argv[])
 			"file name",
 			cmd);
 
-		TCLAP::ValueArg<std::string> dumpFileName("d",
-			"dumpfile",
-			"Dump file name",
-			false,
-			"dump.dot",
-			"file name",
-			cmd);
-
 		cmd.parse(argc, argv);
 	
 		Sibelia::JunctionStorage storage(inFileName.getValue(),
@@ -158,14 +128,12 @@ int main(int argc, char * argv[])
 		Sibelia::BlocksFinder finder(storage, kvalue.getValue());		
 		finder.FindBlocks(minBlockSize.getValue(),
 			maxBranchSize.getValue(),
-			maxFlankingSize.getValue(),
+			maxBranchSize.getValue(),
 			lookingDepth.getValue(),
-			sampleSize.getValue(),
+			0,
 			threads.getValue(),
 			outDirName.getValue() + "/paths.txt");
 		finder.GenerateLegacyOutput(outDirName.getValue());
-	//	std::ofstream dumpStream(outDirName.getValue() + "/graph.dot");
-	//	finder.Dump(dumpStream);
 	}
 	catch (TCLAP::ArgException & e)
 	{

@@ -117,7 +117,7 @@ int main(int argc, char * argv[])
 			cmd);
 
 		cmd.parse(argc, argv);
-	
+		std::cout << "Loading the graph..." << std::endl;
 		Sibelia::JunctionStorage storage(inFileName.getValue(),
 			genomesFileName.getValue(),
 			kvalue.getValue(),
@@ -125,6 +125,7 @@ int main(int argc, char * argv[])
 			abundanceThreshold.getValue(),
 			0);
 
+		std::cout << "Analyzing the graph..." << std::endl;
 		Sibelia::BlocksFinder finder(storage, kvalue.getValue());		
 		finder.FindBlocks(minBlockSize.getValue(),
 			maxBranchSize.getValue(),
@@ -133,6 +134,8 @@ int main(int argc, char * argv[])
 			0,
 			threads.getValue(),
 			outDirName.getValue() + "/paths.txt");
+
+		std::cout << "Generating the output..." << std::endl;
 		finder.GenerateLegacyOutput(outDirName.getValue());
 	}
 	catch (TCLAP::ArgException & e)

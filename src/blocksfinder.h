@@ -183,7 +183,8 @@ namespace Sibelia
 
 		BlocksFinder(JunctionStorage & storage, size_t k) : storage_(storage), k_(k)
 		{
-			scoreFullChains_ = true;
+			progressCount_ = 50;
+			scoreFullChains_ = true;			
 		}
 
 		struct ProcessVertex
@@ -205,9 +206,11 @@ namespace Sibelia
 				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_);
 				for (size_t i = range.begin(); i != range.end(); i++)
 				{
-					if (finder.count_++ % 10000 == 0)
+					if (finder.count_++ % finder.progressPortion_ == 0)
 					{
-						std::cout << finder.count_ << '\t' << shuffle.size() << std::endl;
+						finder.progressMutex_.lock();
+						std::cout << '.';
+						finder.progressMutex_.unlock();
 					}
 
 					int64_t score;
@@ -571,9 +574,12 @@ namespace Sibelia
 			srand(time(0));
 			time_t mark = time(0);
 			count_ = 0;
+			std::cout << '[';
+			progressPortion_ = shuffle.size() / progressCount_;
 			tbb::task_scheduler_init init(threads);
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle));
-			std::cout << "Time: " << time(0) - mark << std::endl;
+			std::cout << ']' << std::endl;
+			//std::cout << "Time: " << time(0) - mark << std::endl;
 		}
 
 		void Dump(std::ostream & out) const
@@ -1005,6 +1011,7 @@ namespace Sibelia
 
 		int64_t k_;
 		size_t progressCount_;
+		size_t progressPortion_;
 		std::atomic<int64_t> count_;
 		std::atomic<int64_t> blocksFound_;
 		int64_t sampleSize_;

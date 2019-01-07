@@ -26,6 +26,7 @@ namespace Sibelia
 	}
 
 	JunctionStorage * JunctionStorage::this_;
+	extern const std::string VERSION = "0.0.1";
 
 	bool compareById(const BlockInstance & a, const BlockInstance & b)
 	{
@@ -163,10 +164,15 @@ namespace Sibelia
 			out << "\tSeq " << i + 1;
 		}
 
+		size_t totalSize = 0;
+		for (size_t i = 0; i < storage_.GetChrNumber(); i++)
+		{
+			totalSize += storage_.GetChrSequence(i).size();
+		}
+
 		out << std::endl;
 		group.clear();
-		std::vector<bool> cover;
-		std::vector<double> coverage;
+		std::vector<size_t> coverage;
 		GroupBy(sepBlock, ByFirstElement, std::back_inserter(group));
 		group.push_back(IndexPair(0, sepBlock.size()));
 		for (std::vector<IndexPair>::iterator it = group.begin(); it != group.end(); ++it)
@@ -182,45 +188,25 @@ namespace Sibelia
 
 			out.precision(2);
 			out.setf(std::ostream::fixed);
-			CalculateCoverage(sepBlock.begin() + it->first, sepBlock.begin() + it->second, cover, coverage);
-			std::copy(coverage.begin(), coverage.end(), std::ostream_iterator<double>(out, "%\t"));
-			out << std::endl;
-		}
-
-		out << DELIMITER << std::endl;
-	}
-
-	void BlocksFinder::CalculateCoverage(GroupedBlockList::const_iterator start,
-		GroupedBlockList::const_iterator end,
-		std::vector<bool> & cover,
-		std::vector<double> & ret) const
-	{
-		ret.clear();
-		double totalBp = 0;
-		double totalCoveredBp = 0;
-		for (size_t chr = 0; chr < storage_.GetChrNumber(); chr++)
-		{
-			totalBp += storage_.GetChrSequence(chr).size();
-			cover.assign(storage_.GetChrSequence(chr).size(), 0);
-			for (GroupedBlockList::const_iterator it = start; it != end; ++it)
+			coverage.assign(storage_.GetChrNumber(), 0);
+			for (GroupedBlockList::const_iterator jt = sepBlock.begin() + it->first; jt != sepBlock.begin() + it->second; ++jt)
 			{
-				for (size_t i = 0; i < it->second.size(); i++)
+				for (size_t i = 0; i < jt->second.size(); i++)
 				{
-					if (it->second[i].GetChrId() == chr)
-					{
-						std::fill(cover.begin() + it->second[i].GetStart(), cover.begin() + it->second[i].GetEnd(), COVERED);
-					}
-				}
+					coverage[jt->second[i].GetChrId()] += jt->second[i].GetLength();
+				}				
 			}
 
-			double nowCoveredBp = static_cast<double>(std::count(cover.begin(), cover.end(), COVERED));
-			ret.push_back(nowCoveredBp / cover.size() * 100);
-			totalCoveredBp += nowCoveredBp;
+			size_t total = std::accumulate(coverage.begin(), coverage.end(), size_t(0));
+			out << double(total) / totalSize * 100 << '%';
+			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
+			{
+				out << '\t' << double(coverage[i]) / storage_.GetChrSequence(i).size() * 100 << '%';
+			}
+
+			out << std::endl;
 		}
-
-		ret.insert(ret.begin(), totalCoveredBp / totalBp * 100);
 	}
-
 
 	std::string BlocksFinder::OutputIndex(const BlockInstance & block) const
 	{
@@ -283,6 +269,55 @@ namespace Sibelia
 		}
 	}
 
+	template<class It>
+	std::string Join(It start, It end, const std::string & delimiter)
+	{
+		It last = --end;
+		std::stringstream ss;
+		for (; start != end; ++start)
+		{
+			ss << *start << delimiter;
+		}
+
+		ss << *last;
+		return ss.str();
+	}
+
+
+	void BlocksFinder::ListBlocksIndicesGFF(const BlockList & blockList, const std::string & fileName) const
+	{
+		std::ofstream out;
+		TryOpenFile(fileName, out);
+		BlockList block(blockList);
+		std::sort(block.begin(), block.end(), compareById);
+		const std::string header[] =
+		{
+			"##gff-version 2",
+			std::string("##source-version L-Sibelia ") + VERSION,
+			"##Type DNA"
+		};
+
+		out << Join(header, header + 3, "\n") << std::endl;
+		for (BlockList::const_iterator it = block.begin(); it != block.end(); ++it)
+		{
+			size_t start = it->GetStart() + 1;
+			size_t end = it->GetEnd();
+			const std::string record[] =
+			{
+				storage_.GetChrDescription(it->GetChrId()), 
+				"L-Sibelia",
+				"LCB_copy",
+				IntToStr(start),
+				IntToStr(end),
+				".",
+				(it->GetDirection() ? "+" : "-"),
+				".",
+				"id=" + IntToStr(static_cast<size_t>(it->GetBlockId()))
+			};
+
+			out << Join(record, record + sizeof(record) / sizeof(record[0]), "\t") << std::endl;
+		}
+	}
 
 	void BlocksFinder::TryOpenFile(const std::string & fileName, std::ofstream & stream) const
 	{

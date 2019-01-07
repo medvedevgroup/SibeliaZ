@@ -40,7 +40,7 @@ int main(int argc, char * argv[])
 
 	try
 	{
-		TCLAP::CmdLine cmd("Program for construction of synteny blocks from complete genomes", ' ', "0.0.1");
+		TCLAP::CmdLine cmd("Program for construction of synteny blocks from complete genomes", ' ', Sibelia::VERSION);
 
 		TCLAP::ValueArg<unsigned int> kvalue("k",
 			"kvalue",
@@ -56,7 +56,15 @@ int main(int argc, char * argv[])
 			false,
 			125,
 			"integer",
-			cmd);		
+			cmd);
+
+		TCLAP::ValueArg<unsigned int> maxFlankingSize("f",
+			"flankingsize",
+			"Maximum flanking size",
+			false,
+			125,
+			"integer",
+			cmd);
 
 		TCLAP::ValueArg<unsigned int> minBlockSize("m",
 			"blocksize",
@@ -94,7 +102,7 @@ int main(int argc, char * argv[])
 			"abundance",
 			"Max abundance of a junction",
 			false,
-			1024,
+			256,
 			"integer",
 			cmd);
 
@@ -139,19 +147,25 @@ int main(int argc, char * argv[])
 			cmd);
 
 		cmd.parse(argc, argv);
+	
+		Sibelia::JunctionStorage storage(inFileName.getValue(),
+			genomesFileName.getValue(),
+			kvalue.getValue(),
+			threads.getValue(),
+			abundanceThreshold.getValue(),
+			0);
 
-		Sibelia::JunctionStorage storage(inFileName.getValue(), genomesFileName.getValue(), kvalue.getValue(), threads.getValue(), abundanceThreshold.getValue());
 		Sibelia::BlocksFinder finder(storage, kvalue.getValue());		
 		finder.FindBlocks(minBlockSize.getValue(),
 			maxBranchSize.getValue(),
-			maxBranchSize.getValue(),
+			maxFlankingSize.getValue(),
 			lookingDepth.getValue(),
 			sampleSize.getValue(),
 			threads.getValue(),
 			outDirName.getValue() + "/paths.txt");
 		finder.GenerateLegacyOutput(outDirName.getValue());
-		std::ofstream dumpStream(outDirName.getValue() + "/graph.dot");
-		//finder.Dump(dumpStream);
+	//	std::ofstream dumpStream(outDirName.getValue() + "/graph.dot");
+	//	finder.Dump(dumpStream);
 	}
 	catch (TCLAP::ArgException & e)
 	{

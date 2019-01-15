@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 2.8)
+project(SibeliaZ)
+set(CMAKE_BUILD_TYPE RELEASE)
+set(spoa_build_executable ON)
+add_subdirectory(spoa)
+add_subdirectory(TwoPaCo/src)
+add_subdirectory(SibeliaZ-LCB)
+include(CPack)

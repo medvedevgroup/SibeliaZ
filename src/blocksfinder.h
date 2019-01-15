@@ -209,7 +209,7 @@ namespace Sibelia
 					if (finder.count_++ % finder.progressPortion_ == 0)
 					{
 						finder.progressMutex_.lock();
-						std::cout << '.';
+						std::cout << '.' << std::flush;
 						finder.progressMutex_.unlock();
 					}
 
@@ -565,7 +565,7 @@ namespace Sibelia
 			}
 
 			using namespace std::placeholders;
-			std::sort(shuffle.begin(), shuffle.end(), std::bind(DegreeCompare, std::cref(storage_), _1, _2));
+			std::random_shuffle(shuffle.begin(), shuffle.end());
 #ifdef _DEBUG_OUT_
 			//OutputMissing("test/test7/segment.txt", "missing");
 			OutputSubgraph("alignment.maf", "subgraph.txt", "pair.txt");
@@ -574,7 +574,7 @@ namespace Sibelia
 			srand(time(0));
 			time_t mark = time(0);
 			count_ = 0;
-			std::cout << '[';
+			std::cout << '[' << std::flush;
 			progressPortion_ = shuffle.size() / progressCount_;
 			tbb::task_scheduler_init init(threads);
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle));

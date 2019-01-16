@@ -13,7 +13,7 @@
 #include <tbb/mutex.h>
 
 #include <streamfastaparser.h>
-#include <junctionapi/junctionapi.h>
+#include <junctionapi.h>
 
 namespace Sibelia
 {	

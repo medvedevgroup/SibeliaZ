@@ -58,7 +58,6 @@ int main(int argc, char * argv[])
 			"integer",
 			cmd);
 
-
 		TCLAP::ValueArg<unsigned int> minBlockSize("m",
 			"blocksize",
 			"Minimum block size",
@@ -83,7 +82,6 @@ int main(int argc, char * argv[])
 			"integer",
 			cmd);
 
-
 		TCLAP::ValueArg<unsigned int> abundanceThreshold("",
 			"abundance",
 			"Max abundance of a junction",
@@ -93,16 +91,16 @@ int main(int argc, char * argv[])
 			cmd);
 
 		TCLAP::ValueArg<std::string> inFileName("",
-			"infile",
-			"Input file name",
+			"graph",
+			"Binary file containing the graph",
 			true,
 			"de_bruijn.bin",
 			"file name",
 			cmd);
 
 		TCLAP::ValueArg<std::string> genomesFileName("",
-			"gfile",
-			"FASTA file with genomes",
+			"fasta",
+			"FASTA file containing the genomes",
 			true,
 			"",
 			"file name",
@@ -110,9 +108,17 @@ int main(int argc, char * argv[])
 
 		TCLAP::ValueArg<std::string> outDirName("o",
 			"outdir",
-			"Output dir name prefix",
+			"Output dir for blocks sequences",
 			false,
-			"out",
+			"",
+			"directory name",
+			cmd);
+
+		TCLAP::ValueArg<std::string> outFileName("",
+			"gff",
+			"Output GFF file containing blocks' coordinates",
+			false,
+			"blocks_coords.gff",
 			"file name",
 			cmd);
 
@@ -136,7 +142,7 @@ int main(int argc, char * argv[])
 			outDirName.getValue() + "/paths.txt");
 
 		std::cout << "Generating the output..." << std::endl;
-		finder.GenerateLegacyOutput(outDirName.getValue());
+		finder.GenerateOutput(outFileName.getValue(), outDirName.getValue());
 	}
 	catch (TCLAP::ArgException & e)
 	{

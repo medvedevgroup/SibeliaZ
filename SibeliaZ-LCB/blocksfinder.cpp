@@ -144,6 +144,23 @@ namespace Sibelia
 		return std::make_pair(GetBlockId(), std::make_pair(GetChrId(), GetStart())) < std::make_pair(toCompare.GetBlockId(), std::make_pair(toCompare.GetChrId(), toCompare.GetStart()));
 	}
 
+	double BlocksFinder::CalculateCoverage(const BlockList & block) const
+	{
+		size_t totalSize = 0;
+		for (size_t i = 0; i < storage_.GetChrNumber(); i++)
+		{
+			totalSize += storage_.GetChrSequence(i).size();
+		}
+
+		size_t totalBlockLength = 0;
+		for (const auto & b : block)
+		{
+			totalBlockLength += b.GetLength();
+		}
+
+		return double(totalBlockLength) / totalSize;
+	}
+
 	void BlocksFinder::GenerateReport(const BlockList & block, const std::string & fileName) const
 	{
 		std::ofstream out;

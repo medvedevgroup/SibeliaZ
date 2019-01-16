@@ -11,4 +11,4 @@ add_executable(sibeliaz-lcb sibeliaz.cpp blocksfinder.cpp ${twopaco_SOURCE_DIR}/
 link_directories(${TBB_LIB_DIR})
 include_directories(${twopaco_SOURCE_DIR} ${TBB_INCLUDE_DIR})
 target_link_libraries(sibeliaz-lcb "tbb")
-
+install(TARGETS sibeliaz-lcb RUNTIME DESTINATION bin)

@@ -649,7 +649,7 @@ namespace Sibelia
 		}
 
 
-		void GenerateOutput(const std::string & coordsOutput, const std::string & blocksOutput) const
+		void GenerateOutput(const std::string & outDir) const
 		{
 			BlockList instance;
 			std::vector<std::vector<bool> > covered(storage_.GetChrNumber());
@@ -682,58 +682,19 @@ namespace Sibelia
 				}
 			}
 
-			if (blocksOutput != "")
-			{
-				CreateOutDirectory(blocksOutput);
-				ListBlocksSequences(instance, blocksOutput);
-			}
-
 			std::cout.setf(std::cout.fixed);
 			std::cout.precision(2);
-			ListBlocksIndicesGFF(instance, coordsOutput);
 			std::cout << "Blocks found: " << blocksFound_ << std::endl;
 			std::cout << "Total coverage: " << CalculateCoverage(instance) << std::endl;
 
-			/*
-			BlockList instance;
-			std::vector<std::vector<bool> > covered(storage_.GetChrNumber());
-			for (size_t i = 0; i < covered.size(); i++)
-			{
-				covered[i].assign(storage_.GetChrSequence(i).size(), false);
-			}
-
-			for (size_t chr = 0; chr < blockId_.size(); chr++)
-			{
-				for (size_t i = 0; i < blockId_[chr].size();)
-				{
-					if (storage_.GetIterator(chr, i).IsUsed())
-					{
-						int64_t bid = blockId_[chr][i].block;
-						size_t j = i;
-						for (; j < blockId_[chr].size() && blockId_[chr][i] == blockId_[chr][j]; j++);
-						j--;
-						int64_t cstart = storage_.GetIterator(chr, i, bid > 0).GetPosition();
-						int64_t cend = storage_.GetIterator(chr, j, bid > 0).GetPosition() + (bid > 0 ? k_ : -k_);
-						int64_t start = min(cstart, cend);
-						int64_t end = max(cstart, cend);
-						instance.push_back(BlockInstance(bid, chr, start, end));
-						i = j + 1;
-					}
-					else
-					{
-						++i;
-					}
-				}
-			}
-
-
+			
 			CreateOutDirectory(outDir);
 			std::string blocksDir = outDir + "/blocks";
 			CreateOutDirectory(blocksDir);
 			ListBlocksIndicesGFF(instance, outDir + "/" + "blocks_coords.gff");
-	//		ListBlocksIndices(instance, outDir + "/" + "blocks_coords.txt");
 			ListBlocksSequences(instance, blocksDir);
 	//		GenerateReport(instance, outDir + "/" + "coverage_report.txt");*/
+	//		ListBlocksIndices(instance, outDir + "/" + "blocks_coords.txt");
 		}
 
 

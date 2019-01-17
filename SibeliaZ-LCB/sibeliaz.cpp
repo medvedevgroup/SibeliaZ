@@ -82,7 +82,7 @@ int main(int argc, char * argv[])
 			"integer",
 			cmd);
 
-		TCLAP::ValueArg<unsigned int> abundanceThreshold("",
+		TCLAP::ValueArg<unsigned int> abundanceThreshold("a",
 			"abundance",
 			"Max abundance of a junction",
 			false,
@@ -114,14 +114,6 @@ int main(int argc, char * argv[])
 			"directory name",
 			cmd);
 
-		TCLAP::ValueArg<std::string> outFileName("",
-			"gff",
-			"Output GFF file containing blocks' coordinates",
-			false,
-			"blocks_coords.gff",
-			"file name",
-			cmd);
-
 		cmd.parse(argc, argv);
 		std::cout << "Loading the graph..." << std::endl;
 		Sibelia::JunctionStorage storage(inFileName.getValue(),
@@ -142,7 +134,7 @@ int main(int argc, char * argv[])
 			outDirName.getValue() + "/paths.txt");
 
 		std::cout << "Generating the output..." << std::endl;
-		finder.GenerateOutput(outFileName.getValue(), outDirName.getValue());
+		finder.GenerateOutput(outDirName.getValue());
 	}
 	catch (TCLAP::ArgException & e)
 	{

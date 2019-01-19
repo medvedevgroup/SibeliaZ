@@ -69,6 +69,8 @@ The output will be written in the directory "sibeliaz_out" in the current
 working directory. It will contain a GFF file "blocks_coords.gff" containing
 coordinates of the found blocks, a directory "block" with FASTA file containing
 the sequences of the blocks, and file "alignment.maf" with the actual alignment.
+It is possible to skip the alignment (use the -n switch) step and produce only
+coordinates of the blocks if the alignment is not needed for downstream analysis.
 
 SibeliaZ has other parameters affecting the running time, sensitivity and the
 output, which are described below.
@@ -125,7 +127,9 @@ with paths longer than the threshold -b, which can be set by:
 	-b <integer>
 
 The default value of -b is 200. Increasing value may increase recall of divergent
-sequences, but if -b is too high, it will decrease accuracy as well.
+sequences, but if -b is too high, it will decrease accuracy as well. The value
+of -b aslo should not exceed the value of -m due to the properties of our 
+algorithm.
 
 Locally-collinear block size
 ----------------------------
@@ -133,12 +137,20 @@ SibelaZ only output blocks longer than a specified threshold, which is set by
 
 	-m <integer>
 
-The default value is 50. This value can be increased to filter out short
-homologous blocks if it is necessary for the downstream analysis.
+The default value is 250. This value can be increased to filter out short
+homologous blocks if it is necessary for the downstream analysis. The value
+of -m should be larger than -b due to algorithmic reasons.
 
 
 Technical parameters
 ====================
+
+Skipping the alignment
+----------------------
+To skip the alignment and only output coordinates of the blocks, use the
+switch
+
+	-n
 
 Threads number
 --------------
@@ -154,6 +166,17 @@ the global aligner will use as much as possible.
 
 Memory allocation
 -----------------
+Some prgorams in the pipeline require an amount of memory specified beforehand.
+For example, the graph constructor TwoPaCo uses it for Bloom filter, and the
+global aligner requires a memory limit to be set to work correctly. This can
+be set usin the option:
+
+	-f <memory amount in GB>
+
+Roughly speaking the memory should be at least 2-3 times of the size of the 
+input genomes, and for large dataset it is adviced to allocate as much as
+possible.
+
 
 Output directory
 ----------------

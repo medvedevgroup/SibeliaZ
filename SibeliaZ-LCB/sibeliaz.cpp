@@ -62,7 +62,7 @@ int main(int argc, char * argv[])
 			"blocksize",
 			"Minimum block size",
 			false,
-			50,
+			250,
 			"integer",
 			cmd);
 
@@ -114,12 +114,20 @@ int main(int argc, char * argv[])
 			"directory name",
 			cmd);
 
+		TCLAP::SwitchArg noSeq("",
+			"noseq",
+			"Do not output blocks sequences",
+			cmd,
+			false);
+
+
+		cmd.parse(argc, argv);
+
 		if (minBlockSize.getValue() < maxBranchSize.getValue())
 		{
 			throw TCLAP::ArgException("The value of --branchsize (-b) should less than the value of --blocksize (-m)");
 		}
 
-		cmd.parse(argc, argv);
 		std::cout << "Loading the graph..." << std::endl;
 		Sibelia::JunctionStorage storage(inFileName.getValue(),
 			genomesFileName.getValue(),
@@ -139,7 +147,7 @@ int main(int argc, char * argv[])
 			outDirName.getValue() + "/paths.txt");
 
 		std::cout << "Generating the output..." << std::endl;
-		finder.GenerateOutput(outDirName.getValue());
+		finder.GenerateOutput(outDirName.getValue(), !noSeq.getValue());
 	}
 	catch (TCLAP::ArgException & e)
 	{

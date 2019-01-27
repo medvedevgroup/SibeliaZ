@@ -649,7 +649,7 @@ namespace Sibelia
 		}
 
 
-		void GenerateOutput(const std::string & outDir) const
+		void GenerateOutput(const std::string & outDir, bool genSeq) const
 		{
 			BlockList instance;
 			std::vector<std::vector<bool> > covered(storage_.GetChrNumber());
@@ -687,12 +687,16 @@ namespace Sibelia
 			std::cout << "Blocks found: " << blocksFound_ << std::endl;
 			std::cout << "Total coverage: " << CalculateCoverage(instance) << std::endl;
 
-			
+
 			CreateOutDirectory(outDir);
 			std::string blocksDir = outDir + "/blocks";
-			CreateOutDirectory(blocksDir);
 			ListBlocksIndicesGFF(instance, outDir + "/" + "blocks_coords.gff");
-			ListBlocksSequences(instance, blocksDir);
+			if (genSeq)
+			{
+				CreateOutDirectory(blocksDir);
+				ListBlocksSequences(instance, blocksDir);
+			}
+
 	//		GenerateReport(instance, outDir + "/" + "coverage_report.txt");*/
 	//		ListBlocksIndices(instance, outDir + "/" + "blocks_coords.txt");
 		}

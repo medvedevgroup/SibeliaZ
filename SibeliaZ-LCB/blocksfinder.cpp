@@ -310,7 +310,7 @@ namespace Sibelia
 		const std::string header[] =
 		{
 			"##gff-version 2",
-			std::string("##source-version L-Sibelia ") + VERSION,
+			std::string("##source-version SibeliaZ ") + VERSION,
 			"##Type DNA"
 		};
 

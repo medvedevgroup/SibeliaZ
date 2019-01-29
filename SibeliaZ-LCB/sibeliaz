@@ -3,7 +3,7 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 k=25
 b=200
-m=250
+m=200
 a=150
 f=5
 threads=1
@@ -47,11 +47,17 @@ min() {
 
 align()
 {
-        ulimit -m 25600000
         output="$(./spoa $1 -l 1 -r 1 | tail -n +2)"
+        rcode="${PIPESTATUS[0]}"
+        if [[ -z "${output// }" ]]
+        then
+                return
+        fi
+
         if [ $? -eq 0 ]
         then
-                header="$(sed -n -e '/^>/p' $1 | cut -d' ' -f2- | sed  's/;/ /g' | sed -e 's/^/s /')"
+		lines=`echo -n "$output" | grep -c '^'`
+                header="$(sed -n -e '/^>/p' $1 | cut -d' ' -f2- | sed  's/;/ /g' | sed -e 's/^/s /' | head -n $lines)"
                 (
                         flock 200
                         echo "" >> "$2"
@@ -74,6 +80,7 @@ mkdir -p $outdir
 
 if [ "$align" = "True" ]
 then
+	ulimit -v 256000000
 	align_file=$outfile/alignment.maf
 	echo "##maf version=1" > "$alignment_file"
 	find $outfile/blocks -name "*.fa" -printf "$PWD/%p\n" | xargs -I @ -P "$2" bash -c "align @ '$outfile'"

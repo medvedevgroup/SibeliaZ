@@ -125,7 +125,7 @@ int main(int argc, char * argv[])
 
 		if (minBlockSize.getValue() < maxBranchSize.getValue())
 		{
-			throw TCLAP::ArgException("The value of --branchsize (-b) should less than the value of --blocksize (-m)");
+//			throw TCLAP::ArgException("The value of --branchsize (-b) should less than the value of --blocksize (-m)");
 		}
 
 		std::cout << "Loading the graph..." << std::endl;
@@ -140,7 +140,7 @@ int main(int argc, char * argv[])
 		Sibelia::BlocksFinder finder(storage, kvalue.getValue());		
 		finder.FindBlocks(minBlockSize.getValue(),
 			maxBranchSize.getValue(),
-			maxBranchSize.getValue(),
+			std::min(minBlockSize.getValue(), maxBranchSize.getValue()),
 			lookingDepth.getValue(),
 			0,
 			threads.getValue(),

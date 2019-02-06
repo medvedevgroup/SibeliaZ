@@ -668,10 +668,8 @@ namespace Sibelia
 						size_t j = i;
 						for (; j < blockId_[chr].size() && blockId_[chr][i] == blockId_[chr][j]; j++);
 						j--;
-						int64_t cstart = storage_.GetIterator(chr, i, bid > 0).GetPosition();
-						int64_t cend = storage_.GetIterator(chr, j, bid > 0).GetPosition() + (bid > 0 ? k_ : -k_);
-						int64_t start = min(cstart, cend);
-						int64_t end = max(cstart, cend);
+						int64_t start = storage_.GetIterator(chr, i, bid > 0).GetPosition() + (bid > 0 ? 0 : -k_);
+						int64_t end = storage_.GetIterator(chr, j, bid > 0).GetPosition() + (bid > 0 ? k_ : 0);
 						instance.push_back(BlockInstance(bid, chr, start, end));
 						i = j + 1;
 					}

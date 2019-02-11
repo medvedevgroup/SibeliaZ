@@ -137,10 +137,10 @@ int main(int argc, char * argv[])
 			0);
 
 		std::cout << "Analyzing the graph..." << std::endl;
-		Sibelia::BlocksFinder finder(storage, kvalue.getValue());		
+		Sibelia::BlocksFinder finder(storage, kvalue.getValue());
 		finder.FindBlocks(minBlockSize.getValue(),
 			maxBranchSize.getValue(),
-			std::min(minBlockSize.getValue(), maxBranchSize.getValue()),
+			maxBranchSize.getValue(),
 			lookingDepth.getValue(),
 			0,
 			threads.getValue(),

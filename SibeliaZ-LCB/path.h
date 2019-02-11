@@ -592,7 +592,7 @@ namespace Sibelia
 				}
 				else
 				{
-					score -= rightPenalty + leftPenalty;
+					score -= (rightPenalty + leftPenalty) * (rightPenalty + leftPenalty);
 				}
 
 				ret += score;

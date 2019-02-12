@@ -66,14 +66,6 @@ int main(int argc, char * argv[])
 			"integer",
 			cmd);
 
-		TCLAP::ValueArg<unsigned int> lookingDepth("",
-			"depth",
-			"Looking depth",
-			false,
-			8,
-			"integer",
-			cmd);
-
 		TCLAP::ValueArg<unsigned int> threads("t",
 			"threads",
 			"Number of worker threads",
@@ -141,7 +133,7 @@ int main(int argc, char * argv[])
 		finder.FindBlocks(minBlockSize.getValue(),
 			maxBranchSize.getValue(),
 			maxBranchSize.getValue(),
-			lookingDepth.getValue(),
+			8,
 			0,
 			threads.getValue(),
 			outDirName.getValue() + "/paths.txt");

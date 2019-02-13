@@ -1,6 +1,9 @@
 SibeliaZ 1.0.0
 ===============
 
+Release date: TBD
+=================
+
 Authors
 =======
 * Ilia Minkin (Pennsylvania State University)
@@ -190,15 +193,19 @@ A note about the repeat masking
 ==============================
 SibeliaZ TwoPaCo currently does not recognize soft-masked characters (i.e. using
 lowercase characters), so please convert soft-masked repeats to hard-maksed ones
-(with Ns). 
+(with Ns) if you would like to mask the repeats. 
 
 Citation
 ========
 If you use SibeliaZ in your research, please cite:
 
+	Scalable multiple whole-genome alignment and locally collinear block construction with SibeliaZ
+	Ilia Minkin, Paul Medvedev
+	bioRxiv 548123; doi: https://doi.org/10.1101/548123
 
 License
 =======
+See LICENSE.txt
 
 Contacts
 ========
@@ -206,5 +213,4 @@ E-mail your feedback at ivminkin@gmail.com.
 
 Datasets used of analyses in the paper
 ======================================
-1) Simulated bacterial genomes:
-2) Mice gene alignment:
+See: https://github.com/medvedevgroup/SibeliaZ/blob/master/DATA.txt

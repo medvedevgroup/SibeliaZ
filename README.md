@@ -21,8 +21,8 @@ SibeliaZ works best for the inputs consisting of multiple similar genomes,
 like different strains of the same species. The tool is designed for the
 datasets with the distance from a leaf to the most recent common ancestor
 not exceeding 0.085 substitutions per site, or 9 PAM units. It can be 
-used for more divergent datasets, but it will have worse recall of divergent
-blocks.
+used for more divergent datasets, but it will have worse recall of the
+divergent blocks.
 
 Difference between Sibelia and SibeliaZ
 =======================================
@@ -46,25 +46,25 @@ To compile the code, you need the following (Linux only):
 
 Once you installed the things above, do the following:
 
-* Clone the repository https://github.com/medvedevgroup/SibeliaZ by
+Clone the repository https://github.com/medvedevgroup/SibeliaZ by
 running:
 
 	git clone https://github.com/medvedevgroup/SibeliaZ 
 
-* Go to the root directory of the project and create the "build" folder by
+Go to the root directory of the project and create the "build" folder by
 executing
 
 	mkdir build
 
-* Initialize dependencies by executing
+Initialize dependencies by executing
 
 	git submodule update --init --recursive
 
-* Go to the "build" directory
+Go to the "build" directory
 	
 	cd build 
 
-* Compile and install the project by running
+Compile and install the project by running
 	
 	cmake .. -DCMAKE_INSTALL_PREFIX=<path to install the binaries>
 	make install
@@ -81,8 +81,8 @@ is to enter the following command:
 
 which will run the pipeline using at most -t threads and targeting to use -f GBs of 
 memory. Sibeliaz may actually use more memory (see detailed description below).
-For small datasets, it at least should be several times of the input file size,
-for large genomes it is best to use all memory available. 
+For small datasets, the target set by -f should  at least be several times of the
+input file size, for large genomes it is best to use all memory available. 
 
 By default, the output will be written in the directory "sibeliaz_out" in the current
 working directory. It will contain a GFF file "blocks_coords.gff" containing
@@ -91,7 +91,16 @@ It is possible to skip the alignment (use the -n switch) step and produce only
 coordinates of the blocks if the alignment is not needed for downstream analysis.
 It is also possible to change the output directory.
 
-SibeliaZ has other parameters affecting the running time, sensitivity and the
+Note: the global alignment step is memory-hungry, and it could be impossible
+to align certain blocks, especially if they have a lot of copies and/or long
+due to the aligner running out of memory, even on machines with large RAM.
+The output directory will have a subdirectory "blocks" that will contain FASTA
+files with blocks that were impossible to align.
+
+The subdirectory "examples" contains an example of running SibeliaZ and the output
+it produces.
+
+SibeliaZ has several  parameters affecting the running time, sensitivity and the
 output, which are described below.
 
 Output description
@@ -104,9 +113,9 @@ The file name is "blocks_coords.gff"
 2) A MAF file with the whole-genome alignment of the input. The file name
 is "alignment.maf"
 3) A directory with sequences of blocks in FASTA format that were impossible
-to align. Each file correspond to a block and contains its copies.
-FASTA headers contain the coordinates of all copies of the block in the same
-format as MAF records, except that fields are separated by a semicolon.
+to align. Each file correspond to a block and contains its copies. FASTA headers
+contain the coordinates of all copies of the block in the same format as MAF
+records, except that fields are separated by a semicolon.
 
 Parameters affecting accuracy
 =============================
@@ -131,8 +140,10 @@ to k-mers with frequence more than a threshold, which is controlled by the optio
 
 	-a <integer>
 
-The default value is 150. Increasing this value may significantly slow down the
-alignment.
+We recommend to set it to the twice of the maximum number of copies a homologous
+block in the input genomes has. For example, if the largest gene family of the input
+genomes has N members, set -a to at least N * 2. However, increasing this value may
+significantly slow down the computation. The default value is 150.
 
 Bubble size threshold
 ---------------------
@@ -146,9 +157,7 @@ with paths longer than the threshold -b, which can be set by:
 	-b <integer>
 
 The default value of -b is 200. Increasing value may increase recall of divergent
-sequences, but if -b is too high, it will decrease accuracy as well. The value
-of -b aslo should not exceed the value of -m due to the properties of our 
-algorithm.
+sequences, but if -b is too high, it will decrease accuracy as well.
 
 Locally-collinear block size
 ----------------------------
@@ -156,10 +165,8 @@ SibelaZ only output blocks longer than a specified threshold, which is set by
 
 	-m <integer>
 
-The default value is 250. This value can be increased to filter out short
-homologous blocks if it is necessary for the downstream analysis. The value
-of -m should be larger than -b due to algorithmic reasons.
-
+The default value is 50. Warning: increasing this parameter may significantly
+slow down the computation.
 
 Technical parameters
 ====================
@@ -188,14 +195,13 @@ Memory allocation
 Some prgorams in the pipeline require an amount of memory specified beforehand.
 For example, the graph constructor TwoPaCo uses it for Bloom filter, and the
 global aligner requires a memory limit to be set to work correctly. This can
-be set usin the option:
+be set using the option:
 
 	-f <memory amount in GB>
 
 Roughly speaking the memory should be at least 2-3 times of the size of the 
 input genomes, and for large dataset it is adviced to allocate as much as
 possible.
-
 
 Output directory
 ----------------
@@ -209,7 +215,9 @@ A note about the repeat masking
 ==============================
 SibeliaZ and TwoPaCo currently do not recognize soft-masked characters (i.e. using
 lowercase characters), so please convert soft-masked repeats to hard-maksed ones
-(with Ns) if you would like to mask the repeats. 
+(with Ns) if you would like to mask the repeats explicitly. However, it is not
+necessary as SibeliaZ uses the abundance parameter -a to filter out high-copy
+repeats.
 
 Citation
 ========

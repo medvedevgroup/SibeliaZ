@@ -47,7 +47,7 @@ min() {
 
 align()
 {
-        output="$(spoa $1 -l 1 -r 1 | tail -n +2)"
+        output="$($3/spoa $1 -l 1 -r 1 | tail -n +2)"
         rcode="${PIPESTATUS[0]}"
         if [[ -z "${output// }" ]]
         then
@@ -77,16 +77,20 @@ lcb_threads=$( min $threads 4 )
 dbg_file=$outdir/de_bruijn_graph.dbg
 
 mkdir -p $outdir
-/usr/bin/time -f "TwoPaCo %e elapsed %M memory" $DIR/twopaco --tmpdir $outdir -t $twopaco_threads -k $k --filtermemory $f -o $dbg_file $infile
-/usr/bin/time -f "SibeliaZ-LCB %e elapsed %M memory" $DIR/sibeliaz-lcb --graph $dbg_file --fasta $infile -k $k -b $b -o $outdir -m $m -t $lcb_threads --abundance $a
+echo "Constructing the graph..."
+$DIR/twopaco --tmpdir $outdir -t $twopaco_threads -k $k --filtermemory $f -o $dbg_file $infile
+$DIR/sibeliaz-lcb --graph $dbg_file --fasta $infile -k $k -b $b -o $outdir -m $m -t $lcb_threads --abundance $a
+
+rm $dbg_file
 
 if [ "$align" = "True" ]
 then
-	ulimit -v $(($f * 1048576))
+	echo "Performing global alignment.."
+#	ulimit -v $(($f * 1048576))
 	outfile=$outdir/alignment.maf
 	echo "##maf version=1" > "$outfile"
-	find $outdir/blocks -name "*.fa" -printf "$PWD/%p\n" | xargs -I @ -P "$threads" bash -c "align @ '$outfile'"
-	find $outdir/blocks -name "*.fa" -printf "$PWD/%p\n" | xargs -I @ -P 1 bash -c "align @ '$outfile'"
+	find $outdir/blocks -name "*.fa" -printf "$PWD/%p\n" | xargs -I @ -P "$threads" bash -c "align @ '$outfile' '$DIR'"
+	find $outdir/blocks -name "*.fa" -printf "$PWD/%p\n" | xargs -I @ -P 1 bash -c "align @ '$outfile' '$DIR'"
 fi
 
 

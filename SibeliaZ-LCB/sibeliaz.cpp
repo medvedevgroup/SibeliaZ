@@ -115,11 +115,6 @@ int main(int argc, char * argv[])
 
 		cmd.parse(argc, argv);
 
-		if (minBlockSize.getValue() < maxBranchSize.getValue())
-		{
-//			throw TCLAP::ArgException("The value of --branchsize (-b) should less than the value of --blocksize (-m)");
-		}
-
 		std::cout << "Loading the graph..." << std::endl;
 		Sibelia::JunctionStorage storage(inFileName.getValue(),
 			genomesFileName.getValue(),

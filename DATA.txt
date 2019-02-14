@@ -1,2 +1,2 @@
-Simulated bacterial dataset: http://www.bx.psu.edu/medvedev_lab/bacteria_sim.tar.gz
-Mice alignments: http://www.bx.psu.edu/medvedev_lab/mice_alignments.tar.gz
+Simulated bacterial dataset: http://www.bx.psu.edu/medvedev_lab/sibeliaz/bacteria_sim.tar.gz
+Mice alignments: http://www.bx.psu.edu/medvedev_lab/sibeliaz/mice_alignment.tar.gz

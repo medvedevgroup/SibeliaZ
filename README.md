@@ -38,6 +38,7 @@ Compilation
 ===========
 To compile the code, you need the following (Linux only):
 
+* Git
 * CMake 
 * A GCC compiler supporting C++11
 * Intel TBB library properly installed on your system. In other words, G++
@@ -45,12 +46,28 @@ To compile the code, you need the following (Linux only):
 
 Once you installed the things above, do the following:
 
-* Clone the repository https://github.com/medvedevgroup/SibeliaZ
-* Go to the root directory of the project and create the "build" folder
-* Type git submodule update --init --recursive
+* Clone the repository https://github.com/medvedevgroup/SibeliaZ by
+running:
+
+	git clone https://github.com/medvedevgroup/SibeliaZ 
+
+* Go to the root directory of the project and create the "build" folder by
+executing
+
+	mkdir build
+
+* Initialize dependencies by executing
+
+	git submodule update --init --recursive
+
 * Go to the "build" directory
-* Run cmake .. -DCMAKE_INSTALL_PREFIX=<path to install the binaries>
-* Run make install
+	
+	cd build 
+
+* Compile and install the project by running
+	
+	cmake .. -DCMAKE_INSTALL_PREFIX=<path to install the binaries>
+	make install
 
 The make run will produce the executables of twopaco, sibeliaz-lcb, spoa and
 a wrapper script sibeliaz which implements the pipeline.
@@ -62,18 +79,17 @@ is to enter the following command:
 
 	sibeliaz -t <number of threads> -f <memory amount in GB> <input FASTA file>
 
-which will run the pipeline using at most -t threads and allocating -f GBs of 
-memory. The limit specified by -f is "soft", sibeliaz may actually use more
-memory (see detailed description below). For small datasets, it at least should
-be several times of the input file size, for large genomes it is best to use
-all memory available. 
+which will run the pipeline using at most -t threads and targeting to use -f GBs of 
+memory. Sibeliaz may actually use more memory (see detailed description below).
+For small datasets, it at least should be several times of the input file size,
+for large genomes it is best to use all memory available. 
 
-The output will be written in the directory "sibeliaz_out" in the current
+By default, the output will be written in the directory "sibeliaz_out" in the current
 working directory. It will contain a GFF file "blocks_coords.gff" containing
-coordinates of the found blocks, a directory "block" with FASTA file containing
-the sequences of the blocks, and file "alignment.maf" with the actual alignment.
+coordinates of the found blocks, and file "alignment.maf" with the actual alignment.
 It is possible to skip the alignment (use the -n switch) step and produce only
 coordinates of the blocks if the alignment is not needed for downstream analysis.
+It is also possible to change the output directory.
 
 SibeliaZ has other parameters affecting the running time, sensitivity and the
 output, which are described below.
@@ -87,10 +103,10 @@ have identical id fields correspond to different copies of the same block.
 The file name is "blocks_coords.gff"
 2) A MAF file with the whole-genome alignment of the input. The file name
 is "alignment.maf"
-3) A directory with sequences of blocks in FASTA format. Each file correspond
-to a block and contains its copies. FASTA headers contain the coordinates
-of all copies of the block in the same format as MAF records, except that
-fields are separated by a semicolon.
+3) A directory with sequences of blocks in FASTA format that were impossible
+to align. Each file correspond to a block and contains its copies.
+FASTA headers contain the coordinates of all copies of the block in the same
+format as MAF records, except that fields are separated by a semicolon.
 
 Parameters affecting accuracy
 =============================
@@ -191,7 +207,7 @@ The default is "sibeliaz_out" in the current working directory.
 
 A note about the repeat masking
 ==============================
-SibeliaZ TwoPaCo currently does not recognize soft-masked characters (i.e. using
+SibeliaZ and TwoPaCo currently do not recognize soft-masked characters (i.e. using
 lowercase characters), so please convert soft-masked repeats to hard-maksed ones
 (with Ns) if you would like to mask the repeats. 
 

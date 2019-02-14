@@ -47,7 +47,7 @@ min() {
 
 align()
 {
-        output="$(./spoa $1 -l 1 -r 1 | tail -n +2)"
+        output="$(spoa $1 -l 1 -r 1 | tail -n +2)"
         rcode="${PIPESTATUS[0]}"
         if [[ -z "${output// }" ]]
         then
@@ -64,10 +64,12 @@ align()
                         echo "a" >> "$2"
                         paste <(echo "$header") <(echo "$output") --delimiters ' ' >> "$2"
                 ) 200>> "$2"
+		rm $1
         fi
 }
 
 export -f align
+
 
 infile=$1
 twopaco_threads=$( min $threads 16 )
@@ -80,10 +82,11 @@ mkdir -p $outdir
 
 if [ "$align" = "True" ]
 then
-	ulimit -v 256000000
-	align_file=$outfile/alignment.maf
-	echo "##maf version=1" > "$alignment_file"
-	find $outfile/blocks -name "*.fa" -printf "$PWD/%p\n" | xargs -I @ -P "$2" bash -c "align @ '$outfile'"
+	ulimit -v $(($f * 1048576))
+	outfile=$outdir/alignment.maf
+	echo "##maf version=1" > "$outfile"
+	find $outdir/blocks -name "*.fa" -printf "$PWD/%p\n" | xargs -I @ -P "$threads" bash -c "align @ '$outfile'"
+	find $outdir/blocks -name "*.fa" -printf "$PWD/%p\n" | xargs -I @ -P 1 bash -c "align @ '$outfile'"
 fi
 
 

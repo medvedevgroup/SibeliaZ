@@ -11,31 +11,17 @@ Authors
 
 Introduction
 ============
-SibeliaZ is a whole-genome alignment pipeline based on analysis of the 
-compacted de Bruijn graph. SibeliaZ first constructs the graph, finds
-homologous blocks free of rearrangements and then aligns them globally.
-The graph is constructed by TwoPaCo and the the blocks are aligned by spoa.
-The blocks coordinates are output in GFF format and the alignment is in MAF.
+SibeliaZ is a whole-genome alignment and locally-coliinear blocks construction
+pipeline. The blocks coordinates are output in GFF format and the alignment is
+in MAF.
 
-SibeliaZ works best for the inputs consisting of multiple similar genomes,
-like different strains of the same species. The tool is designed for the
-datasets with the distance from a leaf to the most recent common ancestor
-not exceeding 0.085 substitutions per site, or 9 PAM units. It can be 
-used for more divergent datasets, but it will have worse recall of the
-divergent blocks.
+SibeliaZ was designed for the inputs consisting of multiple similar genomes,
+like different strains of the same species. The tool works best for the datasets
+with the distance from a leaf to the most recent common ancestor not exceeding
+0.085 substitutions per site, or 9 PAM units.
 
-Difference between Sibelia and SibeliaZ
-=======================================
-SibeliaZ is the future developement of synteny-finder Sibelia. The key difference
-is that old Sibelia was designed to produce long synteny blocks, while SibeliaZ 
-produces shorter locally-collinear blocks or LCBs. Output of SibeliaZ is very
-similar to Sibelia's when it is run in a single stage. Locally collinear blocks can
-be globally aligned to produce a whole genome alignment, or they can be chained to
-get longer synteny blocks. At the same time, SibeliaZ is much faster and can
-handle longer genomes.
-
-Compilation
-===========
+Compilation and installation
+============================
 To compile the code, you need the following (Linux only):
 
 * Git
@@ -69,39 +55,22 @@ Compile and install the project by running
 	cmake .. -DCMAKE_INSTALL_PREFIX=<path to install the binaries>
 	make install
 
-The make run will produce the executables of twopaco, sibeliaz-lcb, spoa and
-a wrapper script sibeliaz which implements the pipeline.
+The make run will produce and installs the executables of twopaco, sibeliaz-lcb,
+spoa and a wrapper script sibeliaz which implements the pipeline.
 
 SibeliaZ usage
 ===============
 SibeliaZ takes a FASTA file as an input. The simplest way to run SibeliaZ
 is to enter the following command:
 
-	sibeliaz -t <number of threads> -f <memory amount in GB> <input FASTA file>
+	sibeliaz <input FASTA file>
 
-which will run the pipeline using at most -t threads and targeting to use -f GBs of 
-memory. Sibeliaz may actually use more memory (see detailed description below).
-For small datasets, the target set by -f should  at least be several times of the
-input file size, for large genomes it is best to use all memory available. 
-
-By default, the output will be written in the directory "sibeliaz_out" in the current
-working directory. It will contain a GFF file "blocks_coords.gff" containing
-coordinates of the found blocks, and file "alignment.maf" with the actual alignment.
-It is possible to skip the alignment (use the -n switch) step and produce only
-coordinates of the blocks if the alignment is not needed for downstream analysis.
-It is also possible to change the output directory.
-
-Note: the global alignment step is memory-hungry, and it could be impossible
-to align certain blocks, especially if they have a lot of copies and/or long
-due to the aligner running out of memory, even on machines with large RAM.
-The output directory will have a subdirectory "blocks" that will contain FASTA
-files with blocks that were impossible to align.
-
-The subdirectory "examples" contains an example of running SibeliaZ and the output
-it produces.
-
-SibeliaZ has several  parameters affecting the running time, sensitivity and the
-output, which are described below.
+By default, the output will be written in the directory "sibeliaz_out" in the
+current working directory. It will contain a GFF file "blocks_coords.gff"
+containing coordinates of the found blocks, and file "alignment.maf" with the
+actual alignment. The subdirectory "examples" contains an example of running
+SibeliaZ and the output it produces. SibeliaZ has several parameters that
+affect the accuracy and output, which are described below.
 
 Output description
 ==================
@@ -111,11 +80,21 @@ The output directory will contain:
 have identical id fields correspond to different copies of the same block.
 The file name is "blocks_coords.gff"
 2) A MAF file with the whole-genome alignment of the input. The file name
-is "alignment.maf"
-3) A directory with sequences of blocks in FASTA format that were impossible
-to align. Each file correspond to a block and contains its copies. FASTA headers
-contain the coordinates of all copies of the block in the same format as MAF
-records, except that fields are separated by a semicolon.
+is "alignment.maf".
+
+Note: the actual alignment is produced by globally aliging the locally-colliner
+blocks, which is memory-hungry. It could be impossible to align certain blocks,
+especially if they have a lot of copies and/or long due to the aligner running
+out of memory, even on machines with large RAM. The output directory will have
+a subdirectory "blocks" that will contain FASTA files with blocks that were
+impossible to align. Each file correspond to a block and contains its copies.
+FASTA headers contain the coordinates of all copies of the block in the same
+format as MAF records, except that fields are separated by a semicolon.
+
+It is possible to skip the alignment (use the -n switch) step and produce only
+coordinates of the blocks if the alignment is not needed for downstream analysis.
+In this case SibeliaZ will not produce the "alignment.maf" file and "blocks"
+subdirectory.
 
 Parameters affecting accuracy
 =============================
@@ -135,8 +114,8 @@ genomes k=25. The default is 25.
 Vertices frequency threshold
 ----------------------------
 Mammalian genomes contain many repeated elements that make the graph large and
-convoluted. To deal with this issue, SibeliaZ removes all vertices corresponding
-to k-mers with frequence more than a threshold, which is controlled by the option:
+convoluted. To deal with this issue, SibeliaZ removes all k-mers with frequence
+more than a threshold, which is controlled by the option:
 
 	-a <integer>
 
@@ -184,9 +163,9 @@ The maximum number of thread for SibeliaZ to use. This parameter is set by
 
 	-t <integer>
 
-For the best performance allocate as many threads as possible (but no more 
-than the number of cores in the machine). Note that different stages of 
-the pipeline have different scalabilities. TwoPaCo will not use more than
+By default SibeliaZ tries to use as much threads as possible. You can limit
+this number by using the above switch. Note that different stages of the
+pipeline have different scalabilities. TwoPaCo will not use more than
 16 threads, graph analyzer sibeliaz-lcb will not use more than 4, while
 the global aligner will use as much as possible.
 
@@ -199,9 +178,8 @@ be set using the option:
 
 	-f <memory amount in GB>
 
-Roughly speaking the memory should be at least 2-3 times of the size of the 
-input genomes, and for large dataset it is adviced to allocate as much as
-possible.
+By default it is roughly 2 times of the size of the input genomes. If SibeliaZ
+runs out of memory, try increasing this amount (see the "Troubleshooting" section).
 
 Output directory
 ----------------
@@ -218,6 +196,24 @@ lowercase characters), so please convert soft-masked repeats to hard-maksed ones
 (with Ns) if you would like to mask the repeats explicitly. However, it is not
 necessary as SibeliaZ uses the abundance parameter -a to filter out high-copy
 repeats.
+
+Difference between Sibelia and SibeliaZ
+=======================================
+SibeliaZ is the future developement of synteny-finder Sibelia. The key difference
+is that old Sibelia was designed to produce long synteny blocks, while SibeliaZ
+produces shorter locally-collinear blocks or LCBs. Output of SibeliaZ is very
+similar to Sibelia's when it is run in a single stage. At the same time, SibeliaZ
+is much faster and can handle longer genomes.
+
+Troubleshooting
+===============
+It could be that SibeliaZ runs out of memory on large inputs. Possible reasons
+include:
+
+* TwoPaCo having the Bloom filter too small. To increase its size, use the -f switch
+
+* SibeliaZ-LCB running out of memory. You can try to reduce the abundance parameter
+-a to prune the internal data structure and reduce its size.
 
 Citation
 ========

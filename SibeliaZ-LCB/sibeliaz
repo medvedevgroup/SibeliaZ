@@ -5,15 +5,16 @@ k=25
 b=200
 m=50
 a=150
-f=5
-threads=1
+f=
+threads=`nproc`
 infile=
 outdir="./sibeliaz_out"
 align="True"
+noseq=""
 
 usage () { echo "Usage: [-k <k>] [-b <integer>] [-m <integer>] [-a <integer>] [-t <integer>] [-f <float>] [-o <output_directory>] <input file> " ;}
 
-options='t:k:b:a:m:f:gh'
+options='t:k:b:a:m:f:nh'
 while getopts $options option
 do
     case $option in
@@ -24,8 +25,8 @@ do
 	t  ) threads=$OPTARG;;
 	o  ) outdir=$OPTARG;;
 	f  ) f=$OPTARG;;
-	h  ) usage; exit;;
 	n  ) align="False";;
+	h  ) usage; exit;;
 	\? ) echo "Unknown option: -$OPTARG" >&2; exit 1;;
 	:  ) echo "Missing option argument for -$OPTARG" >&2; exit 1;;
 	*  ) echo "Unimplemented option: -$OPTARG" >&2; exit 1;;
@@ -35,10 +36,26 @@ done
 
 shift $((OPTIND-1))
 
+if [ "$align" = "False" ]
+then
+	noseq="--noseq"
+fi
+
 if [ -z "$1" ]
 then
 	echo "You must provide the input file name" >&2
 	exit 1
+fi
+
+if [ -z "$f" ]
+then
+
+	f=`stat --printf="%s" $1`
+	f=$(($f * 2 / 1000000000))
+	if [ $f -eq 0 ]
+	then
+        	f=2
+	fi
 fi
 
 min() {
@@ -79,7 +96,7 @@ dbg_file=$outdir/de_bruijn_graph.dbg
 mkdir -p $outdir
 echo "Constructing the graph..."
 $DIR/twopaco --tmpdir $outdir -t $twopaco_threads -k $k --filtermemory $f -o $dbg_file $infile
-$DIR/sibeliaz-lcb --graph $dbg_file --fasta $infile -k $k -b $b -o $outdir -m $m -t $lcb_threads --abundance $a
+$DIR/sibeliaz-lcb --graph $dbg_file --fasta $infile -k $k -b $b -o $outdir -m $m -t $lcb_threads --abundance $a $noseq
 
 rm $dbg_file
 

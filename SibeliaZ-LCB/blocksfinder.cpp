@@ -322,7 +322,7 @@ namespace Sibelia
 			const std::string record[] =
 			{
 				storage_.GetChrDescription(it->GetChrId()), 
-				"L-Sibelia",
+				"SibeliaZ",
 				"LCB_copy",
 				IntToStr(start),
 				IntToStr(end),

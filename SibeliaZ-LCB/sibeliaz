@@ -12,9 +12,9 @@ outdir="./sibeliaz_out"
 align="True"
 noseq=""
 
-usage () { echo "Usage: [-k <k>] [-b <integer>] [-m <integer>] [-a <integer>] [-t <integer>] [-f <float>] [-o <output_directory>] <input file> " ;}
+usage () { echo "Usage: [-k <odd integer>] [-b <integer>] [-m <integer>] [-a <integer>] [-t <integer>] [-f <integer>] [-o <output_directory>] [-n] <input file> " ;}
 
-options='t:k:b:a:m:f:nh'
+options='t:k:b:a:m:o:f:nh'
 while getopts $options option
 do
     case $option in
@@ -103,7 +103,6 @@ rm $dbg_file
 if [ "$align" = "True" ]
 then
 	echo "Performing global alignment.."
-#	ulimit -v $(($f * 1048576))
 	outfile=$outdir/alignment.maf
 	echo "##maf version=1" > "$outfile"
 	find $outdir/blocks -name "*.fa" -printf "$PWD/%p\n" | xargs -I @ -P "$threads" bash -c "align @ '$outfile' '$DIR'"

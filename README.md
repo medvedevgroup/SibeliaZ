@@ -63,7 +63,7 @@ SibeliaZ usage
 SibeliaZ takes a FASTA file as an input. The simplest way to run SibeliaZ
 is to enter the following command:
 
-	sibeliaz <input FASTA file>
+	sibeliaz -f <memory amount in GB>  <input FASTA file>
 
 By default, the output will be written in the directory "sibeliaz_out" in the
 current working directory. It will contain a GFF file "blocks_coords.gff"
@@ -71,6 +71,11 @@ containing coordinates of the found blocks, and file "alignment.maf" with the
 actual alignment. The subdirectory "examples" contains an example of running
 SibeliaZ and the output it produces. SibeliaZ has several parameters that
 affect the accuracy and output, which are described below.
+
+The memory amount specified by switch -f is used for memory preallocation for
+the initial step of the alignment pipeline as well as final global alignment.
+For small datasets, it at least should be several times of the input file size,
+for large genomes it is best to use as much memory as possible.
 
 Output description
 ==================
@@ -178,8 +183,8 @@ be set using the option:
 
 	-f <memory amount in GB>
 
-By default it is roughly 2 times of the size of the input genomes. If SibeliaZ
-runs out of memory, try increasing this amount (see the "Troubleshooting" section).
+If SibeliaZ runs out of memory, try increasing this amount, see "Troubleshooting"
+section for more details.
 
 Output directory
 ----------------

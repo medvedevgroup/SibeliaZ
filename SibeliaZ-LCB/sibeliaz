@@ -49,13 +49,8 @@ fi
 
 if [ -z "$f" ]
 then
-
-	f=`stat --printf="%s" $1`
-	f=$(($f * 2 / 1000000000))
-	if [ $f -eq 0 ]
-	then
-        	f=2
-	fi
+	echo "You must set the memory pre-allocaiton size" >&2
+	exit 1
 fi
 
 min() {
@@ -64,7 +59,7 @@ min() {
 
 align()
 {
-        output="$($3/spoa $1 -l 1 -r 1 | tail -n +2)"
+        output="$($3/spoa $1 -l 1 -r 1 2> /dev/null | tail -n +2)"
         rcode="${PIPESTATUS[0]}"
         if [[ -z "${output// }" ]]
         then
@@ -105,6 +100,8 @@ then
 	echo "Performing global alignment.."
 	outfile=$outdir/alignment.maf
 	echo "##maf version=1" > "$outfile"
+	ulimit -v $(($f * 1000000))
+	ulimit -m $(($f * 1000000))
 	find $outdir/blocks -name "*.fa" -printf "$PWD/%p\n" | xargs -I @ -P "$threads" bash -c "align @ '$outfile' '$DIR'"
 	find $outdir/blocks -name "*.fa" -printf "$PWD/%p\n" | xargs -I @ -P 1 bash -c "align @ '$outfile' '$DIR'"
 fi

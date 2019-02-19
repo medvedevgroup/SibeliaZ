@@ -25,7 +25,7 @@ namespace Sibelia
 	public:
 		Edge() : startVertex_(INT64_MAX), endVertex_(INT64_MAX) {}
 
-		Edge(int64_t startVertex, int64_t endVertex, char ch, char revCh, int32_t length, int32_t capacity) :
+		Edge(int64_t startVertex, int64_t endVertex, char ch, char revCh, int64_t length, int64_t capacity) :
 			startVertex_(startVertex), endVertex_(endVertex), ch_(ch), revCh_(revCh), length_(length), capacity_(capacity)
 		{
 
@@ -108,11 +108,11 @@ namespace Sibelia
 
 	private:
 		int64_t startVertex_;
-		int64_t endVertex_;
+		int64_t endVertex_;		
+		int64_t length_;
+		int64_t capacity_;
 		char ch_;
-		char revCh_;		
-		int32_t length_;
-		int32_t capacity_;
+		char revCh_;
 	};
 
 	class JunctionStorage

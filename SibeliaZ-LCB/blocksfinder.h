@@ -199,7 +199,7 @@ namespace Sibelia
 
 			void operator()(tbb::blocked_range<size_t> & range) const
 			{
-				std::vector<uint32_t> data;
+				std::vector<size_t> data;
 				std::vector<uint32_t> count(finder.storage_.GetVerticesNumber() * 2 + 1, 0);
 				std::pair<int64_t, std::vector<Path::Instance> > goodInstance;
 				Path finalizer(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_);
@@ -369,7 +369,7 @@ namespace Sibelia
 			count_ = 0;
 			std::cout << '[' << std::flush;
 			progressPortion_ = shuffle.size() / progressCount_;
-			tbb::task_scheduler_init init(threads);
+			tbb::task_scheduler_init init(static_cast<int>(threads));
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle));
 			std::cout << ']' << std::endl;
 			//std::cout << "Time: " << time(0) - mark << std::endl;
@@ -434,7 +434,7 @@ namespace Sibelia
 						j--;
 						int64_t start = storage_.GetIterator(chr, i, bid > 0).GetPosition() + (bid > 0 ? 0 : -k_);
 						int64_t end = storage_.GetIterator(chr, j, bid > 0).GetPosition() + (bid > 0 ? k_ : 0);
-						instance.push_back(BlockInstance(bid, chr, start, end));
+						instance.push_back(BlockInstance(int(bid), chr, size_t(start), size_t(end)));
 						i = j + 1;
 					}
 					else
@@ -577,8 +577,8 @@ namespace Sibelia
 							it.MarkUsed();							
 							int64_t idx = it.GetIndex();
 							int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());
-							blockId_[it.GetChrId()][it.GetIndex()].block = it.IsPositiveStrand() ? +currentBlock : -currentBlock;
-							blockId_[it.GetChrId()][it.GetIndex()].instance = instanceCount;
+							blockId_[it.GetChrId()][it.GetIndex()].block = int32_t(it.IsPositiveStrand() ? +currentBlock : -currentBlock);
+							blockId_[it.GetChrId()][it.GetIndex()].instance = int32_t(instanceCount);
 
 						} while (it++ != jt->Back());
 
@@ -620,7 +620,7 @@ namespace Sibelia
 			}
 		};
 
-		std::pair<int64_t, NextVertex> MostPopularVertex(const Path & currentPath, bool forward, std::vector<uint32_t> & count, std::vector<uint32_t> & data)
+		std::pair<int64_t, NextVertex> MostPopularVertex(const Path & currentPath, bool forward, std::vector<uint32_t> & count, std::vector<size_t> & data)
 		{
 			NextVertex ret;
 			int64_t bestVid = 0;
@@ -636,7 +636,7 @@ namespace Sibelia
 					auto it = forward ? origin.Next() : origin.Prev();
 					for (size_t d = 1; it.Valid() && (d < size_t(lookingDepth_)  || abs(it.GetPosition() - origin.GetPosition()) <= maxBranchSize_); d++)
 					{
-						int32_t vid = it.GetVertexId();
+						int64_t vid = it.GetVertexId();
 						if (!currentPath.IsInPath(vid) && !it.IsUsed())
 						{
 							auto adjVid = vid + storage_.GetVerticesNumber();
@@ -684,7 +684,7 @@ namespace Sibelia
 
 		bool ExtendPathForward(Path & currentPath,
 			std::vector<uint32_t> & count,
-			std::vector<uint32_t> & data,
+			std::vector<size_t> & data,
 			size_t & bestRightSize,
 			int64_t & bestScore,
 			int64_t & nowScore)
@@ -734,7 +734,7 @@ namespace Sibelia
 
 		bool ExtendPathBackward(Path & currentPath,
 			std::vector<uint32_t> & count,
-			std::vector<uint32_t> & data,
+			std::vector<size_t> & data,
 			size_t & bestLeftSize,
 			int64_t & bestScore,
 			int64_t & nowScore)

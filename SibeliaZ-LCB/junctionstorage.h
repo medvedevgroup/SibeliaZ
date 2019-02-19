@@ -122,13 +122,13 @@ namespace Sibelia
 		struct Vertex
 		{
 			int32_t id;
-			int32_t chr;
-			int32_t idx;
-			int32_t pos;
+			uint32_t chr;
+			uint32_t idx;
+			uint32_t pos;
 			char ch;
 			char revCh;
 
-			Vertex(const TwoPaCo::JunctionPosition & junction) : id(junction.GetId()), chr(junction.GetChr()), pos(junction.GetPos())
+			Vertex(const TwoPaCo::JunctionPosition & junction) : id(static_cast<int32_t>(junction.GetId())), chr(junction.GetChr()), pos(junction.GetPos())
 			{
 
 			}
@@ -137,7 +137,7 @@ namespace Sibelia
 		struct Position
 		{
 			int32_t id;
-			int32_t pos;
+			uint32_t pos;
 			std::atomic<bool> used;
 
 			Position() : used(false)
@@ -147,7 +147,7 @@ namespace Sibelia
 
 			void Assign(const TwoPaCo::JunctionPosition & junction)
 			{
-				id = junction.GetId();
+				id = static_cast<int32_t>(junction.GetId());
 				pos = junction.GetPos();
 			}
 		};
@@ -791,7 +791,7 @@ namespace Sibelia
 			}
 
 			{
-				size_t idx = 0;
+				uint32_t idx = 0;
 				size_t chr = 0;
 				Buffer buffer(loopThreshold);
 				TwoPaCo::JunctionPositionReader reader(inFileName);

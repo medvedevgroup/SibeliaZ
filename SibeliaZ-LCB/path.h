@@ -548,7 +548,7 @@ namespace Sibelia
 			bool failFlag = false;
 			int64_t startVertexDistance = rightBodyFlank_;
 			int64_t endVertexDistance = startVertexDistance + e.GetLength();
-			distanceKeeper_.Set(e.GetEndVertex(), endVertexDistance);
+			distanceKeeper_.Set(e.GetEndVertex(), int(endVertexDistance));
 			PointPushBackWorker(this, vertex, endVertexDistance, e, failFlag)();
 			rightBody_.push_back(Point(e, startVertexDistance));
 			rightBodyFlank_ = rightBody_.back().EndDistance();
@@ -567,7 +567,7 @@ namespace Sibelia
 			bool failFlag = false;
 			int64_t endVertexDistance = leftBodyFlank_;
 			int64_t startVertexDistance = endVertexDistance - e.GetLength();
-			distanceKeeper_.Set(e.GetStartVertex(), startVertexDistance);
+			distanceKeeper_.Set(e.GetStartVertex(), int(startVertexDistance));
 			PointPushFrontWorker(this, vertex, startVertexDistance, e, failFlag)();
 			leftBody_.push_back(Point(e, startVertexDistance));
 			leftBodyFlank_ = leftBody_.back().StartDistance();

@@ -777,7 +777,7 @@ namespace Sibelia
 				for (TwoPaCo::JunctionPosition junction; reader.NextJunctionPosition(junction);)
 				{
 					size_t absId = abs(junction.GetId());
-					if (abundance[absId] < abundanceThreshold && buffer.AddAndCheck(junction))
+					if (abundance[absId] < size_t(abundanceThreshold) && buffer.AddAndCheck(junction))
 					{
 						++chrSize_[junction.GetChr()];
 					}
@@ -804,7 +804,7 @@ namespace Sibelia
 					}
 
 					size_t absId = abs(junction.GetId());
-					if (abundance[absId] < abundanceThreshold && buffer.AddAndCheck(junction))
+					if (abundance[absId] < size_t(abundanceThreshold) && buffer.AddAndCheck(junction))
 					{
 						position_[junction.GetChr()][idx].Assign(junction);
 						vertex_[absId].push_back(Vertex(junction));
@@ -847,7 +847,7 @@ namespace Sibelia
 			for (size_t i = 0; i < mutex_.size(); i++)
 			{
 				mutex_[i].reset(new FlaggedMutex[int64_t(1) << mutexBits_]);
-				for (; (int64_t(1) << chrSizeBits_[i]) <= chrSize_[i]; chrSizeBits_[i]++);
+				for (; size_t(int64_t(1) << chrSizeBits_[i]) <= chrSize_[i]; chrSizeBits_[i]++);
 				chrSizeBits_[i] = max(int64_t(0), chrSizeBits_[i] - mutexBits_);
 			}
 		}

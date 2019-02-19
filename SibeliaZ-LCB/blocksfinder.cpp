@@ -147,7 +147,7 @@ namespace Sibelia
 	double BlocksFinder::CalculateCoverage(const BlockList & block) const
 	{
 		size_t totalSize = 0;
-		for (size_t i = 0; i < storage_.GetChrNumber(); i++)
+		for (int64_t i = 0; i < storage_.GetChrNumber(); i++)
 		{
 			totalSize += storage_.GetChrSequence(i).size();
 		}

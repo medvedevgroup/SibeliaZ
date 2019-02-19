@@ -344,7 +344,7 @@ namespace Sibelia
 			maxBranchSize_ = maxBranchSize;
 			maxFlankingSize_ = maxFlankingSize;
 			blockId_.resize(storage_.GetChrNumber());
-			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
+			for (int64_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
 				blockId_[i].resize(storage_.GetChrVerticesCount(i));
 			}
@@ -635,7 +635,7 @@ namespace Sibelia
 					int64_t weight = abs(inst->Front().GetPosition() - inst->Back().GetPosition()) + 1;
 					auto origin = forward ? inst->Back() : inst->Front();
 					auto it = forward ? origin.Next() : origin.Prev();
-					for (size_t d = 1; it.Valid() && (d < lookingDepth_  || abs(it.GetPosition() - origin.GetPosition()) <= maxBranchSize_); d++)
+					for (size_t d = 1; it.Valid() && (d < size_t(lookingDepth_)  || abs(it.GetPosition() - origin.GetPosition()) <= maxBranchSize_); d++)
 					{
 						int32_t vid = it.GetVertexId();
 						if (!currentPath.IsInPath(vid) && !it.IsUsed())

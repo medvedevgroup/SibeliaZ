@@ -365,7 +365,6 @@ namespace Sibelia
 			using namespace std::placeholders;
 			std::random_shuffle(shuffle.begin(), shuffle.end());
 
-			srand(time(0));
 			time_t mark = time(0);
 			count_ = 0;
 			std::cout << '[' << std::flush;

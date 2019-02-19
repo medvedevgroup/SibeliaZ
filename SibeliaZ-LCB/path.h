@@ -72,9 +72,9 @@ namespace Sibelia
 		struct Instance
 		{
 		private:
-			int32_t compareIdx_;
-			int32_t frontDistance_;
-			int32_t backDistance_;
+			int64_t compareIdx_;
+			int64_t frontDistance_;
+			int64_t backDistance_;
 			JunctionStorage::JunctionSequentialIterator front_;
 			JunctionStorage::JunctionSequentialIterator back_;
 		public:
@@ -164,8 +164,8 @@ namespace Sibelia
 
 			bool Within(const JunctionStorage::JunctionIterator it) const
 			{
-				int64_t left = min(front_.GetIndex(), back_.GetIndex());
-				int64_t right = max(front_.GetIndex(), back_.GetIndex());
+				uint64_t left = min(front_.GetIndex(), back_.GetIndex());
+				uint64_t right = max(front_.GetIndex(), back_.GetIndex());
 				return it.GetIndex() >= left && it.GetIndex() <= right;
 			}
 
@@ -667,7 +667,7 @@ namespace Sibelia
 		int64_t maxFlankingSize_;
 		DistanceKeeper distanceKeeper_;
 		const JunctionStorage * storage_;
-		friend class BestPath;
+		friend struct BestPath;
 	};
 
 	struct BestPath

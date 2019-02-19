@@ -646,7 +646,7 @@ namespace Sibelia
 								data.push_back(adjVid);
 							}
 
-							count[adjVid] += weight;
+							count[adjVid] += static_cast<uint32_t>(weight);
 							auto diff = abs(it.GetAbsolutePosition() - origin.GetAbsolutePosition());
 							if (count[adjVid] > ret.count || (count[adjVid] == ret.count && diff < ret.diff))
 							{
@@ -741,7 +741,7 @@ namespace Sibelia
 			int64_t & nowScore)
 		{
 			bool success = false;
-			std::pair<int32_t, NextVertex> nextBackwardVid;
+			std::pair<int64_t, NextVertex> nextBackwardVid;
 			nextBackwardVid = MostPopularVertex(currentPath, false, count, data);
 			if (nextBackwardVid.first != 0)
 			{

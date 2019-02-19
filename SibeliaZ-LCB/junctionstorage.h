@@ -266,7 +266,7 @@ namespace Sibelia
 
 			bool Valid() const
 			{
-				return idx_ >= 0 && idx_ < JunctionStorage::this_->chrSize_[GetChrId()];
+				return idx_ >= 0 && size_t(idx_) < JunctionStorage::this_->chrSize_[GetChrId()];
 			}
 
 			bool IsUsed() const
@@ -620,7 +620,7 @@ namespace Sibelia
 
 		size_t MutexNumber() const
 		{
-			return 1 << mutexBits_;
+			return size_t(int64_t(1) << mutexBits_);
 		}
 
 		int64_t IngoingEdgesNumber(int64_t vertexId) const
@@ -843,10 +843,10 @@ namespace Sibelia
 
 			mutex_.resize(GetChrNumber());
 			chrSizeBits_.resize(GetChrNumber(), 1);
-			for (mutexBits_ = 3; (1 << mutexBits_) < threads * (1 << 7); mutexBits_++);
+			for (mutexBits_ = 3; (int64_t(1) << mutexBits_) < threads * (1 << 7); mutexBits_++);
 			for (size_t i = 0; i < mutex_.size(); i++)
 			{
-				mutex_[i].reset(new FlaggedMutex[1 << mutexBits_]);
+				mutex_[i].reset(new FlaggedMutex[int64_t(1) << mutexBits_]);
 				for (; (int64_t(1) << chrSizeBits_[i]) <= chrSize_[i]; chrSizeBits_[i]++);
 				chrSizeBits_[i] = max(int64_t(0), chrSizeBits_[i] - mutexBits_);
 			}

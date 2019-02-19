@@ -607,8 +607,8 @@ namespace Sibelia
 
 		struct NextVertex
 		{
-			int32_t diff;
-			int32_t count;
+			int64_t diff;
+			int64_t count;
 			JunctionStorage::JunctionSequentialIterator origin;
 			NextVertex() : count(0)
 			{
@@ -621,10 +621,10 @@ namespace Sibelia
 			}
 		};
 
-		std::pair<int32_t, NextVertex> MostPopularVertex(const Path & currentPath, bool forward, std::vector<uint32_t> & count, std::vector<uint32_t> & data)
+		std::pair<int64_t, NextVertex> MostPopularVertex(const Path & currentPath, bool forward, std::vector<uint32_t> & count, std::vector<uint32_t> & data)
 		{
 			NextVertex ret;
-			int32_t bestVid = 0;
+			int64_t bestVid = 0;
 			int64_t startVid = forward ? currentPath.RightVertex() : currentPath.LeftVertex();
 			const auto & instList = currentPath.GoodInstancesList().size() >= 2 ? currentPath.GoodInstancesList() : currentPath.AllInstances();
 			for (auto & inst : instList)
@@ -692,7 +692,7 @@ namespace Sibelia
 		{
 			bool success = false;
 			int64_t origin = currentPath.Origin();
-			std::pair<int32_t, NextVertex> nextForwardVid;
+			std::pair<int64_t, NextVertex> nextForwardVid;
 			nextForwardVid = MostPopularVertex(currentPath, true, count, data);
 			if (nextForwardVid.first != 0)
 			{

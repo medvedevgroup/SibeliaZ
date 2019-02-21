@@ -55,7 +55,7 @@ Go to the "build" directory
 
 Compile and install the project by running
 	
-	cmake .. -DCMAKE_INSTALL_PREFIX=<path to install the binaries>
+	cmake .. -DCMAKE_INSTALL_PREFIX=<path to install the binaries> -Dspoa_build_executable=ON
 	make install
 
 The make run will produce and installs the executables of twopaco, sibeliaz-lcb,

@@ -43,6 +43,7 @@ running:
 Go to the root directory of the project and create the "build" folder by
 executing
 
+	cd SibeliaZ
 	mkdir build
 
 Initialize dependencies by executing
@@ -62,7 +63,7 @@ The make run will produce and installs the executables of twopaco, sibeliaz-lcb,
 spoa and a wrapper script sibeliaz which implements the pipeline.
 
 SibeliaZ usage
-===============
+==============
 SibeliaZ takes a FASTA file as an input. The simplest way to run SibeliaZ
 is to enter the following command:
 

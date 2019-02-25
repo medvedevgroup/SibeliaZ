@@ -254,3 +254,4 @@ msvs/sibelia-pp/test/*
 msvs/sibelia-pp/tbb.dll
 msvs/sibelia-pp/tbb_debug.dll
 /msvs/sibelia-pp/sibelia-pp.vcxproj
+build/*

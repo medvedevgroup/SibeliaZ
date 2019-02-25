@@ -72,9 +72,9 @@ namespace Sibelia
 		struct Instance
 		{
 		private:
-			int32_t compareIdx_;
-			int32_t frontDistance_;
-			int32_t backDistance_;
+			int64_t compareIdx_;
+			int64_t frontDistance_;
+			int64_t backDistance_;
 			JunctionStorage::JunctionSequentialIterator front_;
 			JunctionStorage::JunctionSequentialIterator back_;
 		public:
@@ -164,8 +164,8 @@ namespace Sibelia
 
 			bool Within(const JunctionStorage::JunctionIterator it) const
 			{
-				int64_t left = min(front_.GetIndex(), back_.GetIndex());
-				int64_t right = max(front_.GetIndex(), back_.GetIndex());
+				uint64_t left = min(front_.GetIndex(), back_.GetIndex());
+				uint64_t right = max(front_.GetIndex(), back_.GetIndex());
 				return it.GetIndex() >= left && it.GetIndex() <= right;
 			}
 
@@ -548,7 +548,7 @@ namespace Sibelia
 			bool failFlag = false;
 			int64_t startVertexDistance = rightBodyFlank_;
 			int64_t endVertexDistance = startVertexDistance + e.GetLength();
-			distanceKeeper_.Set(e.GetEndVertex(), endVertexDistance);
+			distanceKeeper_.Set(e.GetEndVertex(), int(endVertexDistance));
 			PointPushBackWorker(this, vertex, endVertexDistance, e, failFlag)();
 			rightBody_.push_back(Point(e, startVertexDistance));
 			rightBodyFlank_ = rightBody_.back().EndDistance();
@@ -567,7 +567,7 @@ namespace Sibelia
 			bool failFlag = false;
 			int64_t endVertexDistance = leftBodyFlank_;
 			int64_t startVertexDistance = endVertexDistance - e.GetLength();
-			distanceKeeper_.Set(e.GetStartVertex(), startVertexDistance);
+			distanceKeeper_.Set(e.GetStartVertex(), int(startVertexDistance));
 			PointPushFrontWorker(this, vertex, startVertexDistance, e, failFlag)();
 			leftBody_.push_back(Point(e, startVertexDistance));
 			leftBodyFlank_ = leftBody_.back().StartDistance();
@@ -667,7 +667,7 @@ namespace Sibelia
 		int64_t maxFlankingSize_;
 		DistanceKeeper distanceKeeper_;
 		const JunctionStorage * storage_;
-		friend class BestPath;
+		friend struct BestPath;
 	};
 
 	struct BestPath

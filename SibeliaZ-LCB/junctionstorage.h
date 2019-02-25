@@ -25,7 +25,7 @@ namespace Sibelia
 	public:
 		Edge() : startVertex_(INT64_MAX), endVertex_(INT64_MAX) {}
 
-		Edge(int64_t startVertex, int64_t endVertex, char ch, char revCh, int32_t length, int32_t capacity) :
+		Edge(int64_t startVertex, int64_t endVertex, char ch, char revCh, int64_t length, int64_t capacity) :
 			startVertex_(startVertex), endVertex_(endVertex), ch_(ch), revCh_(revCh), length_(length), capacity_(capacity)
 		{
 
@@ -108,11 +108,11 @@ namespace Sibelia
 
 	private:
 		int64_t startVertex_;
-		int64_t endVertex_;
+		int64_t endVertex_;		
+		int64_t length_;
+		int64_t capacity_;
 		char ch_;
-		char revCh_;		
-		int32_t length_;
-		int32_t capacity_;
+		char revCh_;
 	};
 
 	class JunctionStorage
@@ -122,13 +122,13 @@ namespace Sibelia
 		struct Vertex
 		{
 			int32_t id;
-			int32_t chr;
-			int32_t idx;
-			int32_t pos;
+			uint32_t chr;
+			uint32_t idx;
+			uint32_t pos;
 			char ch;
 			char revCh;
 
-			Vertex(const TwoPaCo::JunctionPosition & junction) : id(junction.GetId()), chr(junction.GetChr()), pos(junction.GetPos())
+			Vertex(const TwoPaCo::JunctionPosition & junction) : id(static_cast<int32_t>(junction.GetId())), chr(junction.GetChr()), pos(junction.GetPos())
 			{
 
 			}
@@ -137,7 +137,7 @@ namespace Sibelia
 		struct Position
 		{
 			int32_t id;
-			int32_t pos;
+			uint32_t pos;
 			std::atomic<bool> used;
 
 			Position() : used(false)
@@ -147,7 +147,7 @@ namespace Sibelia
 
 			void Assign(const TwoPaCo::JunctionPosition & junction)
 			{
-				id = junction.GetId();
+				id = static_cast<int32_t>(junction.GetId());
 				pos = junction.GetPos();
 			}
 		};
@@ -266,7 +266,7 @@ namespace Sibelia
 
 			bool Valid() const
 			{
-				return idx_ >= 0 && idx_ < JunctionStorage::this_->chrSize_[GetChrId()];
+				return idx_ >= 0 && size_t(idx_) < JunctionStorage::this_->chrSize_[GetChrId()];
 			}
 
 			bool IsUsed() const
@@ -620,7 +620,7 @@ namespace Sibelia
 
 		size_t MutexNumber() const
 		{
-			return 1 << mutexBits_;
+			return size_t(int64_t(1) << mutexBits_);
 		}
 
 		int64_t IngoingEdgesNumber(int64_t vertexId) const
@@ -777,7 +777,7 @@ namespace Sibelia
 				for (TwoPaCo::JunctionPosition junction; reader.NextJunctionPosition(junction);)
 				{
 					size_t absId = abs(junction.GetId());
-					if (abundance[absId] < abundanceThreshold && buffer.AddAndCheck(junction))
+					if (abundance[absId] < size_t(abundanceThreshold) && buffer.AddAndCheck(junction))
 					{
 						++chrSize_[junction.GetChr()];
 					}
@@ -791,7 +791,7 @@ namespace Sibelia
 			}
 
 			{
-				size_t idx = 0;
+				uint32_t idx = 0;
 				size_t chr = 0;
 				Buffer buffer(loopThreshold);
 				TwoPaCo::JunctionPositionReader reader(inFileName);
@@ -804,7 +804,7 @@ namespace Sibelia
 					}
 
 					size_t absId = abs(junction.GetId());
-					if (abundance[absId] < abundanceThreshold && buffer.AddAndCheck(junction))
+					if (abundance[absId] < size_t(abundanceThreshold) && buffer.AddAndCheck(junction))
 					{
 						position_[junction.GetChr()][idx].Assign(junction);
 						vertex_[absId].push_back(Vertex(junction));
@@ -843,11 +843,11 @@ namespace Sibelia
 
 			mutex_.resize(GetChrNumber());
 			chrSizeBits_.resize(GetChrNumber(), 1);
-			for (mutexBits_ = 3; (1 << mutexBits_) < threads * (1 << 7); mutexBits_++);
+			for (mutexBits_ = 3; (int64_t(1) << mutexBits_) < threads * (1 << 7); mutexBits_++);
 			for (size_t i = 0; i < mutex_.size(); i++)
 			{
-				mutex_[i].reset(new FlaggedMutex[1 << mutexBits_]);
-				for (; (int64_t(1) << chrSizeBits_[i]) <= chrSize_[i]; chrSizeBits_[i]++);
+				mutex_[i].reset(new FlaggedMutex[int64_t(1) << mutexBits_]);
+				for (; size_t(int64_t(1) << chrSizeBits_[i]) <= chrSize_[i]; chrSizeBits_[i]++);
 				chrSizeBits_[i] = max(int64_t(0), chrSizeBits_[i] - mutexBits_);
 			}
 		}

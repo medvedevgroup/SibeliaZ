@@ -147,7 +147,7 @@ namespace Sibelia
 	double BlocksFinder::CalculateCoverage(const BlockList & block) const
 	{
 		size_t totalSize = 0;
-		for (size_t i = 0; i < storage_.GetChrNumber(); i++)
+		for (int64_t i = 0; i < storage_.GetChrNumber(); i++)
 		{
 			totalSize += storage_.GetChrSequence(i).size();
 		}
@@ -176,13 +176,13 @@ namespace Sibelia
 
 		ListChrs(out);
 		out << "Degree\tCount\tTotal";
-		for (size_t i = 0; i < storage_.GetChrNumber(); i++)
+		for (int64_t i = 0; i < storage_.GetChrNumber(); i++)
 		{
 			out << "\tSeq " << i + 1;
 		}
 
 		size_t totalSize = 0;
-		for (size_t i = 0; i < storage_.GetChrNumber(); i++)
+		for (int64_t i = 0; i < storage_.GetChrNumber(); i++)
 		{
 			totalSize += storage_.GetChrSequence(i).size();
 		}
@@ -216,7 +216,7 @@ namespace Sibelia
 
 			size_t total = std::accumulate(coverage.begin(), coverage.end(), size_t(0));
 			out << double(total) / totalSize * 100 << '%';
-			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
+			for (int64_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
 				out << '\t' << double(coverage[i]) / storage_.GetChrSequence(i).size() * 100 << '%';
 			}
@@ -348,7 +348,7 @@ namespace Sibelia
 	void BlocksFinder::ListChrs(std::ostream & out) const
 	{
 		out << "Seq_id\tSize\tDescription" << std::endl;
-		for (size_t i = 0; i < storage_.GetChrNumber(); i++)
+		for (int64_t i = 0; i < storage_.GetChrNumber(); i++)
 		{
 			out << i + 1 << '\t' << storage_.GetChrSequence(i).size() << '\t' << storage_.GetChrDescription(i) << std::endl;
 		}

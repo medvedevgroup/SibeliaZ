@@ -199,7 +199,7 @@ namespace Sibelia
 
 			void operator()(tbb::blocked_range<size_t> & range) const
 			{
-				std::vector<uint32_t> data;
+				std::vector<size_t> data;
 				std::vector<uint32_t> count(finder.storage_.GetVerticesNumber() * 2 + 1, 0);
 				std::pair<int64_t, std::vector<Path::Instance> > goodInstance;
 				Path finalizer(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_);
@@ -324,71 +324,6 @@ namespace Sibelia
 			return storage.GetInstancesCount(v1) > storage.GetInstancesCount(v2);
 		}
 
-		void OutputMissing(const std::string & missingFile, const std::string & missingOutDir)
-		{
-			std::string buf;
-			std::string id, sign, seq;
-			std::set<int64_t> result;
-			CreateOutDirectory(missingOutDir);
-			std::ifstream oldCoordsIn(missingFile);
-			while (std::getline(oldCoordsIn, buf))
-			{
-				if (buf == "END")
-				{
-					break;
-				}
-
-				if (buf.empty())
-				{
-					std::ofstream missingDot(missingOutDir + std::string("/missing") + id + ".dot");
-					missingDot << "digraph G\n{\nrankdir = LR" << std::endl;
-					std::vector<std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> > vvisit;
-					for (auto vid : result)
-					{
-						DumpVertex(vid, missingDot, vvisit, 2);
-						missingDot << vid << "[shape=square]" << std::endl;
-					}
-
-					result.clear();
-					missingDot << "}" << std::endl;
-				}
-
-				std::stringstream ss(buf);
-				int seqId, start, end, seqSize;
-				ss >> id >> seq >> start >> end >> sign;
-				for (auto it = storage_.Begin(storage_.GetSequenceId(seq)); it.Valid(); ++it)
-				{
-					int64_t pos = it.GetPosition();
-					if (pos >= start && pos < end)
-					{
-						result.insert(it.GetVertexId());
-						result.insert(-it.GetVertexId());
-					}
-				}
-				
-			}
-		}
-
-		struct MafRecord
-		{
-			std::string seq;
-			int64_t start;
-			int64_t bodySize;
-			int64_t seqSize;
-			bool isPositive;
-			std::string body;
-
-			int64_t PositiveStart() const
-			{
-				if (isPositive)
-				{
-					return start;
-				}
-
-				return (seqSize - (start + bodySize)) + bodySize - 1;
-			}
-		};
-
 		void Split(std::string & source, std::vector<std::string> & result)
 		{
 			std::stringstream ss;
@@ -397,143 +332,6 @@ namespace Sibelia
 			while (ss >> source)
 			{
 				result.push_back(source);
-			}
-		}
-
-
-		void OutputSubgraph(const std::string & mafFile, const std::string & outFile, const std::string & pairFiles)
-		{
-			std::string buf;
-			std::ifstream mafIn(mafFile.c_str());
-			std::multimap<std::string, std::string> neighbour;
-			std::ofstream outStream(outFile.c_str());
-			{
-				std::vector<std::string> edgeBuf;
-				std::ifstream pairFilesIn(pairFiles.c_str());
-				while (std::getline(pairFilesIn, buf))
-				{
-					std::ifstream pairIn(buf.c_str());
-					while (std::getline(pairIn, buf))
-					{
-						Split(buf, edgeBuf);
-						if (edgeBuf.size() > 1)
-						{
-							neighbour.insert(std::make_pair(edgeBuf[0], edgeBuf[1]));
-						}
-					}
-				}
-			}
-
-			std::cerr << "Total pairs: " << neighbour.size() << std::endl;
-
-			if (!mafIn)
-			{
-				throw std::runtime_error("Can't open the MAF file");
-			}
-
-			std::string buffer;
-			bool checkBlock = false;
-			std::vector<std::string> data;
-			std::vector<std::string> geneId;
-			std::vector<std::string> newGeneId;
-			std::vector<MafRecord> record;
-			for (bool over = false; !over;)
-			{
-				if (!std::getline(mafIn, buffer))
-				{
-					over = checkBlock = true;
-				}
-				else
-				{
-					if (buffer.size() > 0 && buffer[0] != '#')
-					{
-						if (buffer[0] == 'a')
-						{
-							newGeneId.clear();
-							size_t pos = buffer.find('=');
-							if (pos != buffer.npos)
-							{
-								std::stringstream ss(buffer.substr(pos + 1));
-								while (std::getline(ss, buf, ';'))
-								{
-									newGeneId.push_back(buf);
-								}
-							}
-							
-							checkBlock = true;
-						}
-						else
-						{
-							Split(buffer, data);
-							if (data.size() != 7)
-							{
-								std::cerr << buffer << std::endl;
-								for (auto & str : data)
-								{
-									std::cerr << str << std::endl;
-								}
-
-								throw std::runtime_error("A wrong line in the MAF file");
-							}
-
-							MafRecord nowRecord;
-							nowRecord.seq = data[1];
-							if (storage_.IsSequencePresent(nowRecord.seq))
-							{
-								nowRecord.start = std::atol(data[2].c_str());
-								nowRecord.bodySize = std::atol(data[3].c_str());
-								nowRecord.isPositive = data[4] == "+";
-								nowRecord.seqSize = std::atol(data[5].c_str());
-								nowRecord.body = data[6];
-								record.push_back(nowRecord);
-							}
-						}
-					}
-				}
-
-				if (checkBlock)
-				{
-					checkBlock = false;
-					if (record.size() > 1 && geneId.size() == record.size())
-					{
-						int total = 0;
-						int exceed = 0;
-						for(size_t k = 0; k < record.size(); ++k)
-						{
-							const auto & rec = record[k];
-							int64_t start = rec.PositiveStart();
-							int64_t end = rec.PositiveStart();
-							if (rec.isPositive)
-							{
-								end += rec.bodySize;
-							}
-							else
-							{
-								start -= rec.bodySize;
-							}
-
-							int nowNeighbours = neighbour.count(rec.seq);
-							for (auto it = storage_.Begin(storage_.GetSequenceId(rec.seq)); it.Valid(); ++it)
-							{
-								int64_t pos = it.GetPosition();
-								if (pos >= start && pos < end)
-								{
-									total++;
-									if (nowNeighbours < storage_.GetInstancesCount(it.GetVertexId()))
-									{
-										exceed++;
-									}
-							//		outStream << it.GetPosition() << ' ' << it.GetVertexId() << ' ' << storage_.GetInstancesCount(it.GetVertexId()) << ';';
-								}
-							}
-
-							outStream << geneId[0] << ';' << geneId[1] << '\t' <<  double(exceed) / total << std::endl;
-						}
-					}
-
-					record.clear();
-					newGeneId.swap(geneId);
-				}
 			}
 		}
 
@@ -546,7 +344,7 @@ namespace Sibelia
 			maxBranchSize_ = maxBranchSize;
 			maxFlankingSize_ = maxFlankingSize;
 			blockId_.resize(storage_.GetChrNumber());
-			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
+			for (int64_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
 				blockId_[i].resize(storage_.GetChrVerticesCount(i));
 			}
@@ -566,52 +364,18 @@ namespace Sibelia
 
 			using namespace std::placeholders;
 			std::random_shuffle(shuffle.begin(), shuffle.end());
-#ifdef _DEBUG_OUT_
-			//OutputMissing("test/test7/segment.txt", "missing");
-			OutputSubgraph("alignment.maf", "subgraph.txt", "pair.txt");
-			exit(0);
-#endif
-			srand(time(0));
+
 			time_t mark = time(0);
 			count_ = 0;
 			std::cout << '[' << std::flush;
 			progressPortion_ = shuffle.size() / progressCount_;
-			tbb::task_scheduler_init init(threads);
+			tbb::task_scheduler_init init(static_cast<int>(threads));
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle));
 			std::cout << ']' << std::endl;
 			//std::cout << "Time: " << time(0) - mark << std::endl;
 		}
 
-		void Dump(std::ostream & out) const
-		{
-			out << "digraph G\n{\nrankdir = LR" << std::endl;
-			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
-			{
-				auto end = storage_.End(i).Prev();
-				for (auto it = storage_.Begin(i); it != end; ++it)
-				{
-					auto jt = it.Next();
-					out << it.GetVertexId() << " -> " << jt.GetVertexId() << "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "\" color=blue]\n";
-					out << jt.Reverse().GetVertexId() << " -> " << it.Reverse().GetVertexId() << "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << "\" color=red]\n";
-				}
-			}
-
-			for (size_t i = 0; i < syntenyPath_.size(); i++)
-			{
-				for (size_t j = 0; j < syntenyPath_[i].size(); j++)
-				{
-					Edge e = syntenyPath_[i][j];
-					out << e.GetStartVertex() << " -> " << e.GetEndVertex() <<
-						"[label=\"" << e.GetChar() << ", " << i + 1 << "\" color=green]\n";
-					e = e.Reverse();
-					out << e.GetStartVertex() << " -> " << e.GetEndVertex() <<
-						"[label=\"" << e.GetChar() << ", " << -(int64_t(i + 1)) << "\" color=green]\n";
-				}
-			}
-
-			out << "}" << std::endl;
-		}
-
+		
 		void ListBlocksSequences(const BlockList & block, const std::string & directory) const
 		{
 			std::vector<IndexPair> group;
@@ -670,7 +434,7 @@ namespace Sibelia
 						j--;
 						int64_t start = storage_.GetIterator(chr, i, bid > 0).GetPosition() + (bid > 0 ? 0 : -k_);
 						int64_t end = storage_.GetIterator(chr, j, bid > 0).GetPosition() + (bid > 0 ? k_ : 0);
-						instance.push_back(BlockInstance(bid, chr, start, end));
+						instance.push_back(BlockInstance(int(bid), chr, size_t(start), size_t(end)));
 						i = j + 1;
 					}
 					else
@@ -813,8 +577,8 @@ namespace Sibelia
 							it.MarkUsed();							
 							int64_t idx = it.GetIndex();
 							int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());
-							blockId_[it.GetChrId()][it.GetIndex()].block = it.IsPositiveStrand() ? +currentBlock : -currentBlock;
-							blockId_[it.GetChrId()][it.GetIndex()].instance = instanceCount;
+							blockId_[it.GetChrId()][it.GetIndex()].block = int32_t(it.IsPositiveStrand() ? +currentBlock : -currentBlock);
+							blockId_[it.GetChrId()][it.GetIndex()].instance = int32_t(instanceCount);
 
 						} while (it++ != jt->Back());
 
@@ -842,8 +606,8 @@ namespace Sibelia
 
 		struct NextVertex
 		{
-			int32_t diff;
-			int32_t count;
+			int64_t diff;
+			int64_t count;
 			JunctionStorage::JunctionSequentialIterator origin;
 			NextVertex() : count(0)
 			{
@@ -856,10 +620,10 @@ namespace Sibelia
 			}
 		};
 
-		std::pair<int32_t, NextVertex> MostPopularVertex(const Path & currentPath, bool forward, std::vector<uint32_t> & count, std::vector<uint32_t> & data)
+		std::pair<int64_t, NextVertex> MostPopularVertex(const Path & currentPath, bool forward, std::vector<uint32_t> & count, std::vector<size_t> & data)
 		{
 			NextVertex ret;
-			int32_t bestVid = 0;
+			int64_t bestVid = 0;
 			int64_t startVid = forward ? currentPath.RightVertex() : currentPath.LeftVertex();
 			const auto & instList = currentPath.GoodInstancesList().size() >= 2 ? currentPath.GoodInstancesList() : currentPath.AllInstances();
 			for (auto & inst : instList)
@@ -870,9 +634,9 @@ namespace Sibelia
 					int64_t weight = abs(inst->Front().GetPosition() - inst->Back().GetPosition()) + 1;
 					auto origin = forward ? inst->Back() : inst->Front();
 					auto it = forward ? origin.Next() : origin.Prev();
-					for (size_t d = 1; it.Valid() && (d < lookingDepth_  || abs(it.GetPosition() - origin.GetPosition()) <= maxBranchSize_); d++)
+					for (size_t d = 1; it.Valid() && (d < size_t(lookingDepth_)  || abs(it.GetPosition() - origin.GetPosition()) <= maxBranchSize_); d++)
 					{
-						int32_t vid = it.GetVertexId();
+						int64_t vid = it.GetVertexId();
 						if (!currentPath.IsInPath(vid) && !it.IsUsed())
 						{
 							auto adjVid = vid + storage_.GetVerticesNumber();
@@ -881,7 +645,7 @@ namespace Sibelia
 								data.push_back(adjVid);
 							}
 
-							count[adjVid] += weight;
+							count[adjVid] += static_cast<uint32_t>(weight);
 							auto diff = abs(it.GetAbsolutePosition() - origin.GetAbsolutePosition());
 							if (count[adjVid] > ret.count || (count[adjVid] == ret.count && diff < ret.diff))
 							{
@@ -920,14 +684,14 @@ namespace Sibelia
 
 		bool ExtendPathForward(Path & currentPath,
 			std::vector<uint32_t> & count,
-			std::vector<uint32_t> & data,
+			std::vector<size_t> & data,
 			size_t & bestRightSize,
 			int64_t & bestScore,
 			int64_t & nowScore)
 		{
 			bool success = false;
 			int64_t origin = currentPath.Origin();
-			std::pair<int32_t, NextVertex> nextForwardVid;
+			std::pair<int64_t, NextVertex> nextForwardVid;
 			nextForwardVid = MostPopularVertex(currentPath, true, count, data);
 			if (nextForwardVid.first != 0)
 			{
@@ -970,13 +734,13 @@ namespace Sibelia
 
 		bool ExtendPathBackward(Path & currentPath,
 			std::vector<uint32_t> & count,
-			std::vector<uint32_t> & data,
+			std::vector<size_t> & data,
 			size_t & bestLeftSize,
 			int64_t & bestScore,
 			int64_t & nowScore)
 		{
 			bool success = false;
-			std::pair<int32_t, NextVertex> nextBackwardVid;
+			std::pair<int64_t, NextVertex> nextBackwardVid;
 			nextBackwardVid = MostPopularVertex(currentPath, false, count, data);
 			if (nextBackwardVid.first != 0)
 			{

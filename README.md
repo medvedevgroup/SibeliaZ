@@ -1,7 +1,7 @@
 SibeliaZ 1.0.0
 ===============
 
-Release date: TBD
+Release date: 21st February 2019
 =================
 
 Authors
@@ -19,6 +19,9 @@ SibeliaZ was designed for the inputs consisting of multiple similar genomes,
 like different strains of the same species. The tool works best for the datasets
 with the distance from a leaf to the most recent common ancestor not exceeding
 0.085 substitutions per site, or 9 PAM units.
+
+Currently SibeliaZ does not support chromosomes in the input longer than
+4294967296 bp, this will be fixed in the future releases.
 
 Compilation and installation
 ============================
@@ -40,6 +43,7 @@ running:
 Go to the root directory of the project and create the "build" folder by
 executing
 
+	cd SibeliaZ
 	mkdir build
 
 Initialize dependencies by executing
@@ -59,7 +63,7 @@ The make run will produce and installs the executables of twopaco, sibeliaz-lcb,
 spoa and a wrapper script sibeliaz which implements the pipeline.
 
 SibeliaZ usage
-===============
+==============
 SibeliaZ takes a FASTA file as an input. The simplest way to run SibeliaZ
 is to enter the following command:
 

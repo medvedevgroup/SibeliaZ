@@ -334,6 +334,11 @@ namespace Sibelia
 
 			bool operator < (const JunctionSequentialIterator & arg) const
 			{
+				if (this->IsPositiveStrand() != arg.IsPositiveStrand())
+				{
+					return IsPositiveStrand() < arg.IsPositiveStrand();
+				}
+
 				if (GetChrId() != arg.GetChrId())
 				{
 					return GetChrId() < arg.GetChrId();
@@ -344,7 +349,7 @@ namespace Sibelia
 
 			bool operator == (const JunctionSequentialIterator & arg) const
 			{
-				return this->chrId_ == arg.chrId_ && this->idx_ == arg.idx_;
+				return this->IsPositiveStrand() == arg.IsPositiveStrand() && this->chrId_ == arg.chrId_ && this->idx_ == arg.idx_;
 			}
 
 			bool operator != (const JunctionSequentialIterator & arg) const

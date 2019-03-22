@@ -54,7 +54,7 @@ int main(int argc, char * argv[])
 			"branchsize",
 			"Maximum branch size",
 			false,
-			200,
+			150,
 			"integer",
 			cmd);
 

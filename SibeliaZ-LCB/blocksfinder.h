@@ -213,14 +213,13 @@ namespace Sibelia
 			{
 				if (pointComponent_[i] == NO_COMPONENT)
 				{
-					compSize.push_back(0);
+					compSize.push_back(1);
 					std::vector<size_t> st;
 					st.push_back(i);
 					while (st.size() > 0)
 					{
 						size_t u = st.back();
-						st.pop_back();
-						compSize.back()++;
+						st.pop_back();						
 						pointComponent_[u] = components_;
 						for (size_t j = 0; j < pointAdj_[u].size(); j++)
 						{
@@ -228,8 +227,16 @@ namespace Sibelia
 							if (pointComponent_[v] == NO_COMPONENT)
 							{
 								st.push_back(v);
+								compSize.back()++;
+								pointComponent_[u] = components_;
 							}
 						}
+					}
+
+					if (compSize.back() == 1)
+					{
+					//	std::copy(pointAdj_[i].begin(), pointAdj_[i].end(), std::ostream_iterator<size_t>(std::cout, " "));
+					//	std::cout << std::endl;
 					}
 
 					components_++;
@@ -260,8 +267,6 @@ namespace Sibelia
 					neighbours.push_back(jt->second);
 				}
 			}
-
-			std::cout << neighbours.size() << std::endl;
 		}
 
 		void AddExtraEdges()
@@ -276,7 +281,6 @@ namespace Sibelia
 				{
 					size_t v = pointAdj_[u][j];
 					CollectNeighbours(point_[v], neighboursV);
-					continue;
 					for (auto p : neighboursU)
 					{
 						for (auto q: neighboursV)
@@ -327,7 +331,6 @@ namespace Sibelia
 
 			using namespace std::placeholders;
 			tbb::task_scheduler_init init(static_cast<int>(threads));
-			std::random_shuffle(shuffle.begin(), shuffle.end());
 
 			time_t mark = time(0);
 			count_ = 0;
@@ -341,7 +344,7 @@ namespace Sibelia
 			starter_ = 0;
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), CheckIfSource(*this, shuffle));
 			//std::cout << "Time: " << time(0) - mark << std::endl;
-			AddExtraEdges();
+			//AddExtraEdges();
 			size_t totalMarks = 0;
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
@@ -391,7 +394,7 @@ namespace Sibelia
 		}
 
 		void GenerateOutput(const std::string & outDir, bool genSeq) const
-		{
+		{		
 			BlockList instance;
 			std::vector<std::vector<bool> > covered(storage_.GetChrNumber());
 			for (size_t i = 0; i < covered.size(); i++)
@@ -434,9 +437,6 @@ namespace Sibelia
 				CreateOutDirectory(blocksDir);
 				ListBlocksSequences(instance, blocksDir);
 			}
-
-			//		GenerateReport(instance, outDir + "/" + "coverage_report.txt");*/
-			//		ListBlocksIndices(instance, outDir + "/" + "blocks_coords.txt");
 		}
 
 
@@ -770,16 +770,17 @@ namespace Sibelia
 									finder.pointId_[instance[i]] = pointId[i];
 								}
 
-								if (pointId[j] == NO_POINT)
+								if (pointId[k] == NO_POINT)
 								{
-									pointId[j] = finder.point_.size();
+									pointId[k] = finder.point_.size();
 									finder.point_.push_back(instance[j]);
 									finder.pointAdj_.push_back(std::vector<size_t>());
-									finder.pointId_[instance[j]] = pointId[j];
+									finder.pointId_[instance[k]] = pointId[k];
 								}
 
-								finder.pointAdj_[pointId[i]].push_back(pointId[j]);
-								finder.pointAdj_[pointId[j]].push_back(pointId[i]);
+								assert(pointId[i] != pointId[k]);
+								finder.pointAdj_[pointId[i]].push_back(pointId[k]);
+								finder.pointAdj_[pointId[k]].push_back(pointId[i]);
 							}
 						}
 					}

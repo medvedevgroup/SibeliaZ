@@ -434,6 +434,9 @@ namespace Sibelia
 						j--;
 						int64_t start = storage_.GetIterator(chr, i, bid > 0).GetPosition() + (bid > 0 ? 0 : -k_);
 						int64_t end = storage_.GetIterator(chr, j, bid > 0).GetPosition() + (bid > 0 ? k_ : 0);
+						for(;covered[chr][start] && start < end;start++);
+						for(;covered[chr][end] && end > start;end--);
+						std::fill(covered[chr].begin() + start, covered[chr].begin() + end, true);
 						instance.push_back(BlockInstance(int(bid), chr, size_t(start), size_t(end)));
 						i = j + 1;
 					}
@@ -542,7 +545,7 @@ namespace Sibelia
 			{
 				lockInstance.push_back(it);
 			}
-			
+
 			std::sort(lockInstance.begin(), lockInstance.end(), Path::CmpInstance);
 			{
 				std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
@@ -600,7 +603,7 @@ namespace Sibelia
 					storage_.UnlockRange(instance->Back().Reverse(), instance->Front().Reverse(), idx);
 				}
 			}
-
+			
 			return ret;
 		}
 
@@ -795,9 +798,11 @@ namespace Sibelia
 		int64_t maxFlankingSize_;
 		JunctionStorage & storage_;
 		tbb::mutex progressMutex_;
+		tbb::mutex copiesMutex_;
 		std::ofstream debugOut_;
 		std::vector<std::vector<Edge> > syntenyPath_;
 		std::vector<std::vector<Assignment> > blockId_;
+		std::vector<std::pair<size_t, size_t> > copiesBlock_;
 #ifdef _DEBUG_OUT_
 		bool debug_;
 		std::set<int64_t> missingVertex_;

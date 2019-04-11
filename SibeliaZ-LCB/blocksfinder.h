@@ -368,7 +368,7 @@ namespace Sibelia
 			time_t mark = time(0);
 			count_ = 0;
 			std::cout << '[' << std::flush;
-			progressPortion_ = shuffle.size() / progressCount_;
+			progressPortion_ = max(shuffle.size() / progressCount_, 1);
 			tbb::task_scheduler_init init(static_cast<int>(threads));
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle));
 			std::cout << ']' << std::endl;

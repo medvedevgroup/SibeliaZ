@@ -301,7 +301,7 @@ namespace Sibelia
 	}
 
 
-	void BlocksFinder::ListBlocksIndicesGFF(const BlockList & blockList, const std::string & fileName) const
+	void BlocksFinder::ListBlocksIndicesGFF(BlockList & blockList, const std::string & fileName)
 	{
 		std::ofstream out;
 		TryOpenFile(fileName, out);

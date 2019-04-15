@@ -343,11 +343,7 @@ namespace Sibelia
 			minBlockSize_ = minBlockSize;
 			maxBranchSize_ = maxBranchSize;
 			maxFlankingSize_ = maxFlankingSize;
-			blockId_.resize(storage_.GetChrNumber());
-			for (int64_t i = 0; i < storage_.GetChrNumber(); i++)
-			{
-				blockId_[i].resize(storage_.GetChrVerticesCount(i));
-			}
+		
 
 			std::vector<int64_t> shuffle;
 			for (int64_t v = -storage_.GetVerticesNumber() + 1; v < storage_.GetVerticesNumber(); v++)
@@ -372,6 +368,8 @@ namespace Sibelia
 			tbb::task_scheduler_init init(static_cast<int>(threads));
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle));
 			std::cout << ']' << std::endl;
+			//storage_.DebugUsed();
+	
 			//std::cout << "Time: " << time(0) - mark << std::endl;
 		}
 
@@ -413,54 +411,27 @@ namespace Sibelia
 		}
 
 
-		void GenerateOutput(const std::string & outDir, bool genSeq) const
+		void GenerateOutput(const std::string & outDir, bool genSeq)
 		{
-			BlockList instance;
 			std::vector<std::vector<bool> > covered(storage_.GetChrNumber());
 			for (size_t i = 0; i < covered.size(); i++)
 			{
 				covered[i].assign(storage_.GetChrSequence(i).size(), false);
 			}
 
-			for (size_t chr = 0; chr < blockId_.size(); chr++)
-			{
-				for (size_t i = 0; i < blockId_[chr].size();)
-				{
-					if (storage_.GetIterator(chr, i).IsUsed())
-					{
-						int64_t bid = blockId_[chr][i].block;
-						size_t j = i;
-						for (; j < blockId_[chr].size() && blockId_[chr][i] == blockId_[chr][j]; j++);
-						j--;
-						int64_t start = storage_.GetIterator(chr, i, bid > 0).GetPosition() + (bid > 0 ? 0 : -k_);
-						int64_t end = storage_.GetIterator(chr, j, bid > 0).GetPosition() + (bid > 0 ? k_ : 0);
-						instance.push_back(BlockInstance(int(bid), chr, size_t(start), size_t(end)));
-						i = j + 1;
-					}
-					else
-					{
-						++i;
-					}
-				}
-			}
-
 			std::cout.setf(std::cout.fixed);
 			std::cout.precision(2);
 			std::cout << "Blocks found: " << blocksFound_ << std::endl;
-			std::cout << "Total coverage: " << CalculateCoverage(instance) << std::endl;
 
 
 			CreateOutDirectory(outDir);
 			std::string blocksDir = outDir + "/blocks";
-			ListBlocksIndicesGFF(instance, outDir + "/" + "blocks_coords.gff");
+			ListBlocksIndicesGFF(blocksInstance_, outDir + "/" + "blocks_coords.gff");
 			if (genSeq)
 			{
 				CreateOutDirectory(blocksDir);
-				ListBlocksSequences(instance, blocksDir);
+				ListBlocksSequences(blocksInstance_, blocksDir);
 			}
-
-	//		GenerateReport(instance, outDir + "/" + "coverage_report.txt");*/
-	//		ListBlocksIndices(instance, outDir + "/" + "blocks_coords.txt");
 		}
 
 
@@ -485,7 +456,7 @@ namespace Sibelia
 		std::string OutputIndex(const BlockInstance & block) const;
 		void OutputBlocks(const std::vector<BlockInstance>& block, std::ofstream& out) const;
 		void ListBlocksIndices(const BlockList & block, const std::string & fileName) const;
-		void ListBlocksIndicesGFF(const BlockList & blockList, const std::string & fileName) const;
+		void ListBlocksIndicesGFF(BlockList & blockList, const std::string & fileName);
 		void ListChromosomesAsPermutations(const BlockList & block, const std::string & fileName) const;
 		void TryOpenFile(const std::string & fileName, std::ofstream & stream) const;
 		void ListChrs(std::ostream & out) const;
@@ -561,32 +532,37 @@ namespace Sibelia
 		
 			finalizer.Init(currentPath.Origin());
 			for (size_t i = 0; i < bestRightSize - 1 && finalizer.PointPushBack(currentPath.RightPoint(i).GetEdge()); i++);
-			for (size_t i = 0; i < bestLeftSize - 1 && finalizer.PointPushFront(currentPath.LeftPoint(i).GetEdge()); i++);
-			if (finalizer.Score() > 0 && finalizer.GoodInstances() > 1)
+			for (size_t i = 0; i < bestLeftSize - 1 && finalizer.PointPushFront(currentPath.LeftPoint(i).GetEdge()); i++);	
+			int64_t finalScore = finalizer.Score();
+			int64_t finalInstances = finalizer.GoodInstances();
+			if (finalScore > 0 && finalInstances > 1)
 			{
-				ret = true;
-				int64_t instanceCount = 0;
-				int64_t currentBlock = ++blocksFound_;	
+				ret = true;				
+				int64_t currentBlock = ++blocksFound_;				
 				for (auto jt : finalizer.AllInstances())
 				{
 					if (finalizer.IsGoodInstance(*jt))
 					{
-						auto it = jt->Front();
-						do
+						blocksMutex_.lock();
+						if (jt->Front().IsPositiveStrand())
 						{
-							it.MarkUsed();							
-							int64_t idx = it.GetIndex();
-							int64_t maxidx = storage_.GetChrVerticesCount(it.GetChrId());
-							blockId_[it.GetChrId()][it.GetIndex()].block = int32_t(it.IsPositiveStrand() ? +currentBlock : -currentBlock);
-							blockId_[it.GetChrId()][it.GetIndex()].instance = int32_t(instanceCount);
+							blocksInstance_.push_back(BlockInstance(+currentBlock, jt->Front().GetChrId(), jt->Front().GetPosition(), jt->Back().GetPosition() + k_));
+						}
+						else
+						{
+							blocksInstance_.push_back(BlockInstance(-currentBlock, jt->Front().GetChrId(), jt->Back().GetPosition() - k_, jt->Front().GetPosition()));
+						}
 
-						} while (it++ != jt->Back());
-
-						instanceCount++;
+						blocksMutex_.unlock();
+						for(auto it = jt->Front(); it != jt->Back(); ++it)
+						{
+							it.MarkUsed();
+						}
 					}
 				}
 			}
-				
+
+
 			finalizer.Clear();
 			std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
 			for (auto & instance : lockInstance)
@@ -795,9 +771,10 @@ namespace Sibelia
 		int64_t maxFlankingSize_;
 		JunctionStorage & storage_;
 		tbb::mutex progressMutex_;
+		tbb::mutex blocksMutex_;
 		std::ofstream debugOut_;
 		std::vector<std::vector<Edge> > syntenyPath_;
-		std::vector<std::vector<Assignment> > blockId_;
+		std::vector<BlockInstance> blocksInstance_;
 #ifdef _DEBUG_OUT_
 		bool debug_;
 		std::set<int64_t> missingVertex_;

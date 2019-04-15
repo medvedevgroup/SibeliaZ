@@ -271,13 +271,29 @@ namespace Sibelia
 
 			bool IsUsed() const
 			{
-				bool ret = JunctionStorage::this_->position_[GetChrId()][idx_].used;
-				return ret;
+				if (IsPositiveStrand())
+				{
+					return JunctionStorage::this_->position_[GetChrId()][idx_].used;
+				}
+				
+				if (idx_ > 0)
+				{
+					return JunctionStorage::this_->position_[GetChrId()][idx_ - 1].used;
+				}
+
+				return false;
 			}
 
 			void MarkUsed() const
 			{
-				JunctionStorage::this_->position_[GetChrId()][idx_].used = true;
+				if (IsPositiveStrand())
+				{
+					JunctionStorage::this_->position_[GetChrId()][idx_].used = true;
+				}
+				else if (idx_ > 0)
+				{
+					JunctionStorage::this_->position_[GetChrId()][idx_ - 1].used = true;
+				}
 			}
 
 			JunctionSequentialIterator& operator++ ()
@@ -866,6 +882,19 @@ namespace Sibelia
 		size_t GetSequenceId(const std::string & str) const
 		{
 			return sequenceId_.find(str)->second;
+		}
+
+		void DebugUsed() const
+		{
+			for (size_t i = 0; i < position_.size(); i++)
+			{
+				for (size_t j = 0; j < chrSize_[i]; j++)
+				{
+					std::cout << (position_[i][j].used ? 1 : 0);
+				}
+
+				std::cout << std::endl;
+			}
 		}
 
 	private:

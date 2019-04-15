@@ -14,23 +14,6 @@
 
 namespace Sibelia
 {
-	struct Assignment
-	{
-		int32_t block;
-		int32_t instance;
-		Assignment()
-		{
-
-		}
-
-		bool operator == (const Assignment & assignment) const
-		{
-			return block == assignment.block && instance == assignment.instance;
-		}
-	};
-
-	struct BestPath;
-
 	struct Path
 	{
 	public:
@@ -72,6 +55,8 @@ namespace Sibelia
 		struct Instance
 		{
 		private:
+			bool backFinished_;
+			bool frontFinished_;
 			int64_t compareIdx_;
 			int64_t frontDistance_;
 			int64_t backDistance_;
@@ -100,9 +85,31 @@ namespace Sibelia
 				back_(it),
 				frontDistance_(distance),
 				backDistance_(distance),
-				compareIdx_(it.GetIndex())
+				compareIdx_(it.GetIndex()),
+				backFinished_(false),
+				frontFinished_(false)
 			{
 
+			}
+
+			void FinishBack()
+			{
+				backFinished_ = true;
+			}
+
+			void FinishFront()
+			{
+				frontFinished_ = true;
+			}
+
+			bool IsFinishedBack() const 
+			{
+				return backFinished_;
+			}
+
+			bool IsFinishedFront() const
+			{
+				return frontFinished_;
 			}
 
 			void ChangeFront(const JunctionStorage::JunctionSequentialIterator & it, int64_t distance)
@@ -347,7 +354,6 @@ namespace Sibelia
 				{
 					int64_t middlePath = MiddlePathLength();
 					int64_t length = inst.UtilityLength();
-
 					int64_t start = inst.Front().GetPosition();
 					int64_t end = inst.Back().GetPosition();
 					out << "(" << (inst.Front().IsPositiveStrand() ? '+' : '-') <<
@@ -458,12 +464,21 @@ namespace Sibelia
 
 						if (!newInstance && inst->Front().GetVertexId() != vertex)
 						{
-							bool prevGoodInstance = path->IsGoodInstance(*inst);
-							const_cast<Instance&>(*inst).ChangeFront(nowIt.SequentialIterator(), distance);
-							if (!prevGoodInstance && path->IsGoodInstance(*inst))
+							if (!inst->IsFinishedFront())
 							{
-								path->goodInstance_.push_back(inst);
-							}
+								bool prevGoodInstance = path->IsGoodInstance(*inst);
+								auto & cinst = const_cast<Instance&>(*inst);
+								cinst.ChangeFront(nowIt.SequentialIterator(), distance);
+								if (!prevGoodInstance && path->IsGoodInstance(*inst))
+								{
+									path->goodInstance_.push_back(inst);
+								}
+
+								if (nowIt.IsUsed())
+								{
+									cinst.FinishFront();
+								}
+							}							
 						}
 						else
 						{
@@ -494,43 +509,49 @@ namespace Sibelia
 				for (JunctionStorage::JunctionIterator nowIt(vertex); nowIt.Valid() && !failFlag; nowIt++)
 				{
 					bool newInstance = true;
-					if (!nowIt.IsUsed())
+					auto & instanceSet = path->instance_[nowIt.GetChrId()];
+					auto inst = instanceSet.upper_bound(Instance(nowIt.SequentialIterator(), 0));
+					if (inst != instanceSet.end() && inst->Within(nowIt))
 					{
-						auto & instanceSet = path->instance_[nowIt.GetChrId()];
-						auto inst = instanceSet.upper_bound(Instance(nowIt.SequentialIterator(), 0));
-						if (inst != instanceSet.end() && inst->Within(nowIt))
-						{
-							continue;
-						}
+						continue;
+					}
 
-						if (nowIt.IsPositiveStrand())
+					if (nowIt.IsPositiveStrand())
+					{
+						if (inst != instanceSet.begin() && path->Compatible((--inst)->Back(), nowIt.SequentialIterator(), e))
 						{
-							if (inst != instanceSet.begin() && path->Compatible((--inst)->Back(), nowIt.SequentialIterator(), e))
-							{
-								newInstance = false;
-							}
+							newInstance = false;
 						}
-						else
+					}
+					else
+					{
+						if (inst != instanceSet.end() && path->Compatible(inst->Back(), nowIt.SequentialIterator(), e))
 						{
-							if (inst != instanceSet.end() && path->Compatible(inst->Back(), nowIt.SequentialIterator(), e))
-							{
-								newInstance = false;
-							}
+							newInstance = false;
 						}
+					}
 
-						if (!newInstance && inst->Back().GetVertexId() != vertex)
+					if (!newInstance && inst->Back().GetVertexId() != vertex)
+					{
+						if (!inst->IsFinishedBack())
 						{
 							bool prevGoodInstance = path->IsGoodInstance(*inst);
-							const_cast<Instance&>(*inst).ChangeBack(nowIt.SequentialIterator(), distance);
+							auto & cinst = const_cast<Instance&>(*inst);
+							cinst.ChangeBack(nowIt.SequentialIterator(), distance);
 							if (!prevGoodInstance && path->IsGoodInstance(*inst))
 							{
 								path->goodInstance_.push_back(inst);
 							}
-						}
-						else
-						{
-							path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
-						}
+
+							if (nowIt.IsUsed())
+							{
+								cinst.FinishBack();
+							}
+						}						
+					}
+					else
+					{
+						path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
 					}
 				}
 			}
@@ -667,64 +688,6 @@ namespace Sibelia
 		int64_t maxFlankingSize_;
 		DistanceKeeper distanceKeeper_;
 		const JunctionStorage * storage_;
-		friend struct BestPath;
-	};
-
-	struct BestPath
-	{
-		int64_t score_;
-		int64_t leftFlank_;
-		int64_t rightFlank_;
-		std::vector<Path::Point> newLeftBody_;
-		std::vector<Path::Point> newRightBody_;
-
-		void FixForward(Path & path)
-		{
-			for (auto & pt : newRightBody_)
-			{
-				bool ret = path.PointPushBack(pt.GetEdge());
-				assert(ret);
-			}
-
-			newRightBody_.clear();
-			rightFlank_ = path.rightBody_.size();
-		}
-
-		void FixBackward(Path & path)
-		{
-			for (auto & pt : newLeftBody_)
-			{
-				bool ret = path.PointPushFront(pt.GetEdge());
-				assert(ret);
-			}
-
-			newLeftBody_.clear();
-			leftFlank_ = path.leftBody_.size();
-		}
-
-		void UpdateForward(const Path & path, int64_t newScore)
-		{
-			score_ = newScore;
-			newRightBody_.clear();
-			std::copy(path.rightBody_.begin() + rightFlank_, path.rightBody_.end(), std::back_inserter(newRightBody_));
-		}
-
-		void UpdateBackward(const Path & path, int64_t newScore)
-		{
-			score_ = newScore;
-			newLeftBody_.clear();
-			std::copy(path.leftBody_.begin() + leftFlank_, path.leftBody_.end(), std::back_inserter(newLeftBody_));
-		}
-
-		BestPath()
-		{
-			Init();
-		}
-
-		void Init()
-		{
-			score_ = leftFlank_ = rightFlank_ = 0;
-		}
 	};
 }
 

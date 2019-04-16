@@ -257,6 +257,11 @@ namespace Sibelia
 							}
 						}
 
+						if (bestRightSize == 1)
+						{
+							break;
+						}
+
 						{
 							std::vector<Edge> bestEdge;
 							for (size_t i = 0; i < bestRightSize - 1; i++)
@@ -359,7 +364,7 @@ namespace Sibelia
 			}
 
 			using namespace std::placeholders;
-			std::random_shuffle(shuffle.begin(), shuffle.end());
+			//std::random_shuffle(shuffle.begin(), shuffle.end());
 
 			time_t mark = time(0);
 			count_ = 0;
@@ -511,7 +516,7 @@ namespace Sibelia
 		}
 
 		bool TryFinalizeBlock(const Path & currentPath, Path & finalizer, size_t bestRightSize, size_t bestLeftSize)
-		{
+		{	
 			bool ret = false;
 			std::vector<Path::InstanceSet::const_iterator> lockInstance;
 			for (auto it : currentPath.GoodInstancesList())
@@ -537,7 +542,13 @@ namespace Sibelia
 		
 			finalizer.Init(currentPath.Origin());
 			for (size_t i = 0; i < bestRightSize - 1 && finalizer.PointPushBack(currentPath.RightPoint(i).GetEdge()); i++);
-			for (size_t i = 0; i < bestLeftSize - 1 && finalizer.PointPushFront(currentPath.LeftPoint(i).GetEdge()); i++);	
+			for (size_t i = 0; i < bestLeftSize - 1 && finalizer.PointPushFront(currentPath.LeftPoint(i).GetEdge()); i++);
+
+			if (finalizer.Origin() == -255611)
+			{
+				finalizer.DumpInstances(std::cout);
+			}
+
 			int64_t finalScore = finalizer.Score();
 			int64_t finalInstances = finalizer.GoodInstances();
 			if (finalScore > 0 && finalInstances > 1)
@@ -560,9 +571,14 @@ namespace Sibelia
 
 						blocksMutex_.unlock();
 						for(auto it = jt->Front(); it != jt->Back(); ++it)
-						{
+						{						
 							it.MarkUsed();
+							if (currentPath.Origin() == -255611)
+							{								
+								std::cout << it.GetChrId() << ' ' << it.GetIndex() << ' ' << it.IsUsed() << std::endl;
+							}
 						}
+
 					}
 				}
 			}

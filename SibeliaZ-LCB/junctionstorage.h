@@ -284,8 +284,13 @@ namespace Sibelia
 				return false;
 			}
 
-			void MarkUsed() const
+			void MarkUsed(bool debug = false) const
 			{
+				if (debug)
+				{
+					std::cout << idx_ << std::endl;
+				}
+
 				if (IsPositiveStrand())
 				{
 					JunctionStorage::this_->position_[GetChrId()][idx_].used = true;
@@ -460,16 +465,6 @@ namespace Sibelia
 			size_t InstancesCount() const
 			{
 				return JunctionStorage::this_->vertex_[abs(vid_)].size();
-			}
-
-			bool IsUsed() const
-			{
-				return JunctionStorage::this_->position_[GetChrId()][GetIndex()].used;
-			}
-
-			void MarkUsed() const
-			{
-				JunctionStorage::this_->position_[GetChrId()][GetIndex()].used = true;
 			}
 
 			JunctionIterator operator + (size_t inc) const

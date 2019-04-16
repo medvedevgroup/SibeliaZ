@@ -388,6 +388,14 @@ namespace Sibelia
 				return false;
 			}
 
+			for (auto it = start; it != end; ++it)
+			{
+				if (it.IsUsed())
+				{
+					return false;
+				}
+			}
+
 			int64_t realDiff = end.GetPosition() - start.GetPosition();
 			int64_t v1 = end.GetVertexId();
 			int64_t v2 = start.GetVertexId();

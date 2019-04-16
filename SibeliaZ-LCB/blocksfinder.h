@@ -39,9 +39,6 @@ namespace Sibelia
 		size_t GetStart() const;
 		size_t GetEnd() const;
 		size_t GetLength() const;
-		size_t GetConventionalStart() const;
-		size_t GetConventionalEnd() const;
-		std::pair<size_t, size_t> CalculateOverlap(const BlockInstance & instance) const;
 		bool operator < (const BlockInstance & toCompare) const;
 		bool operator == (const BlockInstance & toCompare) const;
 		bool operator != (const BlockInstance & toCompare) const;
@@ -348,7 +345,6 @@ namespace Sibelia
 			minBlockSize_ = minBlockSize;
 			maxBranchSize_ = maxBranchSize;
 			maxFlankingSize_ = maxFlankingSize;
-		
 
 			std::vector<int64_t> shuffle;
 			for (int64_t v = -storage_.GetVerticesNumber() + 1; v < storage_.GetVerticesNumber(); v++)
@@ -420,27 +416,85 @@ namespace Sibelia
 			}
 		}
 
+		struct SortByMultiplicity
+		{
+			SortByMultiplicity(const std::vector<int> & multiplicityOrigin): multiplicity(multiplicityOrigin)
+			{
+			}
+
+			bool operator () (const BlockInstance & a, const BlockInstance & b) const
+			{
+				auto mlp1 = multiplicity[a.GetBlockId()];
+				auto mlp2 = multiplicity[b.GetBlockId()];
+				if (mlp1 != mlp2)
+				{
+					return mlp1 > mlp2;
+				}
+
+				return a.GetBlockId() < b.GetBlockId();
+			}
+
+			const std::vector<int> & multiplicity;
+		};
 
 		void GenerateOutput(const std::string & outDir, bool genSeq)
 		{
 			std::vector<std::vector<bool> > covered(storage_.GetChrNumber());
 			for (size_t i = 0; i < covered.size(); i++)
 			{
-				covered[i].assign(storage_.GetChrSequence(i).size(), false);
+				covered[i].assign(storage_.GetChrSequence(i).size() + 1, false);
+			}
+		
+			int64_t trimmedId = 1;
+			std::vector<IndexPair> group;
+			std::vector<BlockInstance> buffer;
+			std::vector<BlockInstance> trimmedBlocks;
+			std::vector<int> copiesCount_(blocksFound_ + 1, 0);
+			for (auto b : blocksInstance_)
+			{
+				copiesCount_[b.GetBlockId()]++;
+			}
+
+			GroupBy(blocksInstance_, SortByMultiplicity(copiesCount_), std::back_inserter(group));
+			for (auto g : group)
+			{
+				buffer.clear();
+				for (size_t i = g.first; i < g.second; i++)
+				{
+					size_t chr = blocksInstance_[i].GetChrId();
+					size_t start = blocksInstance_[i].GetStart();
+					size_t end = blocksInstance_[i].GetEnd();
+					for (; covered[chr][start] && start < end; start++);
+					for (; covered[chr][end] && end > start; end--);
+					if (end - start >= minBlockSize_)
+					{
+						buffer.push_back(BlockInstance(blocksInstance_[i].GetSign() ? +trimmedId : -trimmedId, chr, start, end));
+					}
+				}
+
+				if (buffer.size() > 1)
+				{
+					trimmedId++;
+					for (const auto & it : buffer)
+					{
+						trimmedBlocks.push_back(it);
+						std::fill(covered[it.GetChrId()].begin() + it.GetStart(), covered[it.GetChrId()].begin() + it.GetEnd(), true);
+					}
+				}									
 			}
 
 			std::cout.setf(std::cout.fixed);
 			std::cout.precision(2);
 			std::cout << "Blocks found: " << blocksFound_ << std::endl;
-
+			std::cout << "Coverage: " << CalculateCoverage(trimmedBlocks) << std::endl;
 
 			CreateOutDirectory(outDir);
 			std::string blocksDir = outDir + "/blocks";
-			ListBlocksIndicesGFF(blocksInstance_, outDir + "/" + "blocks_coords.gff");
+			ListBlocksIndicesGFF(trimmedBlocks, outDir + "/" + "blocks_coords.gff");
 			if (genSeq)
 			{
 				CreateOutDirectory(blocksDir);
-				ListBlocksSequences(blocksInstance_, blocksDir);
+				ListBlocksSequences(trimmedBlocks, blocksDir);
 			}
 		}
 
@@ -544,11 +598,6 @@ namespace Sibelia
 			for (size_t i = 0; i < bestRightSize - 1 && finalizer.PointPushBack(currentPath.RightPoint(i).GetEdge()); i++);
 			for (size_t i = 0; i < bestLeftSize - 1 && finalizer.PointPushFront(currentPath.LeftPoint(i).GetEdge()); i++);
 
-			if (finalizer.Origin() == -255611)
-			{
-				finalizer.DumpInstances(std::cout);
-			}
-
 			int64_t finalScore = finalizer.Score();
 			int64_t finalInstances = finalizer.GoodInstances();
 			if (finalScore > 0 && finalInstances > 1)
@@ -573,16 +622,10 @@ namespace Sibelia
 						for(auto it = jt->Front(); it != jt->Back(); ++it)
 						{						
 							it.MarkUsed();
-							if (currentPath.Origin() == -255611)
-							{								
-								std::cout << it.GetChrId() << ' ' << it.GetIndex() << ' ' << it.IsUsed() << std::endl;
-							}
 						}
-
 					}
 				}
 			}
-
 
 			finalizer.Clear();
 			std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);

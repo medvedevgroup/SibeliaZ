@@ -758,7 +758,7 @@ namespace Sibelia
 			return sequence_[idx];
 		}
 
-		void Init(const std::string & inFileName, const std::string & genomesFileName, int64_t threads, int64_t abundanceThreshold, int64_t loopThreshold)
+		void Init(const std::string & inFileName, const std::vector<std::string> & genomesFileName, int64_t threads, int64_t abundanceThreshold, int64_t loopThreshold)
 		{
 			this_ = this;
 			std::vector<size_t> abundance;
@@ -831,13 +831,16 @@ namespace Sibelia
 
 			size_t record = 0;
 			sequence_.resize(position_.size());
-			for (TwoPaCo::StreamFastaParser parser(genomesFileName); parser.ReadRecord(); record++)
+			for (const auto & fastaFileName : genomesFileName)
 			{
-				sequenceDescription_.push_back(parser.GetCurrentHeader());
-				sequenceId_[parser.GetCurrentHeader()] = sequenceDescription_.size() - 1;
-				for (char ch; parser.GetChar(ch); )
+				for (TwoPaCo::StreamFastaParser parser(fastaFileName); parser.ReadRecord(); record++)
 				{
-					sequence_[record].push_back(ch);
+					sequenceDescription_.push_back(parser.GetCurrentHeader());
+					sequenceId_[parser.GetCurrentHeader()] = sequenceDescription_.size() - 1;
+					for (char ch; parser.GetChar(ch); )
+					{
+						sequence_[record].push_back(ch);
+					}
 				}
 			}
 
@@ -864,7 +867,7 @@ namespace Sibelia
 		}
 
 		JunctionStorage() {}
-		JunctionStorage(const std::string & fileName, const std::string & genomesFileName, uint64_t k, int64_t threads, int64_t abundanceThreshold, int64_t loopThreshold) : k_(k)
+		JunctionStorage(const std::string & fileName, const std::vector<std::string> & genomesFileName, uint64_t k, int64_t threads, int64_t abundanceThreshold, int64_t loopThreshold) : k_(k)
 		{
 			Init(fileName, genomesFileName, threads, abundanceThreshold, loopThreshold);
 		}

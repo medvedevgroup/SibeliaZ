@@ -90,14 +90,6 @@ int main(int argc, char * argv[])
 			"file name",
 			cmd);
 
-		TCLAP::ValueArg<std::string> genomesFileName("",
-			"fasta",
-			"FASTA file containing the genomes",
-			true,
-			"",
-			"file name",
-			cmd);
-
 		TCLAP::ValueArg<std::string> outDirName("o",
 			"outdir",
 			"Output dir for blocks sequences",
@@ -112,6 +104,11 @@ int main(int argc, char * argv[])
 			cmd,
 			false);
 
+		TCLAP::UnlabeledMultiArg<std::string> genomesFileName("filenames",
+			"FASTA file(s) with nucleotide sequences.",
+			true,
+			"fasta files with genomes",
+			cmd);
 
 		cmd.parse(argc, argv);
 

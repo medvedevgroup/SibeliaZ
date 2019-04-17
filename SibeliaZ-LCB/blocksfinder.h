@@ -468,7 +468,7 @@ namespace Sibelia
 					for (; covered[chr][end] && end > start; end--);
 					if (end - start >= minBlockSize_)
 					{
-						buffer.push_back(BlockInstance(blocksInstance_[i].GetSign() ? +trimmedId : -trimmedId, chr, start, end));
+						buffer.push_back(BlockInstance(blocksInstance_[i].GetSign() * trimmedId, chr, start, end));
 					}
 				}
 

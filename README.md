@@ -1,7 +1,7 @@
-SibeliaZ 1.0.0
+SibeliaZ 1.1.0
 ===============
 
-Release date: 21st February 2019
+Release date: TBD
 =================
 
 Authors

@@ -115,33 +115,34 @@ def split_maf_blocks(maf_file):
 	return (blocks, sequence)
 
 # Generate blocks from the sequences uncovered by MAF
-def get_uncovered_blocks(fasta_file, blocks, sequence):
+def get_uncovered_blocks(fasta, blocks, sequence):
 	covered = dict()
 	sequence_record = dict()
-        for record in SeqIO.parse(fasta_file, "fasta"):
-                sequence_record[record.id] = record
-                covered[record.id] = [False for _ in xrange(len(record.seq))]
-		if record.id not in sequence:
-			sequence[record.id] = []
+	for fasta_file in fasta:
+	        for record in SeqIO.parse(fasta_file, "fasta"):
+        	        sequence_record[record.id] = record
+                	covered[record.id] = [False for _ in xrange(len(record.seq))]
+			if record.id not in sequence:
+				sequence[record.id] = []
 
         for b in xrange(len(blocks)):
-                for record in blocks[b]:
-                        sequence[record.seq_name].append((pos_start(record), b, record))
+               	for record in blocks[b]:
+                       	sequence[record.seq_name].append((pos_start(record), b, record))
                         for i in xrange(pos_start(record), pos_start(record) + record.size):
-                                covered[record.seq_name][i] = True
+       	                        covered[record.seq_name][i] = True
 
         for seq_id, cov in covered.items():
-                i = 0
-                while i < len(cov):
-                        if cov[i] == False:
-                                j = i
+       	        i = 0
+               	while i < len(cov):
+                       	if cov[i] == False:
+                               	j = i
                                 while j < len(cov) and cov[j] == False:
-                                        j += 1
-                                blocks.append([MafRecord(seq_name=seq_id, start=i, size=j - i, strand='+', seq_size=len(cov), body=sequence_record[seq_id].seq[i:j])])
-                                sequence[seq_id].append((i, len(blocks) - 1, blocks[-1][0]))
-                                i = j
+       	                                j += 1
+               	                blocks.append([MafRecord(seq_name=seq_id, start=i, size=j - i, strand='+', seq_size=len(cov), body=sequence_record[seq_id].seq[i:j])])
+                       	        sequence[seq_id].append((i, len(blocks) - 1, blocks[-1][0]))
+                               	i = j
                         else:
-                                i += 1
+       	                        i += 1
 
 def blocks_debug_output(blocks):
 	maf_out = open("out.maf", "w")
@@ -166,15 +167,16 @@ def output_link(a, b, remember_block, remember_link):
                         print "\t".join(("L", str(block1 + 1), record1.strand, str(block2 + 1), record2.strand, "*"))
                 id = remember_link[link]
         else:
-                print "FAIL"
+                print "FAIL", start1, record1.size, start2
 
 parser = argparse.ArgumentParser(description='A helper script for covnerting MAF produced by SibeliaZ to GFA1.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('fasta', help='Input genomes')
 parser.add_argument('maf', help='MAF output by SibeliaZ')
+parser.add_argument('fasta', nargs='+', help='Input genomes')
 args = parser.parse_args()
 
 blocks, sequence = split_maf_blocks(args.maf)
 get_uncovered_blocks(args.fasta, blocks, sequence)
+
 #blocks_debug_output(blocks)
 
 remember_block = set()

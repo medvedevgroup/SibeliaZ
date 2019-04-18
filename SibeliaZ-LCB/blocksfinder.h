@@ -515,15 +515,9 @@ namespace Sibelia
 		}
 
 		double CalculateCoverage(const BlockList & block) const;
-		void GenerateReport(const BlockList & block, const std::string & fileName) const;
-		void CalculateCoverage(GroupedBlockList::const_iterator start, GroupedBlockList::const_iterator end, std::vector<double> & ret) const;
-		std::string OutputIndex(const BlockInstance & block) const;
 		void OutputBlocks(const std::vector<BlockInstance>& block, std::ofstream& out) const;
-		void ListBlocksIndices(const BlockList & block, const std::string & fileName) const;
 		void ListBlocksIndicesGFF(BlockList & blockList, const std::string & fileName);
-		void ListChromosomesAsPermutations(const BlockList & block, const std::string & fileName) const;
 		void TryOpenFile(const std::string & fileName, std::ofstream & stream) const;
-		void ListChrs(std::ostream & out) const;
 
 		template<class T>
 		void DumpVertex(int64_t id, std::ostream & out, T & visit, int64_t cnt = 5) const
@@ -837,8 +831,8 @@ namespace Sibelia
 		tbb::mutex progressMutex_;
 		tbb::mutex blocksMutex_;
 		std::ofstream debugOut_;
-		std::vector<std::vector<Edge> > syntenyPath_;
 		std::vector<BlockInstance> blocksInstance_;
+		std::vector<std::vector<Edge> > syntenyPath_;
 #ifdef _DEBUG_OUT_
 		bool debug_;
 		std::set<int64_t> missingVertex_;

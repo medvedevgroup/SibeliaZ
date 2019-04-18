@@ -284,13 +284,8 @@ namespace Sibelia
 				return false;
 			}
 
-			void MarkUsed(bool debug = false) const
+			void MarkUsed() const
 			{
-				if (debug)
-				{
-					std::cout << idx_ << std::endl;
-				}
-
 				if (IsPositiveStrand())
 				{
 					JunctionStorage::this_->position_[GetChrId()][idx_].used = true;

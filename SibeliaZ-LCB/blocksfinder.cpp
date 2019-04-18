@@ -181,14 +181,4 @@ namespace Sibelia
 		}
 	}
 
-	void BlocksFinder::ListChrs(std::ostream & out) const
-	{
-		out << "Seq_id\tSize\tDescription" << std::endl;
-		for (int64_t i = 0; i < storage_.GetChrNumber(); i++)
-		{
-			out << i + 1 << '\t' << storage_.GetChrSequence(i).size() << '\t' << storage_.GetChrDescription(i) << std::endl;
-		}
-
-		out << DELIMITER << std::endl;
-	}
 }

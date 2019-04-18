@@ -587,7 +587,6 @@ namespace Sibelia
 			return !failFlag;
 		}
 
-
 		bool PointPushFront(const Edge & e)
 		{
 			int64_t vertex = e.GetStartVertex();

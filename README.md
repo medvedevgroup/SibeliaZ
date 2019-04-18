@@ -1,7 +1,7 @@
-SibeliaZ 1.0.0
+SibeliaZ 1.1.0
 ===============
 
-Release date: 21st February 2019
+Release date: TBD
 =================
 
 Authors
@@ -67,12 +67,18 @@ SibeliaZ usage
 SibeliaZ takes a FASTA file as an input. The simplest way to run SibeliaZ
 is to enter the following command:
 
-	sibeliaz -f <memory amount in GB>  <input FASTA file>
+	sibeliaz -f <memory amount in GB>  <input FASTA files>
 
-By default, the output will be written in the directory "sibeliaz_out" in the
-current working directory. It will contain a GFF file "blocks_coords.gff"
-containing coordinates of the found blocks, and file "alignment.maf" with the
-actual alignment. The subdirectory "examples" contains an example of running
+For example:
+
+	sibeliaz -f 16 genome1.fa genome2.fa 
+
+The alignment will be reported relative to the sequence ids, so all the input
+sequences should have a unique id in the fasta header. By default, the output
+will be written in the directory "sibeliaz_out" in the current working
+directory. It will contain a GFF file "blocks_coords.gff" containing
+coordinates of the found blocks, and file "alignment.maf" with the actual
+alignment. The subdirectory "examples" contains an example of running
 SibeliaZ and the output it produces. SibeliaZ has several parameters that
 affect the accuracy and output, which are described below.
 

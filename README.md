@@ -220,6 +220,15 @@ produces shorter locally-collinear blocks or LCBs. Output of SibeliaZ is very
 similar to Sibelia's when it is run in a single stage. At the same time, SibeliaZ
 is much faster and can handle longer genomes.
 
+Export to GFA1 (experimental)
+=============================
+A script located at Sibeliaz-LCB/maf_to_gfa1.py lets you to conver the MAF file
+produced by SibeliaZ to a GFA1 file representing a graph induced by the alignment.
+The GFA1 file then can be imported into vg (https://github.com/vgteam/vg) or
+visualized. Usage:
+
+	python maf_to_gfa1.py <MAF alignment file> <input FASTA files>
+
 Troubleshooting
 ===============
 It could be that SibeliaZ runs out of memory on large inputs. Possible reasons

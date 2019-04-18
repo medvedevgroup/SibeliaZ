@@ -469,6 +469,7 @@ namespace Sibelia
 					if (end - start >= minBlockSize_)
 					{
 						buffer.push_back(BlockInstance(blocksInstance_[i].GetSign() * trimmedId, chr, start, end));
+						std::fill(covered[chr].begin() + start, covered[chr].begin() + end, true);
 					}
 				}
 
@@ -478,9 +479,15 @@ namespace Sibelia
 					for (const auto & it : buffer)
 					{
 						trimmedBlocks.push_back(it);
-						std::fill(covered[it.GetChrId()].begin() + it.GetStart(), covered[it.GetChrId()].begin() + it.GetEnd(), true);
 					}
-				}									
+				}
+				else
+				{
+					for (const auto & it : buffer)
+					{
+						std::fill(covered[it.GetChrId()].begin() + it.GetStart(), covered[it.GetChrId()].begin() + it.GetEnd(), false);
+					}					
+				}
 			}
 
 			std::cout.setf(std::cout.fixed);

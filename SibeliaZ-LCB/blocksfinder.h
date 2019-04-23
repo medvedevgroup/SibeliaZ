@@ -204,17 +204,15 @@ namespace Sibelia
 		}
 
 		size_t AssignComponents()
-		{
-			std::vector<size_t> compSize;
+		{			
 			const size_t NO_COMPONENT = SIZE_MAX;
 			components_ = 0;
-			pointComponent_.assign(point_.size(), NO_COMPONENT);
+			pointComponent_.assign(point_.size(), NO_COMPONENT);			
 			for (size_t i = 0; i < point_.size(); i++)
 			{
 				if (pointComponent_[i] == NO_COMPONENT)
 				{
-					compSize.push_back(1);
-					std::vector<size_t> st;
+					std::vector<size_t> st;					
 					st.push_back(i);
 					while (st.size() > 0)
 					{
@@ -227,28 +225,56 @@ namespace Sibelia
 							if (pointComponent_[v] == NO_COMPONENT)
 							{
 								st.push_back(v);
-								compSize.back()++;
 								pointComponent_[u] = components_;
 							}
 						}
-					}
-
-					if (compSize.back() == 1)
-					{
-					//	std::copy(pointAdj_[i].begin(), pointAdj_[i].end(), std::ostream_iterator<size_t>(std::cout, " "));
-					//	std::cout << std::endl;
-					}
+					}				
 
 					components_++;
 				}
+			}
+		
+			/*
+			std::vector<std::vector<JunctionStorage::JunctionSequentialIterator> > compBody(components_);
+			for (size_t i = 0; i < point_.size(); i++)
+			{
+				compBody[pointComponent_[i]].push_back(point_[i]);
+			}
+			
+			for (size_t i = 0; i < components_; i++)
+			{
+				std::stringstream fn;
+				fn << "pic/" << i << ".dot";
+				std::ofstream out(fn.str().c_str());
+				out << "digraph G\n{rankdir = LR" << std::endl;
+
+				for (auto jt : compBody[i])
+				{
+					++jt;
+					for (auto start = jt; jt.Valid() && abs(jt.GetPosition() - start.GetPosition()) <= maxBranchSize_; ++jt)
+					{	
+						auto it = jt - 1;
+						out << it.GetVertexId() << " -> " << jt.GetVertexId()
+									<< "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << abs(it.GetPosition() - start.GetPosition()) << ", " << i << "\""
+									<< (it.IsPositiveStrand() ? "color=blue" : "color=red") << "]\n";
+					}
+				}
+				
+				out << "}";
+			}*/
+
+			std::vector<size_t> compSize(components_);
+			for (size_t i = 0; i < point_.size(); i++)
+			{
+				compSize[pointComponent_[i]]++;
 			}
 
 			std::sort(compSize.begin(), compSize.end());
 			for (size_t i = 0; i < compSize.size(); )
 			{
 				size_t j = i;
-				for (; j < compSize.size() && compSize[i] == compSize[j]; j++);
-				std::cout << compSize[i] << " : " << j - i << std::endl;
+				for (; j < compSize.size() && compSize[i] == compSize[j]; ++j);
+				std::cout << compSize[i] << ' ' << j - i << std::endl;
 				i = j;
 			}
 
@@ -306,7 +332,6 @@ namespace Sibelia
 		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t maxFlankingSize, int64_t lookingDepth, int64_t sampleSize, int64_t threads, const std::string & debugOut)
 		{
 			blocksFound_ = 0;
-			lookingDepth_ = lookingDepth;
 			minBlockSize_ = minBlockSize;
 			maxBranchSize_ = maxBranchSize;
 			maxFlankingSize_ = maxFlankingSize;
@@ -456,15 +481,9 @@ namespace Sibelia
 		}
 
 		double CalculateCoverage(const BlockList & block) const;
-		void GenerateReport(const BlockList & block, const std::string & fileName) const;
-		void CalculateCoverage(GroupedBlockList::const_iterator start, GroupedBlockList::const_iterator end, std::vector<double> & ret) const;
 		std::string OutputIndex(const BlockInstance & block) const;
-		void OutputBlocks(const std::vector<BlockInstance>& block, std::ofstream& out) const;
-		void ListBlocksIndices(const BlockList & block, const std::string & fileName) const;
 		void ListBlocksIndicesGFF(const BlockList & blockList, const std::string & fileName) const;
-		void ListChromosomesAsPermutations(const BlockList & block, const std::string & fileName) const;
 		void TryOpenFile(const std::string & fileName, std::ofstream & stream) const;
-		void ListChrs(std::ostream & out) const;
 
 		template<class T>
 		void DumpVertex(int64_t id, std::ostream & out, T & visit, int64_t cnt = 5) const
@@ -822,7 +841,6 @@ namespace Sibelia
 		std::atomic<int64_t> blocksFound_;
 		int64_t scalingFactor_;
 		bool scoreFullChains_;
-		int64_t lookingDepth_;
 		int64_t minBlockSize_;
 		int64_t maxBranchSize_;
 		int64_t maxFlankingSize_;

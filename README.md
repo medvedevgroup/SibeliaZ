@@ -1,7 +1,7 @@
 SibeliaZ 1.1.0
 ===============
 
-Release date: TBD
+Release date: 30th April 2019
 =================
 
 Authors
@@ -64,8 +64,8 @@ spoa and a wrapper script sibeliaz which implements the pipeline.
 
 SibeliaZ usage
 ==============
-SibeliaZ takes a FASTA file as an input. The simplest way to run SibeliaZ
-is to enter the following command:
+SibeliaZ takes a collection of FASTA file as an input. The simplest way to run
+SibeliaZ is to run the following command:
 
 	sibeliaz -f <memory amount in GB>  <input FASTA files>
 

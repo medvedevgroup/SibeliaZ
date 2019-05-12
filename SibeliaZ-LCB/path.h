@@ -57,7 +57,7 @@ namespace Sibelia
 			leftBodyFlank_ = rightBodyFlank_ = 0;
 			for (JunctionStorage::JunctionIterator it(vid); it.Valid(); ++it)
 			{
-				if (!it.IsUsed())
+				if (!it.SequentialIterator().IsUsed())
 				{
 					allInstance_.push_back(instance_[it.GetChrId()].insert(Instance(it.SequentialIterator(), 0)));
 				}
@@ -432,7 +432,7 @@ namespace Sibelia
 				for (JunctionStorage::JunctionIterator nowIt(vertex); nowIt.Valid() && !failFlag; nowIt++)
 				{
 					bool newInstance = true;
-					if (!nowIt.IsUsed())
+					if (!nowIt.SequentialIterator().IsUsed())
 					{
 						auto & instanceSet = path->instance_[nowIt.GetChrId()];
 						auto inst = instanceSet.upper_bound(Instance(nowIt.SequentialIterator(), 0));
@@ -494,7 +494,7 @@ namespace Sibelia
 				for (JunctionStorage::JunctionIterator nowIt(vertex); nowIt.Valid() && !failFlag; nowIt++)
 				{
 					bool newInstance = true;
-					if (!nowIt.IsUsed())
+					if (!nowIt.SequentialIterator().IsUsed())
 					{
 						auto & instanceSet = path->instance_[nowIt.GetChrId()];
 						auto inst = instanceSet.upper_bound(Instance(nowIt.SequentialIterator(), 0));

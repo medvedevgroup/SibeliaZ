@@ -204,9 +204,9 @@ namespace Sibelia
 		}
 
 		size_t AssignComponents()
-		{			
-			const size_t NO_COMPONENT = SIZE_MAX;
+		{
 			components_ = 0;
+			const size_t NO_COMPONENT = SIZE_MAX;
 			pointComponent_.assign(point_.size(), NO_COMPONENT);			
 			for (size_t i = 0; i < point_.size(); i++)
 			{
@@ -234,11 +234,10 @@ namespace Sibelia
 				}
 			}
 		
-			/*
-			std::vector<std::vector<JunctionStorage::JunctionSequentialIterator> > compBody(components_);
+			compBody_.assign(components_, std::vector<JunctionStorage::JunctionSequentialIterator>());
 			for (size_t i = 0; i < point_.size(); i++)
 			{
-				compBody[pointComponent_[i]].push_back(point_[i]);
+				compBody_[pointComponent_[i]].push_back(point_[i]);
 			}
 			
 			for (size_t i = 0; i < components_; i++)
@@ -246,9 +245,9 @@ namespace Sibelia
 				std::stringstream fn;
 				fn << "pic/" << i << ".dot";
 				std::ofstream out(fn.str().c_str());
-				out << "digraph G\n{rankdir = LR" << std::endl;
+				out << "digraph G\n{\nrankdir = LR" << std::endl;
 
-				for (auto jt : compBody[i])
+				for (auto jt : compBody_[i])
 				{
 					++jt;
 					for (auto start = jt; jt.Valid() && abs(jt.GetPosition() - start.GetPosition()) <= maxBranchSize_; ++jt)
@@ -261,7 +260,7 @@ namespace Sibelia
 				}
 				
 				out << "}";
-			}*/
+			}
 
 			std::vector<size_t> compSize(components_);
 			for (size_t i = 0; i < point_.size(); i++)
@@ -852,9 +851,10 @@ namespace Sibelia
 		size_t components_;
 		std::vector<size_t> pointComponent_;
 		std::vector<std::vector<size_t> > pointAdj_;
+		std::vector<std::vector<Assignment> > blockId_;
 		std::vector<JunctionStorage::JunctionSequentialIterator> point_;
 		std::map<JunctionStorage::JunctionSequentialIterator, size_t> pointId_;
-		std::vector<std::vector<Assignment> > blockId_;
+		std::vector<std::vector<JunctionStorage::JunctionSequentialIterator> > compBody_;
 #ifdef _DEBUG_OUT_
 		bool debug_;
 		std::set<int64_t> missingVertex_;

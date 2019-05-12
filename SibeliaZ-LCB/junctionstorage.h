@@ -16,7 +16,7 @@
 #include <junctionapi.h>
 
 namespace Sibelia
-{	
+{
 	using std::min;
 	using std::max;
 
@@ -100,7 +100,7 @@ namespace Sibelia
 		{
 			return !(*this == e);
 		}
-		
+
 		void Inc()
 		{
 			capacity_++;
@@ -108,7 +108,7 @@ namespace Sibelia
 
 	private:
 		int64_t startVertex_;
-		int64_t endVertex_;		
+		int64_t endVertex_;
 		int64_t length_;
 		int64_t capacity_;
 		char ch_;
@@ -271,13 +271,29 @@ namespace Sibelia
 
 			bool IsUsed() const
 			{
-				bool ret = JunctionStorage::this_->position_[GetChrId()][idx_].used;
-				return ret;
+				if (IsPositiveStrand())
+				{
+					return JunctionStorage::this_->position_[GetChrId()][idx_].used;
+				}
+
+				if (idx_ > 0)
+				{
+					return JunctionStorage::this_->position_[GetChrId()][idx_ - 1].used;
+				}
+
+				return false;
 			}
 
 			void MarkUsed() const
 			{
-				JunctionStorage::this_->position_[GetChrId()][idx_].used = true;
+				if (IsPositiveStrand())
+				{
+					JunctionStorage::this_->position_[GetChrId()][idx_].used = true;
+				}
+				else if (idx_ > 0)
+				{
+					JunctionStorage::this_->position_[GetChrId()][idx_ - 1].used = true;
+				}
 			}
 
 			JunctionSequentialIterator& operator++ ()
@@ -334,11 +350,6 @@ namespace Sibelia
 
 			bool operator < (const JunctionSequentialIterator & arg) const
 			{
-				if (this->IsPositiveStrand() != arg.IsPositiveStrand())
-				{
-					return IsPositiveStrand() < arg.IsPositiveStrand();
-				}
-
 				if (GetChrId() != arg.GetChrId())
 				{
 					return GetChrId() < arg.GetChrId();
@@ -349,7 +360,7 @@ namespace Sibelia
 
 			bool operator == (const JunctionSequentialIterator & arg) const
 			{
-				return this->IsPositiveStrand() == arg.IsPositiveStrand() && this->chrId_ == arg.chrId_ && this->idx_ == arg.idx_;
+				return this->chrId_ == arg.chrId_ && this->idx_ == arg.idx_;
 			}
 
 			bool operator != (const JunctionSequentialIterator & arg) const
@@ -449,16 +460,6 @@ namespace Sibelia
 			size_t InstancesCount() const
 			{
 				return JunctionStorage::this_->vertex_[abs(vid_)].size();
-			}
-
-			bool IsUsed() const
-			{
-				return JunctionStorage::this_->position_[GetChrId()][GetIndex()].used;
-			}
-
-			void MarkUsed() const
-			{
-				JunctionStorage::this_->position_[GetChrId()][GetIndex()].used = true;
 			}
 
 			JunctionIterator operator + (size_t inc) const
@@ -752,7 +753,7 @@ namespace Sibelia
 			return sequence_[idx];
 		}
 
-		void Init(const std::string & inFileName, const std::string & genomesFileName, int64_t threads, int64_t abundanceThreshold, int64_t loopThreshold)
+		void Init(const std::string & inFileName, const std::vector<std::string> & genomesFileName, int64_t threads, int64_t abundanceThreshold, int64_t loopThreshold)
 		{
 			this_ = this;
 			std::vector<size_t> abundance;
@@ -825,13 +826,16 @@ namespace Sibelia
 
 			size_t record = 0;
 			sequence_.resize(position_.size());
-			for (TwoPaCo::StreamFastaParser parser(genomesFileName); parser.ReadRecord(); record++)
+			for (const auto & fastaFileName : genomesFileName)
 			{
-				sequenceDescription_.push_back(parser.GetCurrentHeader());
-				sequenceId_[parser.GetCurrentHeader()] = sequenceDescription_.size() - 1;
-				for (char ch; parser.GetChar(ch); )
+				for (TwoPaCo::StreamFastaParser parser(fastaFileName); parser.ReadRecord(); record++)
 				{
-					sequence_[record].push_back(ch);
+					sequenceDescription_.push_back(parser.GetCurrentHeader());
+					sequenceId_[parser.GetCurrentHeader()] = sequenceDescription_.size() - 1;
+					for (char ch; parser.GetChar(ch); )
+					{
+						sequence_[record].push_back(ch);
+					}
 				}
 			}
 
@@ -858,7 +862,7 @@ namespace Sibelia
 		}
 
 		JunctionStorage() {}
-		JunctionStorage(const std::string & fileName, const std::string & genomesFileName, uint64_t k, int64_t threads, int64_t abundanceThreshold, int64_t loopThreshold) : k_(k)
+		JunctionStorage(const std::string & fileName, const std::vector<std::string> & genomesFileName, uint64_t k, int64_t threads, int64_t abundanceThreshold, int64_t loopThreshold) : k_(k)
 		{
 			Init(fileName, genomesFileName, threads, abundanceThreshold, loopThreshold);
 		}
@@ -871,6 +875,19 @@ namespace Sibelia
 		size_t GetSequenceId(const std::string & str) const
 		{
 			return sequenceId_.find(str)->second;
+		}
+
+		void DebugUsed() const
+		{
+			for (size_t i = 0; i < position_.size(); i++)
+			{
+				for (size_t j = 0; j < chrSize_[i]; j++)
+				{
+					std::cout << (position_[i][j].used ? 1 : 0);
+				}
+
+				std::cout << std::endl;
+			}
 		}
 
 	private:
@@ -890,7 +907,7 @@ namespace Sibelia
 
 		struct FlaggedMutex
 		{
-			FlaggedMutex() 
+			FlaggedMutex()
 			{
 
 			}
@@ -904,7 +921,7 @@ namespace Sibelia
 		std::vector<std::vector<Edge> > ingoingEdge_;
 		std::vector<std::vector<Edge> > outgoingEdge_;
 		std::vector<std::string> sequence_;
-		std::vector<std::string> sequenceDescription_;		
+		std::vector<std::string> sequenceDescription_;
 		std::vector<int64_t> chrSizeBits_;
 		std::vector<size_t> chrSize_;
 		std::vector<VertexVector> vertex_;

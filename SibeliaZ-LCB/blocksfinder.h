@@ -253,8 +253,8 @@ namespace Sibelia
 					for (auto start = jt; jt.Valid() && abs(jt.GetPosition() - start.GetPosition()) <= maxBranchSize_; ++jt)
 					{	
 						auto it = jt - 1;
-						out << it.GetVertexId() << " -> " << jt.GetVertexId()
-									<< "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << abs(it.GetPosition() - start.GetPosition()) << ", " << i << "\""
+						auto diff = abs(it.GetPosition() - start.GetPosition());
+						out << it.GetVertexId() << " -> " << jt.GetVertexId() << "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition()  << ", " << diff <<  "\" "
 									<< (it.IsPositiveStrand() ? "color=blue" : "color=red") << "]\n";
 					}
 				}
@@ -368,7 +368,7 @@ namespace Sibelia
 			starter_ = 0;
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), CheckIfSource(*this, shuffle));
 			//std::cout << "Time: " << time(0) - mark << std::endl;
-			//AddExtraEdges();
+			AddExtraEdges();
 			size_t totalMarks = 0;
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
@@ -378,8 +378,43 @@ namespace Sibelia
 			std::cout << "Starters: " << point_.size() << " out of " << totalMarks << std::endl;
 			size_t components = AssignComponents();
 			std::cout << "Comps: " << components << std::endl;
+
+			//FindBlocksClique();
 		}
 
+		void FindBlocksClique()
+		{
+			std::vector<std::vector<int64_t> > score;
+			for (auto & comp : compBody_)
+			{
+				score.assign(comp.size(), std::vector<int64_t>(comp.size(), 0));
+				for (size_t i = 0; i < comp.size(); i++)
+				{
+					if (comp[i].IsUsed())
+					{
+						continue;
+					}
+
+					for (size_t j = i + 1; j < comp.size(); j++)
+					{
+						if (comp[j].IsUsed())
+						{
+							continue;
+						}
+
+						Fork start(comp[i], comp[j]);
+						Fork end = ExpandSourceFork(start);
+						int64_t nowScore = 0;
+						for (size_t k = 0; k < 2; k++)
+						{
+							nowScore += abs(start.branch[k].GetAbsolutePosition() - end.branch[k].GetAbsolutePosition());
+						}
+
+						score[i][j] = score[j][i] = nowScore;
+					}
+				}
+			}
+		}
 
 		void ListBlocksSequences(const BlockList & block, const std::string & directory) const
 		{
@@ -480,7 +515,6 @@ namespace Sibelia
 		}
 
 		double CalculateCoverage(const BlockList & block) const;
-		std::string OutputIndex(const BlockInstance & block) const;
 		void ListBlocksIndicesGFF(const BlockList & blockList, const std::string & fileName) const;
 		void TryOpenFile(const std::string & fileName, std::ofstream & stream) const;
 
@@ -566,10 +600,6 @@ namespace Sibelia
 				auto next = TakeBubbleStep(now);
 				if (next.branch[0].Valid())
 				{
-					int64_t vid0 = now.branch[0].GetVertexId();
-					int64_t vid1 = now.branch[1].GetVertexId();
-					assert(vid0 == vid1 && abs(now.branch[0].GetPosition() - next.branch[0].GetPosition()) < maxBranchSize_ &&
-						abs(now.branch[1].GetPosition() - next.branch[1].GetPosition()) < maxBranchSize_);
 					now = next;
 				}
 				else

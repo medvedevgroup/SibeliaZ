@@ -297,9 +297,8 @@ namespace Sibelia
 						size_t u = st.back();
 						st.pop_back();
 						nodeComponent_[u] = components_;
-						for (size_t j = 0; j < nodeAdj_[u].size(); j++)
+						for (size_t v : nodeAdj_[u])
 						{
-							size_t v = nodeAdj_[u][j];
 							if (nodeComponent_[v] == NO_COMPONENT)
 							{
 								st.push_back(v);
@@ -317,7 +316,7 @@ namespace Sibelia
 			{
 				compBody_[nodeComponent_[i]].push_back(node_[i]);
 			}
-			/*
+			
 			for (size_t i = 0; i < components_; i++)
 			{
 				std::stringstream fn;
@@ -327,6 +326,7 @@ namespace Sibelia
 
 				for (auto u : compBody_[i])
 				{
+					out << u << "[shape=box]" << std::endl;
 					for (JunctionStorage::JunctionIterator ut(u); ut.Valid(); ++ut)
 					{
 						auto jt = ut.SequentialIterator();
@@ -337,11 +337,23 @@ namespace Sibelia
 							out << it.GetVertexId() << " -> " << jt.GetVertexId() << "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << ", " << diff << "\" "
 								<< (it.IsPositiveStrand() ? "color=blue" : "color=red") << "]\n";
 						}
+
+						jt = ut.SequentialIterator();
+						for (auto start = jt; jt.Valid() && abs(jt.GetPosition() - start.GetPosition()) <= maxBranchSize_; --jt)
+						{
+							auto it = jt - 1;
+							if (it.Valid())
+							{
+								auto diff = abs(it.GetPosition() - start.GetPosition());
+								out << it.GetVertexId() << " -> " << jt.GetVertexId() << "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << ", " << diff << "\" "
+									<< (it.IsPositiveStrand() ? "color=blue" : "color=red") << "]\n";
+							}
+						}
 					}					
 				}
 
 				out << "}";
-			}*/
+			}
 
 			std::vector<size_t> compSize(components_);
 			for (size_t i = 0; i < node_.size(); i++)
@@ -393,8 +405,8 @@ namespace Sibelia
 						{
 							if (p != q)
 							{
-								AddIfNotExists(nodeAdj_[p], q);
-								AddIfNotExists(nodeAdj_[q], p);
+								nodeAdj_[p].insert(q);
+								nodeAdj_[q].insert(p);
 							}
 						}
 					}
@@ -966,7 +978,7 @@ namespace Sibelia
 		std::vector<int64_t> node_;
 		std::map<int64_t, size_t> nodeId_;
 		std::vector<size_t> nodeComponent_;
-		std::vector<std::vector<size_t> > nodeAdj_;
+		std::vector<std::set<size_t> > nodeAdj_;
 		std::vector<std::vector<int64_t> > compBody_;
 
 		size_t components_;

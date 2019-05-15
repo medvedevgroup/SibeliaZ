@@ -202,7 +202,8 @@ namespace Sibelia
 				result.push_back(source);
 			}
 		}
-
+		
+		/*
 		size_t AssignComponents()
 		{
 			components_ = 0;
@@ -278,16 +279,95 @@ namespace Sibelia
 			}
 
 			return components_;
+		}*/
+
+		size_t AssignNodeComponents()
+		{
+			components_ = 0;
+			const size_t NO_COMPONENT = SIZE_MAX;
+			nodeComponent_.assign(node_.size(), NO_COMPONENT);
+			for (size_t i = 0; i < node_.size(); i++)
+			{
+				if (nodeComponent_[i] == NO_COMPONENT)
+				{
+					std::vector<size_t> st;
+					st.push_back(i);
+					while (st.size() > 0)
+					{
+						size_t u = st.back();
+						st.pop_back();
+						nodeComponent_[u] = components_;
+						for (size_t j = 0; j < nodeAdj_[u].size(); j++)
+						{
+							size_t v = nodeAdj_[u][j];
+							if (nodeComponent_[v] == NO_COMPONENT)
+							{
+								st.push_back(v);
+								nodeComponent_[u] = components_;
+							}
+						}
+					}
+
+					components_++;
+				}
+			}
+
+			compBody_.assign(components_, std::vector<int64_t>());
+			for (size_t i = 0; i < node_.size(); i++)
+			{
+				compBody_[nodeComponent_[i]].push_back(node_[i]);
+			}
+			/*
+			for (size_t i = 0; i < components_; i++)
+			{
+				std::stringstream fn;
+				fn << "pic/" << i << ".dot";
+				std::ofstream out(fn.str().c_str());
+				out << "digraph G\n{\nrankdir = LR" << std::endl;
+
+				for (auto u : compBody_[i])
+				{
+					for (JunctionStorage::JunctionIterator ut(u); ut.Valid(); ++ut)
+					{
+						auto jt = ut.SequentialIterator();
+						for (auto start = jt++; jt.Valid() && abs(jt.GetPosition() - start.GetPosition()) <= maxBranchSize_; ++jt)
+						{
+							auto it = jt - 1;
+							auto diff = abs(it.GetPosition() - start.GetPosition());
+							out << it.GetVertexId() << " -> " << jt.GetVertexId() << "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << ", " << diff << "\" "
+								<< (it.IsPositiveStrand() ? "color=blue" : "color=red") << "]\n";
+						}
+					}					
+				}
+
+				out << "}";
+			}*/
+
+			std::vector<size_t> compSize(components_);
+			for (size_t i = 0; i < node_.size(); i++)
+			{
+				compSize[nodeComponent_[i]]++;
+			}
+
+			std::sort(compSize.begin(), compSize.end());
+			for (size_t i = 0; i < compSize.size(); )
+			{
+				size_t j = i;
+				for (; j < compSize.size() && compSize[i] == compSize[j]; ++j);
+				std::cout << compSize[i] << ' ' << j - i << std::endl;
+				i = j;
+			}
+
+			return components_;
 		}
 
 		void CollectNeighbours(JunctionStorage::JunctionSequentialIterator it, std::vector<size_t> & neighbours)
 		{
 			neighbours.clear();
-			int64_t originalPos = it.GetAbsolutePosition();
-			for (--it; it.Valid() && abs(it.GetPosition() - originalPos) <= maxBranchSize_; --it)
+			for (int64_t originalPos = it.GetAbsolutePosition(); it.Valid() && abs(it.GetPosition() - originalPos) <= maxBranchSize_; --it)
 			{
-				auto jt = pointId_.find(it);
-				if (jt != pointId_.end())
+				auto jt = nodeId_.find(it.GetVertexId());
+				if (jt != nodeId_.end())
 				{
 					neighbours.push_back(jt->second);
 				}
@@ -296,9 +376,10 @@ namespace Sibelia
 
 		void AddExtraEdges()
 		{
+			node_.resize(node_.size());
+			nodeAdj_.resize(node_.size());
 			std::vector<size_t> neighboursU;
 			std::vector<size_t> neighboursV;
-			std::vector<std::pair<size_t, size_t> > edge;
 			for(size_t u = 0; u < pointAdj_.size(); u++)
 			{
 				CollectNeighbours(point_[u], neighboursU);
@@ -312,19 +393,12 @@ namespace Sibelia
 						{
 							if (p != q)
 							{
-								edge.push_back(std::make_pair(min(p, q), max(p, q)));
+								AddIfNotExists(nodeAdj_[p], q);
+								AddIfNotExists(nodeAdj_[q], p);
 							}
 						}
 					}
 				}				
-			}
-
-			std::sort(edge.begin(), edge.end());
-			edge.erase(std::unique(edge.begin(), edge.end()), edge.end());
-			for (auto e : edge)
-			{
-				pointAdj_[e.first].push_back(e.second);
-				pointAdj_[e.second].push_back(e.first);
 			}
 		}
 
@@ -368,22 +442,24 @@ namespace Sibelia
 			starter_ = 0;
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), CheckIfSource(*this, shuffle));
 			//std::cout << "Time: " << time(0) - mark << std::endl;
-			AddExtraEdges();
 			size_t totalMarks = 0;
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
 				totalMarks += storage_.GetChrVerticesCount(i);
 			}
+			
+			AddExtraEdges();
+
 
 			std::cout << "Starters: " << point_.size() << " out of " << totalMarks << std::endl;
-			size_t components = AssignComponents();
+			size_t components = AssignNodeComponents();
 			std::cout << "Comps: " << components << std::endl;
 
 			//FindBlocksClique();
 		}
 
 		void FindBlocksClique()
-		{
+		{/*
 			std::vector<std::vector<int64_t> > score;
 			for (auto & comp : compBody_)
 			{
@@ -413,7 +489,7 @@ namespace Sibelia
 						score[i][j] = score[j][i] = nowScore;
 					}
 				}
-			}
+			}*/
 		}
 
 		void ListBlocksSequences(const BlockList & block, const std::string & directory) const
@@ -797,6 +873,7 @@ namespace Sibelia
 						instance.push_back(it.SequentialIterator());
 					}
 
+					bool isNode = false;
 					const size_t NO_POINT = SIZE_MAX;
 					std::vector<size_t> pointId(instance.size(), NO_POINT);
 					finder.BubbledBranchesForward(vertex, instance, forwardBubble);
@@ -808,8 +885,8 @@ namespace Sibelia
 							size_t k = forwardBubble[i][j];
 							if (std::find(backwardBubble[i].begin(), backwardBubble[i].end(), k) == backwardBubble[i].end())
 							{
+								isNode = true;
 								tbb::mutex::scoped_lock lock(finder.globalMutex_);
-
 								if (pointId[i] == NO_POINT)
 								{
 									pointId[i] = finder.point_.size();
@@ -832,12 +909,20 @@ namespace Sibelia
 							}
 						}
 					}
+
+					if (isNode)
+					{
+						tbb::mutex::scoped_lock lock(finder.globalMutex_);
+						finder.node_.push_back(vertex);
+						finder.nodeId_[vertex] = finder.node_.size() - 1;
+					}
 				}
 			}
 		};
 
 
-		static void AddIfNotExists(std::vector<int64_t> & adj, int64_t value)
+		template<class T>
+		static void AddIfNotExists(std::vector<T> & adj, T value)
 		{
 			if (std::find(adj.begin(), adj.end(), value) == adj.end())
 			{
@@ -878,13 +963,19 @@ namespace Sibelia
 		tbb::mutex globalMutex_;
 		std::ofstream debugOut_;
 
+		std::vector<int64_t> node_;
+		std::map<int64_t, size_t> nodeId_;
+		std::vector<size_t> nodeComponent_;
+		std::vector<std::vector<size_t> > nodeAdj_;
+		std::vector<std::vector<int64_t> > compBody_;
+
 		size_t components_;
 		std::vector<size_t> pointComponent_;
 		std::vector<std::vector<size_t> > pointAdj_;
 		std::vector<std::vector<Assignment> > blockId_;
 		std::vector<JunctionStorage::JunctionSequentialIterator> point_;
 		std::map<JunctionStorage::JunctionSequentialIterator, size_t> pointId_;
-		std::vector<std::vector<JunctionStorage::JunctionSequentialIterator> > compBody_;
+		//std::vector<std::vector<JunctionStorage::JunctionSequentialIterator> > compBody_;
 #ifdef _DEBUG_OUT_
 		bool debug_;
 		std::set<int64_t> missingVertex_;

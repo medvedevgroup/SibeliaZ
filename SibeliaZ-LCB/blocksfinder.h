@@ -203,217 +203,6 @@ namespace Sibelia
 			}
 		}
 		
-		/*
-		size_t AssignComponents()
-		{
-			components_ = 0;
-			const size_t NO_COMPONENT = SIZE_MAX;
-			pointComponent_.assign(point_.size(), NO_COMPONENT);			
-			for (size_t i = 0; i < point_.size(); i++)
-			{
-				if (pointComponent_[i] == NO_COMPONENT)
-				{
-					std::vector<size_t> st;					
-					st.push_back(i);
-					while (st.size() > 0)
-					{
-						size_t u = st.back();
-						st.pop_back();						
-						pointComponent_[u] = components_;
-						for (size_t j = 0; j < pointAdj_[u].size(); j++)
-						{
-							size_t v = pointAdj_[u][j];
-							if (pointComponent_[v] == NO_COMPONENT)
-							{
-								st.push_back(v);
-								pointComponent_[u] = components_;
-							}
-						}
-					}				
-
-					components_++;
-				}
-			}
-		
-			compBody_.assign(components_, std::vector<JunctionStorage::JunctionSequentialIterator>());
-			for (size_t i = 0; i < point_.size(); i++)
-			{
-				compBody_[pointComponent_[i]].push_back(point_[i]);
-			}
-			
-			for (size_t i = 0; i < components_; i++)
-			{
-				std::stringstream fn;
-				fn << "pic/" << i << ".dot";
-				std::ofstream out(fn.str().c_str());
-				out << "digraph G\n{\nrankdir = LR" << std::endl;
-
-				for (auto jt : compBody_[i])
-				{
-					++jt;
-					for (auto start = jt; jt.Valid() && abs(jt.GetPosition() - start.GetPosition()) <= maxBranchSize_; ++jt)
-					{	
-						auto it = jt - 1;
-						auto diff = abs(it.GetPosition() - start.GetPosition());
-						out << it.GetVertexId() << " -> " << jt.GetVertexId() << "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition()  << ", " << diff <<  "\" "
-									<< (it.IsPositiveStrand() ? "color=blue" : "color=red") << "]\n";
-					}
-				}
-				
-				out << "}";
-			}
-
-			std::vector<size_t> compSize(components_);
-			for (size_t i = 0; i < point_.size(); i++)
-			{
-				compSize[pointComponent_[i]]++;
-			}
-
-			std::sort(compSize.begin(), compSize.end());
-			for (size_t i = 0; i < compSize.size(); )
-			{
-				size_t j = i;
-				for (; j < compSize.size() && compSize[i] == compSize[j]; ++j);
-				std::cout << compSize[i] << ' ' << j - i << std::endl;
-				i = j;
-			}
-
-			return components_;
-		}*/
-
-		size_t AssignNodeComponents()
-		{
-			components_ = 0;
-			const size_t NO_COMPONENT = SIZE_MAX;
-			nodeComponent_.assign(node_.size(), NO_COMPONENT);
-			for (size_t i = 0; i < node_.size(); i++)
-			{
-				if (nodeComponent_[i] == NO_COMPONENT)
-				{
-					std::vector<size_t> st;
-					st.push_back(i);
-					while (st.size() > 0)
-					{
-						size_t u = st.back();
-						st.pop_back();
-						nodeComponent_[u] = components_;
-						for (size_t v : nodeAdj_[u])
-						{
-							if (nodeComponent_[v] == NO_COMPONENT)
-							{
-								st.push_back(v);
-								nodeComponent_[u] = components_;
-							}
-						}
-					}
-
-					components_++;
-				}
-			}
-
-			compBody_.assign(components_, std::vector<int64_t>());
-			for (size_t i = 0; i < node_.size(); i++)
-			{
-				compBody_[nodeComponent_[i]].push_back(node_[i]);
-			}
-			
-			for (size_t i = 0; i < components_; i++)
-			{
-				std::stringstream fn;
-				fn << "pic/" << i << ".dot";
-				std::ofstream out(fn.str().c_str());
-				out << "digraph G\n{\nrankdir = LR" << std::endl;
-
-				for (auto u : compBody_[i])
-				{
-					out << u << "[shape=box]" << std::endl;
-					for (JunctionStorage::JunctionIterator ut(u); ut.Valid(); ++ut)
-					{
-						auto jt = ut.SequentialIterator();
-						for (auto start = jt++; jt.Valid() && abs(jt.GetPosition() - start.GetPosition()) <= maxBranchSize_; ++jt)
-						{
-							auto it = jt - 1;
-							auto diff = abs(it.GetPosition() - start.GetPosition());
-							out << it.GetVertexId() << " -> " << jt.GetVertexId() << "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << ", " << diff << "\" "
-								<< (it.IsPositiveStrand() ? "color=blue" : "color=red") << "]\n";
-						}
-
-						jt = ut.SequentialIterator();
-						for (auto start = jt; jt.Valid() && abs(jt.GetPosition() - start.GetPosition()) <= maxBranchSize_; --jt)
-						{
-							auto it = jt - 1;
-							if (it.Valid())
-							{
-								auto diff = abs(it.GetPosition() - start.GetPosition());
-								out << it.GetVertexId() << " -> " << jt.GetVertexId() << "[label=\"" << it.GetChar() << ", " << it.GetChrId() << ", " << it.GetPosition() << ", " << diff << "\" "
-									<< (it.IsPositiveStrand() ? "color=blue" : "color=red") << "]\n";
-							}
-						}
-					}					
-				}
-
-				out << "}";
-			}
-
-			std::vector<size_t> compSize(components_);
-			for (size_t i = 0; i < node_.size(); i++)
-			{
-				compSize[nodeComponent_[i]]++;
-			}
-
-			std::sort(compSize.begin(), compSize.end());
-			for (size_t i = 0; i < compSize.size(); )
-			{
-				size_t j = i;
-				for (; j < compSize.size() && compSize[i] == compSize[j]; ++j);
-				std::cout << compSize[i] << ' ' << j - i << std::endl;
-				i = j;
-			}
-
-			return components_;
-		}
-
-		void CollectNeighbours(JunctionStorage::JunctionSequentialIterator it, std::vector<size_t> & neighbours)
-		{
-			neighbours.clear();
-			for (int64_t originalPos = it.GetAbsolutePosition(); it.Valid() && abs(it.GetPosition() - originalPos) <= maxBranchSize_; --it)
-			{
-				auto jt = nodeId_.find(it.GetVertexId());
-				if (jt != nodeId_.end())
-				{
-					neighbours.push_back(jt->second);
-				}
-			}
-		}
-
-		void AddExtraEdges()
-		{
-			node_.resize(node_.size());
-			nodeAdj_.resize(node_.size());
-			std::vector<size_t> neighboursU;
-			std::vector<size_t> neighboursV;
-			for(size_t u = 0; u < pointAdj_.size(); u++)
-			{
-				CollectNeighbours(point_[u], neighboursU);
-				for (size_t j = 0; j < pointAdj_[u].size(); j++)
-				{
-					size_t v = pointAdj_[u][j];
-					CollectNeighbours(point_[v], neighboursV);
-					for (auto p : neighboursU)
-					{
-						for (auto q: neighboursV)
-						{
-							if (p != q)
-							{
-								nodeAdj_[p].insert(q);
-								nodeAdj_[q].insert(p);
-							}
-						}
-					}
-				}				
-			}
-		}
-
 		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t maxFlankingSize, int64_t lookingDepth, int64_t sampleSize, int64_t threads, const std::string & debugOut)
 		{
 			blocksFound_ = 0;
@@ -460,13 +249,6 @@ namespace Sibelia
 				totalMarks += storage_.GetChrVerticesCount(i);
 			}
 			
-			AddExtraEdges();
-
-
-			std::cout << "Starters: " << point_.size() << " out of " << totalMarks << std::endl;
-			size_t components = AssignNodeComponents();
-			std::cout << "Comps: " << components << std::endl;
-
 			//FindBlocksClique();
 		}
 
@@ -540,51 +322,30 @@ namespace Sibelia
 			}
 		}
 
-		void GenerateOutput(const std::string & outDir, bool genSeq) const
-		{		
-			BlockList instance;
+		void GenerateOutput(const std::string & outDir, bool genSeq)
+		{
+			const auto & trimmedBlocks = blocksInstance_;
 			std::vector<std::vector<bool> > covered(storage_.GetChrNumber());
 			for (size_t i = 0; i < covered.size(); i++)
 			{
-				covered[i].assign(storage_.GetChrSequence(i).size(), false);
-			}
-
-			for (size_t chr = 0; chr < blockId_.size(); chr++)
-			{
-				for (size_t i = 0; i < blockId_[chr].size();)
-				{
-					if (storage_.GetIterator(chr, i).IsUsed())
-					{
-						int64_t bid = blockId_[chr][i].block;
-						size_t j = i;
-						for (; j < blockId_[chr].size() && blockId_[chr][i] == blockId_[chr][j]; j++);
-						j--;
-						int64_t start = storage_.GetIterator(chr, i, bid > 0).GetPosition() + (bid > 0 ? 0 : -k_);
-						int64_t end = storage_.GetIterator(chr, j, bid > 0).GetPosition() + (bid > 0 ? k_ : 0);
-						instance.push_back(BlockInstance(int(bid), chr, size_t(start), size_t(end)));
-						i = j + 1;
-					}
-					else
-					{
-						++i;
-					}
-				}
+				covered[i].assign(storage_.GetChrSequence(i).size() + 1, false);
 			}
 
 			std::cout.setf(std::cout.fixed);
 			std::cout.precision(2);
 			std::cout << "Blocks found: " << blocksFound_ << std::endl;
-			std::cout << "Total coverage: " << CalculateCoverage(instance) << std::endl;		
+			std::cout << "Coverage: " << CalculateCoverage(trimmedBlocks) << std::endl;
 
 			CreateOutDirectory(outDir);
 			std::string blocksDir = outDir + "/blocks";
-			ListBlocksIndicesGFF(instance, outDir + "/" + "blocks_coords.gff");
+			ListBlocksIndicesGFF(trimmedBlocks, outDir + "/" + "blocks_coords.gff");
 			if (genSeq)
 			{
 				CreateOutDirectory(blocksDir);
-				ListBlocksSequences(instance, blocksDir);
+				ListBlocksSequences(trimmedBlocks, blocksDir);
 			}
 		}
+
 
 
 	private:
@@ -673,6 +434,16 @@ namespace Sibelia
 				}
 			}
 
+			bool operator == (const Fork & f) const
+			{
+				return branch[0] == f.branch[0] && branch[1] == f.branch[1];
+			}
+
+			bool operator != (const Fork & f) const
+			{
+				return !(*this == f);
+			}
+
 			JunctionStorage::JunctionSequentialIterator branch[2];
 		};
 
@@ -681,12 +452,12 @@ namespace Sibelia
 			return min(abs(now.branch[0].GetPosition() - next.branch[0].GetPosition()), abs(now.branch[1].GetPosition() - next.branch[1].GetPosition()));
 		}
 
-		Fork ExpandSourceFork(const Fork & source) const
+		Fork ExpandSourceFork(Fork source) const
 		{
 			for (auto now = source; ; )
 			{
-				auto next = TakeBubbleStep(now);
-				if (next.branch[0].Valid())
+				Fork next = TakeBubbleStep(now);
+				if (next != now)
 				{
 					now = next;
 				}
@@ -697,9 +468,14 @@ namespace Sibelia
 			}
 		}
 
-
 		Fork TakeBubbleStep(const Fork & source) const
 		{
+			JunctionStorage::JunctionSequentialIterator nextIt[2] = { source.branch[0] + 1, source.branch[1] + 1 };
+			if (!nextIt[0].Valid() || !nextIt[1].Valid())
+			{
+				return source;
+			}
+
 			if (source.branch[0].GetChar() == source.branch[1].GetChar() && (source.branch[0] + 1).GetVertexId() == (source.branch[1] + 1).GetVertexId())
 			{
 				return Fork(source.branch[0] + 1, source.branch[1] + 1);
@@ -723,7 +499,7 @@ namespace Sibelia
 				}
 			}
 
-			return Fork(JunctionStorage::JunctionSequentialIterator(), JunctionStorage::JunctionSequentialIterator());
+			return source;
 		}
 
 		void BubbledBranchesForward(int64_t vertexId, const std::vector<JunctionStorage::JunctionSequentialIterator> & instance, BubbledBranches & bulges) const
@@ -885,9 +661,6 @@ namespace Sibelia
 						instance.push_back(it.SequentialIterator());
 					}
 
-					bool isNode = false;
-					const size_t NO_POINT = SIZE_MAX;
-					std::vector<size_t> pointId(instance.size(), NO_POINT);
 					finder.BubbledBranchesForward(vertex, instance, forwardBubble);
 					finder.BubbledBranchesBackward(vertex, instance, backwardBubble);
 					for (size_t i = 0; i < forwardBubble.size(); i++)
@@ -897,36 +670,40 @@ namespace Sibelia
 							size_t k = forwardBubble[i][j];
 							if (std::find(backwardBubble[i].begin(), backwardBubble[i].end(), k) == backwardBubble[i].end())
 							{
-								isNode = true;
-								tbb::mutex::scoped_lock lock(finder.globalMutex_);
-								if (pointId[i] == NO_POINT)
+								if (instance[i].IsPositiveStrand() || instance[k].IsPositiveStrand())
 								{
-									pointId[i] = finder.point_.size();
-									finder.point_.push_back(instance[i]);
-									finder.pointAdj_.push_back(std::vector<size_t>());
-									finder.pointId_[instance[i]] = pointId[i];
-								}
+									bool good = true;
+									Fork source(instance[i], instance[k]);
+									Fork sink = finder.ExpandSourceFork(source);
+									for (size_t l = 0; l < 2; l++)
+									{
+										if (abs(sink.branch[l].GetPosition() - source.branch[l].GetPosition()) < finder.minBlockSize_)
+										{
+											good = false;
+										}
+									}
 
-								if (pointId[k] == NO_POINT)
-								{
-									pointId[k] = finder.point_.size();
-									finder.point_.push_back(instance[j]);
-									finder.pointAdj_.push_back(std::vector<size_t>());
-									finder.pointId_[instance[k]] = pointId[k];
+									if (good)
+									{
+										tbb::mutex::scoped_lock lock(finder.globalMutex_);
+										int64_t currentBlock = ++finder.blocksFound_;
+										for (size_t l = 0; l < 2; l++)
+										{
+											auto it = source.branch[l];
+											auto jt = sink.branch[l];
+											if (jt.IsPositiveStrand())
+											{
+												finder.blocksInstance_.push_back(BlockInstance(+currentBlock, jt.GetChrId(), it.GetPosition(), jt.GetPosition() + finder.k_));
+											}
+											else
+											{
+												finder.blocksInstance_.push_back(BlockInstance(-currentBlock, jt.GetChrId(), jt.GetPosition() - finder.k_, it.GetPosition()));
+											}
+										}
+									}
 								}
-
-								assert(pointId[i] != pointId[k]);
-								finder.pointAdj_[pointId[i]].push_back(pointId[k]);
-								finder.pointAdj_[pointId[k]].push_back(pointId[i]);
 							}
 						}
-					}
-
-					if (isNode)
-					{
-						tbb::mutex::scoped_lock lock(finder.globalMutex_);
-						finder.node_.push_back(vertex);
-						finder.nodeId_[vertex] = finder.node_.size() - 1;
 					}
 				}
 			}
@@ -974,6 +751,7 @@ namespace Sibelia
 		tbb::mutex progressMutex_;
 		tbb::mutex globalMutex_;
 		std::ofstream debugOut_;
+		std::vector<BlockInstance> blocksInstance_;
 
 		std::vector<int64_t> node_;
 		std::map<int64_t, size_t> nodeId_;

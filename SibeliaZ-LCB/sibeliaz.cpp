@@ -62,7 +62,7 @@ int main(int argc, char * argv[])
 			"blocksize",
 			"Minimum block size",
 			false,
-			200,
+			50,
 			"integer",
 			cmd);
 

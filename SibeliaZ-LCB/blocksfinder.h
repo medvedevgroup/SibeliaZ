@@ -163,11 +163,11 @@ namespace Sibelia
 			Iterator it;
 		};
 
-		template<class Iterator, class F, class ReturnType>
-		FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnType)
-		{
-			return FancyIterator<Iterator, F, ReturnType>(it, f);
-		}
+template<class Iterator, class F, class ReturnType>
+FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnType)
+{
+	return FancyIterator<Iterator, F, ReturnType>(it, f);
+}
 
 	}
 
@@ -202,7 +202,7 @@ namespace Sibelia
 				result.push_back(source);
 			}
 		}
-		
+
 		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t maxFlankingSize, int64_t lookingDepth, int64_t sampleSize, int64_t threads, const std::string & debugOut)
 		{
 			blocksFound_ = 0;
@@ -248,25 +248,56 @@ namespace Sibelia
 			{
 				totalMarks += storage_.GetChrVerticesCount(i);
 			}
-			
+
 			FindBlocksPwise();
 		}
 
 		void FindBlocksPwise()
 		{
 			std::sort(sink_.begin(), sink_.end());
-			for (auto & u : source_)
+			for (size_t i = 0; i < source_.size(); i++)
 			{
-				auto v = *std::lower_bound(sink_.begin(), sink_.end(), u);
-				//std::cout << u.ToString() << std::endl << v.ToString() << std::endl << std::endl;
-				for (size_t l = 0; l < 2; l++)
+				if (i % 100 == 0)
 				{
-					if (u.branch[l].GetChrId() != v.branch[l].GetChrId())
-					{
-						continue;
-					}
+					std::cout << i << ' ' << source_.size() << std::endl;
 				}
 
+				auto u = source_[i];
+				Fork v(u);
+				int64_t minDist = INT64_MAX;
+				auto it = std::lower_bound(sink_.begin(), sink_.end(), u);
+				while (true)
+				{
+					if (it->branch[0].IsPositiveStrand())
+					{
+						++it;
+					}
+					else
+					{
+						--it;
+					}
+
+					if (it->branch[1].GetChrId() == u.branch[1].GetChrId() && it->branch[1].IsPositiveStrand() == u.branch[1].IsPositiveStrand())
+					{
+						if ((it->branch[1].IsPositiveStrand() && it->branch[1].GetPosition() > u.branch[1].GetPosition()) || (!it->branch[1].IsPositiveStrand() && it->branch[1].GetPosition() < u.branch[1].GetPosition()))
+						{
+							auto diff = abs(u.branch[1].GetPosition() - it->branch[1].GetPosition());
+							if (diff <= minDist)
+							{
+								diff = minDist;
+								v = *it;
+							}
+						}
+					}
+
+					if (it == sink_.begin() || it == sink_.end() - 1 || it->branch[0].GetChrId() != u.branch[0].GetChrId() || it->branch[0].IsPositiveStrand() != u.branch[0].IsPositiveStrand())
+					{
+						break;
+					}
+				}
+				
+			//	std::cout << u.ToString() << std::endl << v.ToString() << std::endl << std::endl;
+				
 				if (ChainLength(u, v) >= minBlockSize_)
 				{
 					tbb::mutex::scoped_lock lock(globalMutex_);
@@ -465,7 +496,7 @@ namespace Sibelia
 				std::stringstream ss;
 				for (size_t l = 0; l < 2; l++)
 				{
-					ss << branch[l].GetChrId() << ' ' << branch[l].GetPosition() << ' ';
+					ss << branch[l].IsPositiveStrand() << ' ' << branch[l].GetChrId() << ' ' << branch[l].GetPosition() << ' ';
 				}
 
 				return ss.str();
@@ -473,33 +504,7 @@ namespace Sibelia
 
 			bool operator < (const Fork & f) const
 			{
-				for (size_t l = 0; l < 2; l++)
-				{
-					if (branch[l].IsPositiveStrand() != f.branch[l].IsPositiveStrand())
-					{
-						return branch[l].IsPositiveStrand() < f.branch[l].IsPositiveStrand();
-					}
-				}
-
-				for (size_t l = 0; l < 2; l++)
-				{
-					if (branch[l].GetChrId() != f.branch[l].GetChrId())
-					{
-						return branch[l].GetChrId() < f.branch[l].GetChrId();
-					}
-				}
-				
-				for (size_t l = 0; l < 2; l++)
-				{
-					if (branch[l].IsPositiveStrand())
-					{
-						return branch[l].GetPosition() < f.branch[l].GetPosition();
-					}
-					else
-					{
-						return branch[l].GetPosition() > f.branch[l].GetPosition();
-					}
-				}
+				return branch[0] < f.branch[0];
 			}
 
 			JunctionStorage::JunctionSequentialIterator branch[2];

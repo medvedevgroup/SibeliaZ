@@ -258,6 +258,15 @@ namespace Sibelia
 			for (auto & u : source_)
 			{
 				auto v = *std::lower_bound(sink_.begin(), sink_.end(), u);
+				//std::cout << u.ToString() << std::endl << v.ToString() << std::endl << std::endl;
+				for (size_t l = 0; l < 2; l++)
+				{
+					if (u.branch[l].GetChrId() != v.branch[l].GetChrId())
+					{
+						continue;
+					}
+				}
+
 				if (ChainLength(u, v) >= minBlockSize_)
 				{
 					tbb::mutex::scoped_lock lock(globalMutex_);
@@ -449,6 +458,17 @@ namespace Sibelia
 			bool operator != (const Fork & f) const
 			{
 				return !(*this == f);
+			}
+
+			std::string ToString() const
+			{
+				std::stringstream ss;
+				for (size_t l = 0; l < 2; l++)
+				{
+					ss << branch[l].GetChrId() << ' ' << branch[l].GetPosition() << ' ';
+				}
+
+				return ss.str();
 			}
 
 			bool operator < (const Fork & f) const

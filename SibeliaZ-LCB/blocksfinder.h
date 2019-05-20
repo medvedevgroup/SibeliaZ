@@ -277,6 +277,12 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 						--it;
 					}
 
+					//if (it == sink_.begin() || it == sink_.end() - 1 || it->branch[0].GetChrId() != u.branch[0].GetChrId() || it->branch[0].IsPositiveStrand() != u.branch[0].IsPositiveStrand())
+					if (it == sink_.begin() || it == sink_.end() - 1 || it->branch[0].GetChrId() != u.branch[0].GetChrId() || it->branch[0].IsPositiveStrand() != u.branch[0].IsPositiveStrand())
+					{
+						break;
+					}
+
 					if (it->branch[1].GetChrId() == u.branch[1].GetChrId() && it->branch[1].IsPositiveStrand() == u.branch[1].IsPositiveStrand())
 					{
 						if ((it->branch[1].IsPositiveStrand() && it->branch[1].GetPosition() > u.branch[1].GetPosition()) || (!it->branch[1].IsPositiveStrand() && it->branch[1].GetPosition() < u.branch[1].GetPosition()))
@@ -290,13 +296,16 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 						}
 					}
 
-					if (it == sink_.begin() || it == sink_.end() - 1 || it->branch[0].GetChrId() != u.branch[0].GetChrId() || it->branch[0].IsPositiveStrand() != u.branch[0].IsPositiveStrand())
-					{
-						break;
-					}
 				}
 				
-			//	std::cout << u.ToString() << std::endl << v.ToString() << std::endl << std::endl;
+				for (size_t l = 0; l < 2; l++)
+				{
+					if (u.branch[l].IsPositiveStrand() != v.branch[l].IsPositiveStrand() || u.branch[l].GetChrId() != u.branch[l].GetChrId())
+					{
+						std::cout << "Fail" << std::endl;
+					}
+				}
+
 				
 				if (ChainLength(u, v) >= minBlockSize_)
 				{
@@ -339,6 +348,8 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 					out << storage_.GetChrDescription(chr) << ";";
 					if (blockList[block].GetSignedBlockId() > 0)
 					{
+						//std::cout << blockList[block].GetStart() << ' ' << blockList[block].GetEnd() << std::endl;
+
 						out << blockList[block].GetStart() << ";" << length << ";" << "+;" << chrSize << std::endl;
 						OutputLines(storage_.GetChrSequence(chr).begin() + blockList[block].GetStart(), length, out);
 					}
@@ -352,6 +363,8 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 
 					out << std::endl;
 				}
+
+				//std::cout << std::endl;
 			}
 		}
 
@@ -363,7 +376,7 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 			{
 				covered[i].assign(storage_.GetChrSequence(i).size() + 1, false);
 			}
-
+			/*
 			for (auto & b : blocksInstance_)
 			{
 				for (size_t i = b.GetStart(); i < b.GetEnd(); i++)
@@ -371,13 +384,13 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 					covered[b.GetChrId()][i] = true;
 				}
 			}
-
+			*/
 			size_t total = 0;
 			size_t totalCovered = 0;
 			for (auto & chr : covered)
 			{
 				total += chr.size();
-				totalCovered += std::count(chr.begin(), chr.end(), true);
+				//totalCovered += std::count(chr.begin(), chr.end(), true);
 			}
 
 			std::cout.setf(std::cout.fixed);
@@ -664,7 +677,6 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 					if (finder.count_++ % 10000 == 0)
 					{
 						tbb::mutex::scoped_lock lock(finder.globalMutex_);
-						std::cout << finder.count_ << '\t' << shuffle.size() << std::endl;
 					}
 
 					instance.clear();

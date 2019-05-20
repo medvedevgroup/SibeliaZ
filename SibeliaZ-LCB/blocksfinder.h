@@ -249,41 +249,34 @@ namespace Sibelia
 				totalMarks += storage_.GetChrVerticesCount(i);
 			}
 			
-			//FindBlocksClique();
+			FindBlocksPwise();
 		}
 
-		void FindBlocksClique()
-		{/*
-			std::vector<std::vector<int64_t> > score;
-			for (auto & comp : compBody_)
+		void FindBlocksPwise()
+		{
+			std::sort(sink_.begin(), sink_.end());
+			for (auto & u : source_)
 			{
-				score.assign(comp.size(), std::vector<int64_t>(comp.size(), 0));
-				for (size_t i = 0; i < comp.size(); i++)
+				auto v = *std::lower_bound(sink_.begin(), sink_.end(), u);
+				if (ChainLength(u, v) >= minBlockSize_)
 				{
-					if (comp[i].IsUsed())
+					tbb::mutex::scoped_lock lock(globalMutex_);
+					int64_t currentBlock = ++blocksFound_;
+					for (size_t l = 0; l < 2; l++)
 					{
-						continue;
-					}
-
-					for (size_t j = i + 1; j < comp.size(); j++)
-					{
-						if (comp[j].IsUsed())
+						auto it = u.branch[l];
+						auto jt = v.branch[l];
+						if (jt.IsPositiveStrand())
 						{
-							continue;
+							blocksInstance_.push_back(BlockInstance(+currentBlock, jt.GetChrId(), it.GetPosition(), jt.GetPosition() + k_));
 						}
-
-						Fork start(comp[i], comp[j]);
-						Fork end = ExpandSourceFork(start);
-						int64_t nowScore = 0;
-						for (size_t k = 0; k < 2; k++)
+						else
 						{
-							nowScore += abs(start.branch[k].GetAbsolutePosition() - end.branch[k].GetAbsolutePosition());
+							blocksInstance_.push_back(BlockInstance(-currentBlock, jt.GetChrId(), jt.GetPosition() - k_, it.GetPosition()));
 						}
-
-						score[i][j] = score[j][i] = nowScore;
 					}
 				}
-			}*/
+			}
 		}
 
 		void ListBlocksSequences(const BlockList & block, const std::string & directory) const
@@ -331,10 +324,26 @@ namespace Sibelia
 				covered[i].assign(storage_.GetChrSequence(i).size() + 1, false);
 			}
 
+			for (auto & b : blocksInstance_)
+			{
+				for (size_t i = b.GetStart(); i < b.GetEnd(); i++)
+				{
+					covered[b.GetChrId()][i] = true;
+				}
+			}
+
+			size_t total = 0;
+			size_t totalCovered = 0;
+			for (auto & chr : covered)
+			{
+				total += chr.size();
+				totalCovered += std::count(chr.begin(), chr.end(), true);
+			}
+
 			std::cout.setf(std::cout.fixed);
 			std::cout.precision(2);
 			std::cout << "Blocks found: " << blocksFound_ << std::endl;
-			std::cout << "Coverage: " << CalculateCoverage(trimmedBlocks) << std::endl;
+			std::cout << "Coverage: " << double(totalCovered) / total << std::endl;
 
 			CreateOutDirectory(outDir);
 			std::string blocksDir = outDir + "/blocks";
@@ -345,7 +354,6 @@ namespace Sibelia
 				ListBlocksSequences(trimmedBlocks, blocksDir);
 			}
 		}
-
 
 
 	private:
@@ -363,7 +371,6 @@ namespace Sibelia
 			}
 		}
 
-		double CalculateCoverage(const BlockList & block) const;
 		void ListBlocksIndicesGFF(const BlockList & blockList, const std::string & fileName) const;
 		void TryOpenFile(const std::string & fileName, std::ofstream & stream) const;
 
@@ -444,62 +451,43 @@ namespace Sibelia
 				return !(*this == f);
 			}
 
+			bool operator < (const Fork & f) const
+			{
+				for (size_t l = 0; l < 2; l++)
+				{
+					if (branch[l].IsPositiveStrand() != f.branch[l].IsPositiveStrand())
+					{
+						return branch[l].IsPositiveStrand() < f.branch[l].IsPositiveStrand();
+					}
+				}
+
+				for (size_t l = 0; l < 2; l++)
+				{
+					if (branch[l].GetChrId() != f.branch[l].GetChrId())
+					{
+						return branch[l].GetChrId() < f.branch[l].GetChrId();
+					}
+				}
+				
+				for (size_t l = 0; l < 2; l++)
+				{
+					if (branch[l].IsPositiveStrand())
+					{
+						return branch[l].GetPosition() < f.branch[l].GetPosition();
+					}
+					else
+					{
+						return branch[l].GetPosition() > f.branch[l].GetPosition();
+					}
+				}
+			}
+
 			JunctionStorage::JunctionSequentialIterator branch[2];
 		};
 
 		int64_t ChainLength(const Fork & now, const Fork & next) const
 		{
 			return min(abs(now.branch[0].GetPosition() - next.branch[0].GetPosition()), abs(now.branch[1].GetPosition() - next.branch[1].GetPosition()));
-		}
-
-		Fork ExpandSourceFork(Fork source) const
-		{
-			for (auto now = source; ; )
-			{
-				Fork next = TakeBubbleStep(now);
-				if (next != now)
-				{
-					now = next;
-				}
-				else
-				{
-					return now;
-				}
-			}
-		}
-
-		Fork TakeBubbleStep(const Fork & source) const
-		{
-			JunctionStorage::JunctionSequentialIterator nextIt[2] = { source.branch[0] + 1, source.branch[1] + 1 };
-			if (!nextIt[0].Valid() || !nextIt[1].Valid())
-			{
-				return source;
-			}
-
-			if (source.branch[0].GetChar() == source.branch[1].GetChar() && (source.branch[0] + 1).GetVertexId() == (source.branch[1] + 1).GetVertexId())
-			{
-				return Fork(source.branch[0] + 1, source.branch[1] + 1);
-			}
-
-			auto it = source.branch[0];
-			std::map<int64_t, int64_t> firstBranch;
-			for (int64_t i = 1; abs(it.GetPosition() - source.branch[0].GetPosition()) < maxBranchSize_ && (++it).Valid(); i++)
-			{
-				int64_t d = abs(it.GetPosition() - source.branch[0].GetPosition());
-				firstBranch[it.GetVertexId()] = i;
-			}
-
-			it = source.branch[1];
-			for (int64_t i = 1; abs(it.GetPosition() - source.branch[1].GetPosition()) < maxBranchSize_ && (++it).Valid(); i++)
-			{
-				auto kt = firstBranch.find(it.GetVertexId());
-				if (kt != firstBranch.end())
-				{
-					return Fork(source.branch[0] + kt->second, it);
-				}
-			}
-
-			return source;
 		}
 
 		void BubbledBranchesForward(int64_t vertexId, const std::vector<JunctionStorage::JunctionSequentialIterator> & instance, BubbledBranches & bulges) const
@@ -668,43 +656,27 @@ namespace Sibelia
 						for (size_t j = 0; j < forwardBubble[i].size(); j++)
 						{
 							size_t k = forwardBubble[i][j];
-							if (std::find(backwardBubble[i].begin(), backwardBubble[i].end(), k) == backwardBubble[i].end())
+							if (std::find(backwardBubble[i].begin(), backwardBubble[i].end(), k) == backwardBubble[i].end() && (instance[i].IsPositiveStrand() || instance[k].IsPositiveStrand()))
 							{
-								if (instance[i].IsPositiveStrand() || instance[k].IsPositiveStrand())
-								{
-									bool good = true;
-									Fork source(instance[i], instance[k]);
-									Fork sink = finder.ExpandSourceFork(source);
-									for (size_t l = 0; l < 2; l++)
-									{
-										if (abs(sink.branch[l].GetPosition() - source.branch[l].GetPosition()) < finder.minBlockSize_)
-										{
-											good = false;
-										}
-									}
-
-									if (good)
-									{
-										tbb::mutex::scoped_lock lock(finder.globalMutex_);
-										int64_t currentBlock = ++finder.blocksFound_;
-										for (size_t l = 0; l < 2; l++)
-										{
-											auto it = source.branch[l];
-											auto jt = sink.branch[l];
-											if (jt.IsPositiveStrand())
-											{
-												finder.blocksInstance_.push_back(BlockInstance(+currentBlock, jt.GetChrId(), it.GetPosition(), jt.GetPosition() + finder.k_));
-											}
-											else
-											{
-												finder.blocksInstance_.push_back(BlockInstance(-currentBlock, jt.GetChrId(), jt.GetPosition() - finder.k_, it.GetPosition()));
-											}
-										}
-									}
-								}
+								tbb::mutex::scoped_lock lock(finder.globalMutex_);
+								finder.source_.push_back(Fork(instance[i], instance[k]));
 							}
 						}
 					}
+
+					for (size_t i = 0; i < backwardBubble.size(); i++)
+					{
+						for (size_t j = 0; j < backwardBubble[i].size(); j++)
+						{
+							size_t k = backwardBubble[i][j];
+							if (std::find(forwardBubble[i].begin(), forwardBubble[i].end(), k) == forwardBubble[i].end() && (instance[i].IsPositiveStrand() || instance[k].IsPositiveStrand()))
+							{
+								tbb::mutex::scoped_lock lock(finder.globalMutex_);
+								finder.sink_.push_back(Fork(instance[i], instance[k]));
+							}
+						}
+					}
+
 				}
 			}
 		};
@@ -742,6 +714,9 @@ namespace Sibelia
 		std::atomic<int64_t> count_;
 		std::atomic<int64_t> starter_;
 		std::atomic<int64_t> blocksFound_;
+		std::vector<size_t> pointComponent_;
+
+
 		int64_t scalingFactor_;
 		bool scoreFullChains_;
 		int64_t minBlockSize_;
@@ -752,20 +727,11 @@ namespace Sibelia
 		tbb::mutex globalMutex_;
 		std::ofstream debugOut_;
 		std::vector<BlockInstance> blocksInstance_;
-
-		std::vector<int64_t> node_;
-		std::map<int64_t, size_t> nodeId_;
-		std::vector<size_t> nodeComponent_;
-		std::vector<std::set<size_t> > nodeAdj_;
-		std::vector<std::vector<int64_t> > compBody_;
-
-		size_t components_;
-		std::vector<size_t> pointComponent_;
-		std::vector<std::vector<size_t> > pointAdj_;
 		std::vector<std::vector<Assignment> > blockId_;
-		std::vector<JunctionStorage::JunctionSequentialIterator> point_;
-		std::map<JunctionStorage::JunctionSequentialIterator, size_t> pointId_;
-		//std::vector<std::vector<JunctionStorage::JunctionSequentialIterator> > compBody_;
+
+		std::vector<Fork> sink_;
+		std::vector<Fork> source_;
+
 #ifdef _DEBUG_OUT_
 		bool debug_;
 		std::set<int64_t> missingVertex_;

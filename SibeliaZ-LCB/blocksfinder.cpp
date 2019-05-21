@@ -70,53 +70,14 @@ namespace Sibelia
 		return chr_;
 	}
 
-	size_t BlockInstance::GetStart() const
+	int64_t BlockInstance::GetStart() const
 	{
 		return start_;
 	}
 
-	size_t BlockInstance::GetEnd() const
+	int64_t BlockInstance::GetEnd() const
 	{
 		return end_;
-	}
-
-	size_t BlockInstance::GetConventionalStart() const
-	{
-		if (GetDirection())
-		{
-			return start_ + 1;
-		}
-
-		return end_;
-	}
-
-	size_t BlockInstance::GetConventionalEnd() const
-	{
-		if (GetDirection())
-		{
-			return end_;
-		}
-
-		return start_ + 1;
-	}
-
-	std::pair<size_t, size_t> BlockInstance::CalculateOverlap(const BlockInstance & instance) const
-	{
-		if (GetChrId() == instance.GetChrId())
-		{
-			size_t overlap = 0;
-			if (GetStart() >= instance.GetStart() && GetStart() <= instance.GetEnd())
-			{
-				return std::pair<size_t, size_t>(GetStart(), min(GetEnd(), instance.GetEnd()));
-			}
-
-			if (instance.GetStart() >= GetStart() && instance.GetStart() <= GetEnd())
-			{
-				return std::pair<size_t, size_t>(instance.GetStart(), min(GetEnd(), instance.GetEnd()));
-			}
-		}
-
-		return std::pair<size_t, size_t>(0, 0);
 	}
 
 	bool BlockInstance::operator == (const BlockInstance & toCompare) const
@@ -134,7 +95,7 @@ namespace Sibelia
 		id_ = -id_;
 	}
 
-	size_t BlockInstance::GetLength() const
+	int64_t BlockInstance::GetLength() const
 	{
 		return end_ - start_;
 	}

@@ -570,19 +570,6 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 				}
 			}
 
-			for (size_t i = 0; i < 5; i++)
-			{
-				for (size_t j = 0; j < parallelEdge[i].size(); j++)
-				{
-					for (size_t k = j + 1; k < parallelEdge[i].size(); k++)
-					{
-						size_t smallBranch = parallelEdge[i][j];
-						size_t largeBranch = parallelEdge[i][k];
-						bulges[smallBranch].push_back(largeBranch);
-					}
-				}
-			}
-
 			for (auto point = visit.begin(); point != visit.end(); ++point)
 			{
 				std::sort(point->second.branchId.begin(), point->second.branchId.end());

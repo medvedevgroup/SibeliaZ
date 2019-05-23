@@ -25,8 +25,7 @@ namespace Sibelia
 		}
 	}
 
-	JunctionStorage * JunctionStorage::this_;
-	extern const std::string VERSION = "1.0.0";
+	const std::string DELIMITER(80, '-');
 
 	bool compareById(const BlockInstance & a, const BlockInstance & b)
 	{
@@ -43,7 +42,8 @@ namespace Sibelia
 		return CompareBlocks(a, b, &BlockInstance::GetChrId);
 	}
 
-	const std::string DELIMITER(80, '-');
+	JunctionStorage * JunctionStorage::this_;
+	extern const std::string VERSION = "1.0.0";
 
 	int BlockInstance::GetSignedBlockId() const
 	{
@@ -70,14 +70,53 @@ namespace Sibelia
 		return chr_;
 	}
 
-	int64_t BlockInstance::GetStart() const
+	size_t BlockInstance::GetStart() const
 	{
 		return start_;
 	}
 
-	int64_t BlockInstance::GetEnd() const
+	size_t BlockInstance::GetEnd() const
 	{
 		return end_;
+	}
+
+	size_t BlockInstance::GetConventionalStart() const
+	{
+		if (GetDirection())
+		{
+			return start_ + 1;
+		}
+
+		return end_;
+	}
+
+	size_t BlockInstance::GetConventionalEnd() const
+	{
+		if (GetDirection())
+		{
+			return end_;
+		}
+
+		return start_ + 1;
+	}
+
+	std::pair<size_t, size_t> BlockInstance::CalculateOverlap(const BlockInstance & instance) const
+	{
+		if (GetChrId() == instance.GetChrId())
+		{
+			size_t overlap = 0;
+			if (GetStart() >= instance.GetStart() && GetStart() <= instance.GetEnd())
+			{
+				return std::pair<size_t, size_t>(GetStart(), min(GetEnd(), instance.GetEnd()));
+			}
+
+			if (instance.GetStart() >= GetStart() && instance.GetStart() <= GetEnd())
+			{
+				return std::pair<size_t, size_t>(instance.GetStart(), min(GetEnd(), instance.GetEnd()));
+			}
+		}
+
+		return std::pair<size_t, size_t>(0, 0);
 	}
 
 	bool BlockInstance::operator == (const BlockInstance & toCompare) const
@@ -95,7 +134,7 @@ namespace Sibelia
 		id_ = -id_;
 	}
 
-	int64_t BlockInstance::GetLength() const
+	size_t BlockInstance::GetLength() const
 	{
 		return end_ - start_;
 	}
@@ -104,7 +143,6 @@ namespace Sibelia
 	{
 		return std::make_pair(GetBlockId(), std::make_pair(GetChrId(), GetStart())) < std::make_pair(toCompare.GetBlockId(), std::make_pair(toCompare.GetChrId(), toCompare.GetStart()));
 	}
-
 	template<class It>
 	std::string Join(It start, It end, const std::string & delimiter)
 	{
@@ -119,6 +157,53 @@ namespace Sibelia
 		return ss.str();
 	}
 
+	void BlocksFinder::ListChrs(std::ostream & out) const
+	{
+		out << "Seq_id\tSize\tDescription" << std::endl;
+		for (size_t i = 0; i < storage_.GetChrNumber(); i++)
+		{
+			out << i + 1 << '\t' << storage_.GetChrSequence(i).size() << '\t' << storage_.GetChrDescription(i) << std::endl;
+		}
+
+		out << DELIMITER << std::endl;
+	}
+
+
+	void BlocksFinder::ListBlocksIndices(const BlockList & block, const std::string & fileName) const
+	{
+		std::ofstream out;
+		TryOpenFile(fileName, out);
+		ListChrs(out);
+		OutputBlocks(block, out);
+	}
+
+	std::string BlocksFinder::OutputIndex(const BlockInstance & block) const
+	{
+		std::stringstream out;
+		out << block.GetChrId() + 1 << '\t' << (block.GetSignedBlockId() < 0 ? '-' : '+') << '\t';
+		out << block.GetConventionalStart() << '\t' << block.GetConventionalEnd() << '\t' << block.GetEnd() - block.GetStart();
+		return out.str();
+	}
+
+	void BlocksFinder::OutputBlocks(const std::vector<BlockInstance>& block, std::ofstream& out) const
+	{
+		std::vector<IndexPair> group;
+		std::vector<BlockInstance> blockList = block;
+		GroupBy(blockList, compareById, std::back_inserter(group));
+		for (std::vector<IndexPair>::iterator it = group.begin(); it != group.end(); ++it)
+		{
+			size_t length = it->second - it->first;
+			std::sort(blockList.begin() + it->first, blockList.begin() + it->second, compareByChrId);
+			out << "Block #" << blockList[it->first].GetBlockId() << std::endl;
+			out << "Seq_id\tStrand\tStart\tEnd\tLength" << std::endl;
+			for (auto jt = blockList.begin() + it->first; jt < blockList.begin() + it->first + length; ++jt)
+			{
+				out << OutputIndex(*jt) << std::endl;
+			}
+
+			out << DELIMITER << std::endl;
+		}
+	}
 
 	void BlocksFinder::ListBlocksIndicesGFF(const BlockList & blockList, const std::string & fileName) const
 	{

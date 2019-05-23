@@ -29,23 +29,26 @@ namespace Sibelia
 	{
 	public:
 		BlockInstance() {}
-		BlockInstance(int id, const size_t chr, int64_t start, int64_t end) : id_(id), chr_(chr), start_(start), end_(end) {}
+		BlockInstance(int id, const size_t chr, size_t start, size_t end) : id_(id), chr_(chr), start_(start), end_(end) {}
 		void Reverse();
 		int GetSignedBlockId() const;
 		bool GetDirection() const;
 		int GetBlockId() const;
 		int GetSign() const;
 		size_t GetChrId() const;
-		int64_t GetStart() const;
-		int64_t GetEnd() const;
-		int64_t GetLength() const;
+		size_t GetStart() const;
+		size_t GetEnd() const;
+		size_t GetLength() const;
+		size_t GetConventionalStart() const;
+		size_t GetConventionalEnd() const;
+		std::pair<size_t, size_t> CalculateOverlap(const BlockInstance & instance) const;
 		bool operator < (const BlockInstance & toCompare) const;
 		bool operator == (const BlockInstance & toCompare) const;
 		bool operator != (const BlockInstance & toCompare) const;
 	private:
 		int id_;
-		int64_t start_;
-		int64_t end_;
+		size_t start_;
+		size_t end_;
 		size_t chr_;
 	};
 
@@ -335,6 +338,8 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 				ListBlocksSequences(trimmedBlocks, blocksDir);
 			}
 
+			ListBlocksIndices(trimmedBlocks, outDir + "/" + "blocks_coords.txt");
+
 			std::ofstream src("log/source.txt");
 			std::sort(matchSource_.begin(), matchSource_.end());
 			for(size_t i = 0; i < source_.size(); i++)
@@ -361,6 +366,10 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 			}
 		}
 
+		void ListChrs(std::ostream & out) const;
+		std::string OutputIndex(const BlockInstance & block) const;
+		void OutputBlocks(const std::vector<BlockInstance>& block, std::ofstream& out) const;
+		void ListBlocksIndices(const BlockList & block, const std::string & fileName) const;
 		void ListBlocksIndicesGFF(const BlockList & blockList, const std::string & fileName) const;
 		void TryOpenFile(const std::string & fileName, std::ofstream & stream) const;
 

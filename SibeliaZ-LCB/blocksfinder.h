@@ -243,9 +243,10 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 			*/
 
 			//forkLog.open("log/fork.txt");
-
+			time_t start = clock();
 			starter_ = 0;
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), CheckIfSource(*this, shuffle));
+			std::cout << double(clock() - start) / CLOCKS_PER_SEC << std::endl;
 			//std::cout << "Time: " << time(0) - mark << std::endl;
 			size_t totalMarks = 0;
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
@@ -253,7 +254,9 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 				totalMarks += storage_.GetChrVerticesCount(i);
 			}
 
-			FindBlocksPwise();
+			//CheckSmart();
+
+			//FindBlocksPwise();
 		}
 
 		void FindBlocksPwise()
@@ -340,17 +343,95 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 			}
 
 			ListBlocksIndices(trimmedBlocks, outDir + "/" + "blocks_coords.txt");
-
-			std::ofstream src("log/source.txt");
-			std::sort(matchSource_.begin(), matchSource_.end());
-			for(size_t i = 0; i < source_.size(); i++)
-			{
-				src << matchSource_[i].first.ToString() << std::endl;
-				src << matchSource_[i].second.ToString() << std::endl << std::endl;
-				// << f.ToString() << std::endl << std::endl;
-			}
+			
 		}
 
+
+		void CheckSmart()
+		{
+			std::ofstream src("log/source.txt");
+			std::ofstream start("log/start.txt");
+			std::ofstream end("log/end.txt");
+			std::sort(sink_.begin(), sink_.end());
+			std::sort(source_.begin(), source_.end());
+			for (auto & f : source_)
+			{
+				start << f.ToString() << std::endl;
+			}
+
+			for (auto & f : sink_)
+			{
+				end << f.ToString() << std::endl;
+			}
+
+			std::sort(matchSource_.begin(), matchSource_.end());
+			for (size_t i = 0; i < source_.size(); i++)
+			{
+				// << f.ToString() << std::endl << std::endl;
+
+				auto u = matchSource_[i].first;
+				Fork v(u);
+				int64_t minDist = INT64_MAX;
+				auto it = std::lower_bound(sink_.begin(), sink_.end(), u);
+				std::vector<Fork> possible;
+				while (true)
+				{
+					if (it->branch[0].GetChrId() != u.branch[0].GetChrId() || it->branch[0].IsPositiveStrand() != u.branch[0].IsPositiveStrand() || abs(u.branch[0].GetPosition() - it->branch[0].GetPosition()) >= minDist)
+					{
+						break;
+					}
+
+					if (it->branch[1].GetChrId() == u.branch[1].GetChrId() && it->branch[1].IsPositiveStrand() == u.branch[1].IsPositiveStrand())
+					{
+						bool good = true;
+						if (!it->branch[0].IsPositiveStrand() && it->branch[0].GetPosition() >= u.branch[0].GetPosition())
+						{
+							good = false;
+						}
+
+						if ((it->branch[1].IsPositiveStrand() && it->branch[1].GetPosition() > u.branch[1].GetPosition()) || (!it->branch[1].IsPositiveStrand() && it->branch[1].GetPosition() < u.branch[1].GetPosition()))
+						{
+							possible.push_back(*it);
+							auto diff = abs(u.branch[1].GetPosition() - it->branch[1].GetPosition()) + abs(u.branch[0].GetPosition() - it->branch[0].GetPosition());
+							if (diff <= minDist && good)
+							{
+								minDist = diff;
+								v = *it;
+								//break;
+							}
+						}
+					}
+
+					if (it == sink_.begin() || it == sink_.end() - 1)
+					{
+						break;
+					}
+
+					if (it->branch[0].IsPositiveStrand())
+					{
+						++it;
+					}
+					else
+					{
+						--it;
+					}
+				}
+
+				if (v != matchSource_[i].second)
+				{
+					src << matchSource_[i].first.ToString() << std::endl;
+					src << matchSource_[i].second.ToString() << std::endl << std::endl;
+					src << v.ToString() << std::endl << std::endl;
+
+					for (auto & f : possible)
+					{
+						src << f.ToString() << std::endl;
+					}
+
+					src << std::string(80, '-') << std::endl;
+				}
+			}
+		}
 
 	private:
 
@@ -464,6 +545,7 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 
 			bool operator < (const Fork & f) const
 			{
+				//return branch[0] < f.branch[0];
 				return std::make_pair(branch[0], branch[1]) < std::make_pair(f.branch[0], f.branch[1]);
  			}
 
@@ -617,7 +699,6 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 					size_t endIdx2 = max(start.branch[1].GetIndex(), source.branch[1].GetIndex());
 					if ((startIdx2 >= startIdx1 && startIdx2 <= endIdx1) || (startIdx1 >= startIdx2 && startIdx1 <= endIdx2))
 					{
-						std::cout << startIdx1 << ' ' <<  endIdx1 << ' ' << startIdx2 << ' ' << endIdx2 << std::endl;
 						continue;
 					}
 				}
@@ -700,8 +781,6 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 						instance.push_back(it.SequentialIterator());
 					}
 
-					std::vector<size_t> originChainId;
-					std::vector<bool> isOriginInstance(instance.size(), false);
 					finder.BubbledBranchesForward(vertex, instance, forwardBubble);
 					finder.BubbledBranchesBackward(vertex, instance, backwardBubble);
 					for (size_t i = 0; i < forwardBubble.size(); i++)
@@ -727,17 +806,12 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 										good = false;
 									}
 								}
-
+								
+								tbb::mutex::scoped_lock lock(finder.globalMutex_);
+								finder.source_.push_back(Fork(instance[i], instance[k]));
 								if (good)
 								{
-									isOriginInstance[i] = isOriginInstance[k] = true;
-									tbb::mutex::scoped_lock lock(finder.globalMutex_);
 									finder.matchSource_.push_back(std::make_pair(source, sink));
-									originChainId.push_back(finder.matchSource_.size());
-								}
-
-								if (good)
-								{
 									int64_t currentBlock = ++finder.blocksFound_;
 									for (size_t l = 0; l < 2; l++)
 									{
@@ -756,14 +830,6 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 							}
 						}
 					}
-
-					if (originChainId.size() > 0)
-					{
-						tbb::mutex::scoped_lock lock(finder.globalMutex_);
-						finder.origin_.push_back(vertex);
-
-					}
-
 					/*
 					for (size_t i = 0; i < backwardBubble.size(); i++)
 					{
@@ -776,8 +842,7 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 								finder.sink_.push_back(Fork(instance[i], instance[k]));
 							}
 						}
-					}
-					*/
+					}*/
 				}
 			}
 		};
@@ -817,9 +882,8 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 		std::atomic<int64_t> blocksFound_;
 		std::vector<size_t> pointComponent_;
 
-
-		int64_t scalingFactor_;
 		bool scoreFullChains_;
+		int64_t scalingFactor_;
 		int64_t minBlockSize_;
 		int64_t maxBranchSize_;
 		int64_t maxFlankingSize_;
@@ -836,8 +900,6 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 		std::vector<Fork> sink_;
 		std::vector<Fork> source_;
 		std::vector<size_t> origin_;
-		std::vector<std::vector<size_t> > originChainId_;
-		std::vector<std::vector<std::pair<size_t, size_t> > > originTraverse_;
 		std::vector<std::pair<Fork, Fork> > matchSource_;
 #ifdef _DEBUG_OUT_
 		bool debug_;

@@ -18,39 +18,13 @@
 
 #include <tbb/parallel_for.h>
 
-#include "path.h"
+#include "sweeper.h"
 
 namespace Sibelia
 {
 	extern const std::string DELIMITER;
 	extern const std::string VERSION;
 
-	class BlockInstance
-	{
-	public:
-		BlockInstance() {}
-		BlockInstance(int id, const size_t chr, size_t start, size_t end) : id_(id), chr_(chr), start_(start), end_(end) {}
-		void Reverse();
-		int GetSignedBlockId() const;
-		bool GetDirection() const;
-		int GetBlockId() const;
-		int GetSign() const;
-		size_t GetChrId() const;
-		size_t GetStart() const;
-		size_t GetEnd() const;
-		size_t GetLength() const;
-		size_t GetConventionalStart() const;
-		size_t GetConventionalEnd() const;
-		std::pair<size_t, size_t> CalculateOverlap(const BlockInstance & instance) const;
-		bool operator < (const BlockInstance & toCompare) const;
-		bool operator == (const BlockInstance & toCompare) const;
-		bool operator != (const BlockInstance & toCompare) const;
-	private:
-		int id_;
-		size_t start_;
-		size_t end_;
-		size_t chr_;
-	};
 
 	namespace
 	{
@@ -209,12 +183,7 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 			minBlockSize_ = minBlockSize;
 			maxBranchSize_ = maxBranchSize;
 			maxFlankingSize_ = maxFlankingSize;
-			blockId_.resize(storage_.GetChrNumber());
-			for (int64_t i = 0; i < storage_.GetChrNumber(); i++)
-			{
-				blockId_[i].resize(storage_.GetChrVerticesCount(i));
-			}
-
+			/*
 			std::vector<int64_t> shuffle;
 			for (int64_t v = -storage_.GetVerticesNumber() + 1; v < storage_.GetVerticesNumber(); v++)
 			{
@@ -227,6 +196,7 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 					}
 				}
 			}
+			*/
 
 			using namespace std::placeholders;
 			tbb::task_scheduler_init init(static_cast<int>(threads));
@@ -245,14 +215,21 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 			//forkLog.open("log/fork.txt");
 			time_t start = clock();
 			starter_ = 0;
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), CheckIfSource(*this, shuffle));
-			std::cout << double(clock() - start) / CLOCKS_PER_SEC << std::endl;
+//			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), CheckIfSource(*this, shuffle));
 			//std::cout << "Time: " << time(0) - mark << std::endl;
-			size_t totalMarks = 0;
+			//size_t totalMarks = 0;
 			for (size_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
-				totalMarks += storage_.GetChrVerticesCount(i);
+			//	totalMarks += storage_.GetChrVerticesCount(i);
 			}
+
+			for (int64_t i = 0; i < storage_.GetChrNumber(); i++)
+			{
+				Sweeper sweeper(storage_.Begin(i));
+				sweeper.Sweep(minBlockSize, maxBranchSize, k_, blocksFound_, blocksInstance_, globalMutex_);
+			}
+
+			std::cout << double(clock() - start) / CLOCKS_PER_SEC << std::endl;
 
 			//CheckSmart();
 
@@ -310,7 +287,7 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 			{
 				covered[i].assign(storage_.GetChrSequence(i).size() + 1, false);
 			}
-			/*
+			
 			for (auto & b : blocksInstance_)
 			{
 				for (size_t i = b.GetStart(); i < b.GetEnd(); i++)
@@ -318,8 +295,7 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 					covered[b.GetChrId()][i] = true;
 				}
 			}
-			*/
-
+			
 			size_t total = 0;
 			size_t totalCovered = 0;
 			for (auto & chr : covered)
@@ -331,7 +307,7 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 			std::cout.setf(std::cout.fixed);
 			std::cout.precision(2);
 			std::cout << "Blocks found: " << blocksFound_ << std::endl;
-			//std::cout << "Coverage: " << double(totalCovered) / total << std::endl;
+			std::cout << "Coverage: " << double(totalCovered) / total << std::endl;
 
 			CreateOutDirectory(outDir);
 			std::string blocksDir = outDir + "/blocks";
@@ -892,7 +868,6 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 		tbb::mutex globalMutex_;
 		std::ofstream debugOut_;
 		std::vector<BlockInstance> blocksInstance_;
-		std::vector<std::vector<Assignment> > blockId_;
 
 		//std::ofstream forkLog;
 

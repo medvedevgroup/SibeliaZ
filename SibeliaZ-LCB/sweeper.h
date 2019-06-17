@@ -203,6 +203,18 @@ namespace Sibelia
 
 			if (withinBubble || validSuccessor)
 			{
+				if(inst.start[0].GetChrId() == inst.start[1].GetChrId())
+				{
+					size_t startIdx1 = inst.start[0].GetIndex();
+					size_t endIdx1 = succ[0].GetIndex();
+					size_t startIdx2 = min(inst.start[1].GetIndex(), succ[1].GetIndex());
+					size_t endIdx2 = max(inst.start[1].GetIndex(), succ[1].GetIndex());
+					if ((startIdx2 >= startIdx1 && startIdx2 <= endIdx1) || (startIdx1 >= startIdx2 && startIdx1 <= endIdx2))
+					{
+						return false;
+					}
+				}
+
 				return true;
 			}
 

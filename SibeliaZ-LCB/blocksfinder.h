@@ -207,7 +207,7 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 			std::cout << '[' << std::flush;
 			progressPortion_ = shuffle.size() / progressCount_;
 
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle));
+			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle))
 			std::cout << ']' << std::endl;
 			
 			*/
@@ -225,16 +225,38 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 
 			for (int64_t i = 0; i < storage_.GetChrNumber(); i++)
 			{
-				Sweeper sweeper(storage_.Begin(i));
-				sweeper.Sweep(minBlockSize, maxBranchSize, k_, blocksFound_, blocksInstance_, globalMutex_);
+				
 			}
 
+
+			tbb::parallel_for(tbb::blocked_range<size_t>(0, storage_.GetChrNumber()), ChrSweep(*this));
 			std::cout << double(clock() - start) / CLOCKS_PER_SEC << std::endl;
 
 			//CheckSmart();
 
 			//FindBlocksPwise();
 		}
+
+		struct ChrSweep
+		{
+		public:
+			BlocksFinder & finder;
+
+			ChrSweep(BlocksFinder & finder) : finder(finder)
+			{
+
+			}
+
+			void operator()(tbb::blocked_range<size_t> & range) const
+			{
+				for (size_t r = range.begin(); r != range.end(); r++)
+				{
+					Sweeper sweeper(finder.storage_.Begin(r));
+					sweeper.Sweep(finder.minBlockSize_, finder.maxBranchSize_, finder.k_, finder.blocksFound_, finder.blocksInstance_, finder.globalMutex_);
+				}
+			}
+		};
+
 
 		void FindBlocksPwise()
 		{

@@ -117,27 +117,18 @@ namespace Sibelia
 						if (kt != instance_.begin())
 						{
 							--kt;
-							//for (--kt; kt != instance_.end() && !found; ++kt)
+							if (kt->end[1].GetChrId() == jt.GetChrId() && kt->end[1].IsPositiveStrand() == jt.IsPositiveStrand())
 							{
-								/*
-								if (kt->end[1].GetChrId() != jt.GetChrId() || kt->end[1].IsPositiveStrand() != jt.IsPositiveStrand())
+								successor[0] = it;
+								successor[1] = jt;
+								if (Compatible(*kt, successor, maxBranchSize))
 								{
-									break;
-								}
-								*/
-								if (kt->end[1].GetChrId() == jt.GetChrId() && kt->end[1].IsPositiveStrand() == jt.IsPositiveStrand())
-								{
-									successor[0] = it;
-									successor[1] = jt;
-									if (Compatible(*kt, successor, maxBranchSize))
-									{
-										found = true;
-										Instance update(*kt);
-										update.end[0] = it;
-										update.end[1] = jt;
-										instance_.erase(kt);
-										instance_.insert(update);
-									}
+									found = true;
+									Instance update(*kt);
+									update.end[0] = it;
+									update.end[1] = jt;
+									instance_.erase(kt);
+									instance_.insert(update);
 								}
 							}
 						}

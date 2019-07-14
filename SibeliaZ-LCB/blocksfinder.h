@@ -223,12 +223,7 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 			//	totalMarks += storage_.GetChrVerticesCount(i);
 			}
 
-			for (int64_t i = 0; i < storage_.GetChrNumber(); i++)
-			{
-				
-			}
-
-
+			progressCount_ = 0;
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, storage_.GetChrNumber()), ChrSweep(*this));
 			std::cout << double(clock() - start) / CLOCKS_PER_SEC << std::endl;
 
@@ -253,6 +248,10 @@ FancyIterator<Iterator, F, ReturnType> CFancyIterator(Iterator it, F f, ReturnTy
 				{
 					Sweeper sweeper(finder.storage_.Begin(r));
 					sweeper.Sweep(finder.minBlockSize_, finder.maxBranchSize_, finder.k_, finder.blocksFound_, finder.blocksInstance_, finder.globalMutex_);
+					{
+						tbb::mutex::scoped_lock lock(finder.globalMutex_);
+						std::cout << ++finder.progressCount_ << ' ' << finder.storage_.GetChrNumber() << std::endl;
+					}
 				}
 			}
 		};

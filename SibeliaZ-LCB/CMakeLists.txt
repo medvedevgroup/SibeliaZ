@@ -4,7 +4,7 @@ set(CMAKE_BUILD_TYPE RELEASE)
 set(CMAKE_PROJECT_NAME sibelia-pp)
 set(spoa_build_executable ON)
 if(CMAKE_COMPILER_IS_GNUCXX)
-	list(APPEND "CMAKE_CXX_FLAGS" "-std=c++0x")
+	list(APPEND "CMAKE_CXX_FLAGS" "-std=c++11")
 endif()
 
 set(twopaco_SOURCE_DIR ../TwoPaCo/src/common)

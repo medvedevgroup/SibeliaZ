@@ -39,7 +39,7 @@ namespace Sibelia
 			distanceKeeper_.Set(vid, 0);
 			leftBodyFlank_ = rightBodyFlank_ = 0;
 			for (JunctionStorage::JunctionIterator it(vid); it.Valid(); ++it)
-			{		
+			{
 				auto seqIt = it.SequentialIterator();
 				if (!seqIt.IsUsed())
 				{
@@ -104,7 +104,7 @@ namespace Sibelia
 				frontFinished_ = true;
 			}
 
-			bool IsFinishedBack() const 
+			bool IsFinishedBack() const
 			{
 				return backFinished_;
 			}
@@ -489,7 +489,7 @@ namespace Sibelia
 							{
 								cinst.FinishFront();
 							}
-						}							
+						}
 					}
 					else if(!seqIt.IsUsed())
 					{
@@ -520,7 +520,7 @@ namespace Sibelia
 				{
 					bool newInstance = true;
 					auto seqIt = nowIt.SequentialIterator();
-					auto & instanceSet = path->instance_[nowIt.GetChrId()];			
+					auto & instanceSet = path->instance_[nowIt.GetChrId()];
 					auto inst = instanceSet.upper_bound(Instance(seqIt, 0));
 					if (inst != instanceSet.end() && inst->Within(nowIt))
 					{
@@ -558,7 +558,7 @@ namespace Sibelia
 							{
 								cinst.FinishBack();
 							}
-						}						
+						}
 					}
 					else if (!seqIt.IsUsed())
 					{
@@ -608,7 +608,26 @@ namespace Sibelia
 		int64_t Score(bool final = false) const
 		{
 			int64_t ret = 0;
-			int64_t multiplier = goodInstance_.size();
+			for (size_t i = 0; i < goodInstance_.size() && ret > -INT32_MAX; i++)
+			{
+				for (size_t j = i + 1; j < goodInstance_.size(); j++)
+				{
+        	                        int64_t rightPenalty = abs(goodInstance_[i]->RightFlankDistance() - goodInstance_[j]->RightFlankDistance());
+        	                        int64_t leftPenalty = abs(goodInstance_[i]->LeftFlankDistance() - goodInstance_[j]->LeftFlankDistance());
+					if (leftPenalty >= maxFlankingSize_  || rightPenalty >= maxFlankingSize_)
+	                                {
+                        	                ret = -INT32_MAX;
+        		              		break;
+                                	}
+
+					int64_t score = goodInstance_[i]->RealLength() + goodInstance_[j]->RealLength() - rightPenalty - leftPenalty;
+					ret += score;
+				}
+			}
+
+			return ret;
+
+/*
 			for (auto & instanceIt : goodInstance_)
 			{
 				int64_t score = instanceIt->RealLength();
@@ -628,7 +647,7 @@ namespace Sibelia
 
 				ret += score;
 			}
-
+*/
 			return ret;
 		}
 

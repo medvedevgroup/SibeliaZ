@@ -372,14 +372,13 @@ namespace Sibelia
 			}
 
 			tbb::task_scheduler_init init(static_cast<int>(threads));
-			
+			/*
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), CheckIfSource(*this, shuffle));
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, source_.size()), ProcessVertex(*this, source_));
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, sink_.size()), ProcessVertex(*this, sink_));
-			
-			/*
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle));
 			*/
+			std::sort(shuffle.begin(), shuffle.end(), std::bind(DegreeCompare, std::ref(storage_), _1, _2));
+			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle));
 			std::cout << ']' << std::endl;
 			//storage_.DebugUsed();
 	

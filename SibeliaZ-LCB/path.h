@@ -491,7 +491,7 @@ namespace Sibelia
 							}
 						}
 					}
-					else if(!seqIt.IsUsed())
+					else if (!seqIt.IsUsed() && abs(distance) < 100)
 					{
 						path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
 					}
@@ -560,7 +560,7 @@ namespace Sibelia
 							}
 						}
 					}
-					else if (!seqIt.IsUsed())
+					else if (!seqIt.IsUsed() && abs(distance) < 100)
 					{
 						path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
 					}
@@ -612,13 +612,13 @@ namespace Sibelia
 			{
 				for (size_t j = i + 1; j < goodInstance_.size(); j++)
 				{
-        	                        int64_t rightPenalty = abs(goodInstance_[i]->RightFlankDistance() - goodInstance_[j]->RightFlankDistance());
-        	                        int64_t leftPenalty = abs(goodInstance_[i]->LeftFlankDistance() - goodInstance_[j]->LeftFlankDistance());
-					if (leftPenalty >= maxFlankingSize_  || rightPenalty >= maxFlankingSize_)
-	                                {
-                        	                ret = -INT32_MAX;
-        		              		break;
-                                	}
+					int64_t rightPenalty = abs(goodInstance_[i]->RightFlankDistance() - goodInstance_[j]->RightFlankDistance());
+					int64_t leftPenalty = abs(goodInstance_[i]->LeftFlankDistance() - goodInstance_[j]->LeftFlankDistance());
+					if (leftPenalty >= maxFlankingSize_ || rightPenalty >= maxFlankingSize_)
+					{
+						ret = -INT32_MAX;
+						break;
+					}
 
 					int64_t score = goodInstance_[i]->RealLength() + goodInstance_[j]->RealLength() - rightPenalty - leftPenalty;
 					ret += score;

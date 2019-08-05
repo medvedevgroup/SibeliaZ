@@ -178,6 +178,18 @@ namespace Sibelia
 	{
 	public:
 
+		struct Bundle
+		{
+			int64_t vid;
+			char ch;
+			size_t count = 0;
+
+			bool operator < (const Bundle & a) const
+			{
+				return count > a.count;
+			}
+		};
+
 		BlocksFinder(JunctionStorage & storage, size_t k) : storage_(storage), k_(k)
 		{
 			progressCount_ = 50;
@@ -188,9 +200,9 @@ namespace Sibelia
 		{
 		public:
 			BlocksFinder & finder;
-			std::vector<int64_t> & shuffle;
+			std::vector<Bundle> & shuffle;
 
-			ProcessVertex(BlocksFinder & finder, std::vector<int64_t> & shuffle) : finder(finder), shuffle(shuffle)
+			ProcessVertex(BlocksFinder & finder, std::vector<Bundle> & shuffle) : finder(finder), shuffle(shuffle)
 			{
 			}
 
@@ -211,7 +223,8 @@ namespace Sibelia
 					}
 
 					int64_t score;
-					int64_t vid = shuffle[i];
+					int64_t vid = shuffle[i].vid;
+					char initChar = shuffle[i].ch;
 #ifdef _DEBUG_OUT_
 					finder.debug_ = finder.missingVertex_.count(vid);
 					if (finder.debug_)
@@ -219,19 +232,12 @@ namespace Sibelia
 						std::cerr << "Vid: " << vid << std::endl;
 					}
 #endif
-					std::set<char> init;
-					for (JunctionStorage::JunctionIterator it(vid); it.Valid(); ++it)
-					{
-						init.insert(it.GetChar());
-					}
-
-					for (char initChar : init)
 					{
 						currentPath.Init(vid, initChar);
 						if (currentPath.AllInstances().size() < 2)
 						{
 							currentPath.Clear();
-							break;
+							continue;
 						}
 
 						int64_t bestScore = 0;
@@ -262,7 +268,7 @@ namespace Sibelia
 
 						if (bestRightSize == 1)
 						{
-							break;
+							continue;
 						}
 
 						{
@@ -367,16 +373,47 @@ namespace Sibelia
 			//std::random_shuffle(shuffle.begin(), shuffle.end());
 
 			time_t mark = time(0);
+			
+
+			std::vector<Bundle> bundle;
+			for (int64_t v = -storage_.GetVerticesNumber() + 1; v < storage_.GetVerticesNumber(); v++)
+			{
+				bool good = false;
+				std::map<char, size_t> count;
+				for (JunctionStorage::JunctionIterator it(v); it.Valid(); ++it)
+				{
+					if (it.IsPositiveStrand())
+					{
+						good = true;
+					}
+
+					count[it.GetChar()] += 1;
+				}
+
+				if (good)
+				{
+					for (auto p : count)
+					{
+						Bundle b;
+						b.vid = v;
+						b.ch = p.first;
+						b.count = p.second;
+						bundle.push_back(b);
+					}
+				}
+			}
+
 			count_ = 0;
 			std::cout << '[' << std::flush;
-			progressPortion_ = shuffle.size() / progressCount_;
+			progressPortion_ = bundle.size() / progressCount_;
 			if (progressPortion_ == 0)
 			{
 				progressPortion_ = 1;
 			}
 
+			std::sort(bundle.begin(), bundle.end());
 			tbb::task_scheduler_init init(static_cast<int>(threads));
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle));
+			tbb::parallel_for(tbb::blocked_range<size_t>(0, bundle.size()), ProcessVertex(*this, bundle));
 			std::cout << ']' << std::endl;
 			//storage_.DebugUsed();
 

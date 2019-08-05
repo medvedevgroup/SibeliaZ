@@ -33,7 +33,7 @@ namespace Sibelia
 
 		}
 
-		void Init(int64_t vid)
+		void Init(int64_t vid, char ch)
 		{
 			origin_ = vid;
 			distanceKeeper_.Set(vid, 0);
@@ -41,9 +41,8 @@ namespace Sibelia
 			for (JunctionStorage::JunctionIterator it(vid); it.Valid(); ++it)
 			{
 				auto seqIt = it.SequentialIterator();
-				if (!seqIt.IsUsed())
+				if (!seqIt.IsUsed() && it.GetChar() == ch)
 				{
-
 					allInstance_.push_back(instance_[it.GetChrId()].insert(Instance(seqIt, 0)));
 				}
 			}

@@ -219,114 +219,124 @@ namespace Sibelia
 						std::cerr << "Vid: " << vid << std::endl;
 					}
 #endif
-					for (bool explore = true; explore;)
+
+					std::set<char> init;
+					for (JunctionStorage::JunctionIterator it(vid); it.Valid(); ++it)
 					{
-						currentPath.Init(vid);
-						if (currentPath.AllInstances().size() < 2)
-						{
-							currentPath.Clear();
-							break;
-						}
+						init.insert(it.GetChar());
+					}
 
-						int64_t bestScore = 0;
-						size_t bestRightSize = currentPath.RightSize();
-						size_t bestLeftSize = currentPath.LeftSize();
-#ifdef _DEBUG_OUT_
-						if (finder.debug_)
+					for (char initChar : init)
+					{
+						for (bool explore = true; explore;)
 						{
-							std::cerr << "Going forward:" << std::endl;
-						}
-#endif
-						int64_t minRun = max(finder.minBlockSize_, finder.maxBranchSize_) * 2;
-						while (true)
-						{
-							bool ret = true;
-							bool positive = false;
-							int64_t prevLength = currentPath.MiddlePathLength();
-							while ((ret = finder.ExtendPathForward(currentPath, count, data, bestRightSize, bestScore, score)) && currentPath.MiddlePathLength() - prevLength <= minRun)
+							currentPath.Init(vid, initChar);
+							if (currentPath.AllInstances().size() < 2)
 							{
-								positive = positive || (score > 0);
-							}
-
-							if (score > 0 && currentPath.GoodInstances() != finder.currentMlp_)
-							{
+								currentPath.Clear();
 								break;
 							}
 
-							if (!ret || !positive)
-							{
-								break;
-							}
-						}
-
-						if (bestRightSize == 1)
-						{
-							currentPath.Clear();
-							break;
-						}
-
-						{
-							std::vector<Edge> bestEdge;
-							for (size_t i = 0; i < bestRightSize - 1; i++)
-							{
-								bestEdge.push_back(currentPath.RightPoint(i).GetEdge());
-							}
-
-							currentPath.Clear();
-							currentPath.Init(vid);
-							for (auto & e : bestEdge)
-							{
-								currentPath.PointPushBack(e);
-							}
-						}
-#ifdef _DEBUG_OUT_
-						if (finder.debug_)
-						{
-							std::cerr << "Going backward:" << std::endl;
-						}
-#endif
-						while (true)
-						{
-							bool ret = true;
-							bool positive = false;
-							int64_t prevLength = currentPath.MiddlePathLength();
-							while ((ret = finder.ExtendPathBackward(currentPath, count, data, bestLeftSize, bestScore, score)) && currentPath.MiddlePathLength() - prevLength <= minRun);
-							{
-								positive = positive || (score > 0);
-							}
-
-							if (score > 0 && currentPath.GoodInstances() != finder.currentMlp_)
-							{
-								break;
-							}
-
-							if (!ret || !positive)
-							{
-								break;
-							}
-						}
-						
-						if (bestScore > 0)
-						{
+							int64_t bestScore = 0;
+							size_t bestRightSize = currentPath.RightSize();
+							size_t bestLeftSize = currentPath.LeftSize();
 #ifdef _DEBUG_OUT_
 							if (finder.debug_)
 							{
-								std::cerr << "Setting a new block. Best score:" << bestScore << std::endl;
-								currentPath.DumpPath(std::cerr);
-								currentPath.DumpInstances(std::cerr);
+								std::cerr << "Going forward:" << std::endl;
 							}
 #endif
-							if (!finder.TryFinalizeBlock(currentPath, finalizer, bestRightSize, bestLeftSize))
+							int64_t minRun = max(finder.minBlockSize_, finder.maxBranchSize_) * 2;
+							while (true)
+							{
+								bool ret = true;
+								bool positive = false;
+								int64_t prevLength = currentPath.MiddlePathLength();
+								while ((ret = finder.ExtendPathForward(currentPath, count, data, bestRightSize, bestScore, score)) && currentPath.MiddlePathLength() - prevLength <= minRun)
+								{
+									positive = positive || (score > 0);
+								}
+
+								if (score > 0 && currentPath.GoodInstances() != finder.currentMlp_)
+								{
+									break;
+								}
+
+								if (!ret || !positive)
+								{
+									break;
+								}
+							}
+
+							if (bestRightSize == 1)
+							{
+								currentPath.Clear();
+								break;
+							}
+
+							{
+								std::vector<Edge> bestEdge;
+								for (size_t i = 0; i < bestRightSize - 1; i++)
+								{
+									bestEdge.push_back(currentPath.RightPoint(i).GetEdge());
+								}
+
+								currentPath.Clear();
+								currentPath.Init(vid, initChar);
+								for (auto & e : bestEdge)
+								{
+									currentPath.PointPushBack(e);
+								}
+							}
+#ifdef _DEBUG_OUT_
+							if (finder.debug_)
+							{
+								std::cerr << "Going backward:" << std::endl;
+							}
+#endif
+							while (true)
+							{
+								bool ret = true;
+								bool positive = false;
+								int64_t prevLength = currentPath.MiddlePathLength();
+								while ((ret = finder.ExtendPathBackward(currentPath, count, data, bestLeftSize, bestScore, score)) && currentPath.MiddlePathLength() - prevLength <= minRun);
+								{
+									positive = positive || (score > 0);
+								}
+
+								if (score > 0 && currentPath.GoodInstances() != finder.currentMlp_)
+								{
+									break;
+								}
+
+								if (!ret || !positive)
+								{
+									break;
+								}
+							}
+
+							if (bestScore > 0)
+							{
+#ifdef _DEBUG_OUT_
+								if (finder.debug_)
+								{
+									std::cerr << "Setting a new block. Best score:" << bestScore << std::endl;
+									currentPath.DumpPath(std::cerr);
+									currentPath.DumpInstances(std::cerr);
+								}
+#endif
+								if (!finder.TryFinalizeBlock(currentPath, finalizer, bestRightSize, bestLeftSize, initChar))
+								{
+									explore = false;
+								}
+							}
+							else
 							{
 								explore = false;
 							}
-						}
-						else
-						{
-							explore = false;
-						}
 
-						currentPath.Clear();
+							currentPath.Clear();
+						}
 					}
 				}
 			}
@@ -590,7 +600,7 @@ namespace Sibelia
 			}
 		}
 
-		bool TryFinalizeBlock(const Path & currentPath, Path & finalizer, size_t bestRightSize, size_t bestLeftSize)
+		bool TryFinalizeBlock(const Path & currentPath, Path & finalizer, size_t bestRightSize, size_t bestLeftSize, char ch)
 		{	
 			bool ret = false;
 			std::vector<Path::InstanceSet::const_iterator> lockInstance;
@@ -615,7 +625,7 @@ namespace Sibelia
 				}
 			}
 		
-			finalizer.Init(currentPath.Origin());
+			finalizer.Init(currentPath.Origin(), ch);
 			for (size_t i = 0; i < bestRightSize - 1 && finalizer.PointPushBack(currentPath.RightPoint(i).GetEdge()); i++);
 			for (size_t i = 0; i < bestLeftSize - 1 && finalizer.PointPushFront(currentPath.LeftPoint(i).GetEdge()); i++);
 

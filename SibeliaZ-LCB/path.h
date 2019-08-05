@@ -492,7 +492,7 @@ namespace Sibelia
 							}
 						}
 					}
-					else if (!seqIt.IsUsed() && path->complete_)
+					else if (!seqIt.IsUsed() && path->complete_ && abs(distance) < path->maxFlankingSize_)
 					{
 						path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
 					}
@@ -561,7 +561,7 @@ namespace Sibelia
 							}
 						}
 					}
-					else if (!seqIt.IsUsed() && path->complete_)
+					else if (!seqIt.IsUsed() && path->complete_ && abs(distance) < path->maxFlankingSize_)
 					{
 						path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
 					}

@@ -317,7 +317,7 @@ namespace Sibelia
 								currentPath.DumpInstances(std::cerr);
 							}
 #endif
-							!finder.TryFinalizeBlock(currentPath, finalizer, bestRightSize, bestLeftSize, initChar);
+							finder.TryFinalizeBlock(currentPath, finalizer, bestRightSize, bestLeftSize, initChar);
 						}
 						
 

@@ -491,9 +491,9 @@ namespace Sibelia
 							}
 						}
 					}
-					else if (!seqIt.IsUsed() && abs(distance) < 100)
+					else if (!seqIt.IsUsed())
 					{
-						path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
+						//path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
 					}
 				}
 			}
@@ -560,9 +560,9 @@ namespace Sibelia
 							}
 						}
 					}
-					else if (!seqIt.IsUsed() && abs(distance) < 100)
+					else if (!seqIt.IsUsed())
 					{
-						path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
+						//path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
 					}
 				}
 			}
@@ -608,26 +608,7 @@ namespace Sibelia
 		int64_t Score(bool final = false) const
 		{
 			int64_t ret = 0;
-			for (size_t i = 0; i < goodInstance_.size() && ret > -INT32_MAX; i++)
-			{
-				for (size_t j = i + 1; j < goodInstance_.size(); j++)
-				{
-					int64_t rightPenalty = abs(goodInstance_[i]->RightFlankDistance() - goodInstance_[j]->RightFlankDistance());
-					int64_t leftPenalty = abs(goodInstance_[i]->LeftFlankDistance() - goodInstance_[j]->LeftFlankDistance());
-					if (leftPenalty >= maxFlankingSize_ || rightPenalty >= maxFlankingSize_)
-					{
-						ret = -INT32_MAX;
-						break;
-					}
-
-					int64_t score = goodInstance_[i]->RealLength() + goodInstance_[j]->RealLength() - rightPenalty - leftPenalty;
-					ret += score;
-				}
-			}
-
-			return ret;
-
-/*
+			
 			for (auto & instanceIt : goodInstance_)
 			{
 				int64_t score = instanceIt->RealLength();
@@ -635,19 +616,19 @@ namespace Sibelia
 				int64_t leftPenalty = LeftDistance() + instanceIt->LeftFlankDistance();
 				assert(rightPenalty >= 0);
 				assert(leftPenalty >= 0);
-				if (leftPenalty >= maxFlankingSize_  || rightPenalty >= maxFlankingSize_)
+				if (leftPenalty >= maxFlankingSize_ / 2  || rightPenalty >= maxFlankingSize_ / 2)
 				{
 					ret = -INT32_MAX;
 					break;
 				}
 				else
 				{
-					score -= (rightPenalty + leftPenalty) * (rightPenalty + leftPenalty);
+					//score -= (rightPenalty + leftPenalty) * (rightPenalty + leftPenalty);
 				}
 
 				ret += score;
 			}
-*/
+
 			return ret;
 		}
 

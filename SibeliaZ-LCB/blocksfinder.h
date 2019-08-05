@@ -248,6 +248,11 @@ namespace Sibelia
 								positive = positive || (score > 0);
 							}
 
+							if (score > 0 && currentPath.GoodInstances() != finder.currentMlp_)
+							{
+								break;
+							}
+
 							if (!ret || !positive)
 							{
 								break;
@@ -288,6 +293,11 @@ namespace Sibelia
 							while ((ret = finder.ExtendPathBackward(currentPath, count, data, bestLeftSize, bestScore, score)) && currentPath.MiddlePathLength() - prevLength <= minRun);
 							{
 								positive = positive || (score > 0);
+							}
+
+							if (score > 0 && currentPath.GoodInstances() != finder.currentMlp_)
+							{
+								break;
 							}
 
 							if (!ret || !positive)
@@ -364,23 +374,27 @@ namespace Sibelia
 			std::random_shuffle(shuffle.begin(), shuffle.end());
 
 			time_t mark = time(0);
-			count_ = 0;
-			std::cout << '[' << std::flush;
-			progressPortion_ = shuffle.size() / progressCount_;
-			if (progressPortion_ == 0)
-			{
-				progressPortion_ = 1;
-			}
-
+			
 			tbb::task_scheduler_init init(static_cast<int>(threads));
 			/*
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), CheckIfSource(*this, shuffle));
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, source_.size()), ProcessVertex(*this, source_));
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, sink_.size()), ProcessVertex(*this, sink_));
 			*/
-			std::sort(shuffle.begin(), shuffle.end(), std::bind(DegreeCompare, std::ref(storage_), _1, _2));
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle));
-			std::cout << ']' << std::endl;
+
+			for (currentMlp_ = 30; currentMlp_ >= 2; currentMlp_--)
+			{
+				count_ = 0;
+				std::cout << '[' << std::flush;
+				progressPortion_ = shuffle.size() / progressCount_;
+				if (progressPortion_ == 0)
+				{
+					progressPortion_ = 1;
+				}
+
+				tbb::parallel_for(tbb::blocked_range<size_t>(0, shuffle.size()), ProcessVertex(*this, shuffle));
+				std::cout << ']' << std::endl;
+			}
 			//storage_.DebugUsed();
 	
 			//std::cout << "Time: " << time(0) - mark << std::endl;
@@ -607,7 +621,7 @@ namespace Sibelia
 
 			int64_t finalScore = finalizer.Score();
 			int64_t finalInstances = finalizer.GoodInstances();
-			if (finalScore > 0 && finalInstances > 1)
+			if (finalScore > 0 && finalInstances != currentMlp_)
 			{
 				ret = true;				
 				int64_t currentBlock = ++blocksFound_;				
@@ -1079,6 +1093,8 @@ namespace Sibelia
 
 
 		int64_t k_;
+
+		size_t currentMlp_;
 		size_t progressCount_;
 		size_t progressPortion_;
 		tbb::mutex globalMutex_;

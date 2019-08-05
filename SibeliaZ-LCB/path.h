@@ -21,14 +21,16 @@ namespace Sibelia
 			int64_t maxBranchSize,
 			int64_t minBlockSize,
 			int64_t minScoringUnit,
-			int64_t maxFlankingSize) :
+			int64_t maxFlankingSize,
+			bool complete = false) :
 			maxBranchSize_(maxBranchSize),
 			minBlockSize_(minBlockSize),
 			minScoringUnit_(minScoringUnit),
 			maxFlankingSize_(maxFlankingSize),
 			storage_(&storage),
 			distanceKeeper_(storage.GetVerticesNumber()),
-			instance_(storage.GetChrNumber())
+			instance_(storage.GetChrNumber()),
+			complete_(complete)
 		{
 
 		}
@@ -490,7 +492,7 @@ namespace Sibelia
 							}
 						}
 					}
-					else if (!seqIt.IsUsed())
+					else if (!seqIt.IsUsed() && path->complete_)
 					{
 						path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
 					}
@@ -559,7 +561,7 @@ namespace Sibelia
 							}
 						}
 					}
-					else if (!seqIt.IsUsed())
+					else if (!seqIt.IsUsed() && path->complete_)
 					{
 						path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
 					}
@@ -687,6 +689,7 @@ namespace Sibelia
 		std::vector<InstanceSet::iterator> allInstance_;
 		std::vector<InstanceSet::iterator> goodInstance_;
 
+		bool complete_;
 		int64_t origin_;
 		int64_t minBlockSize_;
 		int64_t minScoringUnit_;

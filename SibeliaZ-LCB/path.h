@@ -41,7 +41,7 @@ namespace Sibelia
 			for (JunctionStorage::JunctionIterator it(vid); it.Valid(); ++it)
 			{
 				auto seqIt = it.SequentialIterator();
-				if (!seqIt.IsUsed() && it.GetChar() == ch)
+				if (!seqIt.IsUsed() && ch == seqIt.GetChar())
 				{
 					allInstance_.push_back(instance_[it.GetChrId()].insert(Instance(seqIt, 0)));
 				}
@@ -492,7 +492,7 @@ namespace Sibelia
 					}
 					else if (!seqIt.IsUsed())
 					{
-						//path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
+						path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
 					}
 				}
 			}
@@ -561,7 +561,7 @@ namespace Sibelia
 					}
 					else if (!seqIt.IsUsed())
 					{
-						//path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
+						path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
 					}
 				}
 			}
@@ -607,7 +607,6 @@ namespace Sibelia
 		int64_t Score(bool final = false) const
 		{
 			int64_t ret = 0;
-			
 			for (auto & instanceIt : goodInstance_)
 			{
 				int64_t score = instanceIt->RealLength();
@@ -615,14 +614,14 @@ namespace Sibelia
 				int64_t leftPenalty = LeftDistance() + instanceIt->LeftFlankDistance();
 				assert(rightPenalty >= 0);
 				assert(leftPenalty >= 0);
-				if (leftPenalty >= maxFlankingSize_ / 2  || rightPenalty >= maxFlankingSize_ / 2)
+				if (leftPenalty >= maxFlankingSize_  || rightPenalty >= maxFlankingSize_)
 				{
 					ret = -INT32_MAX;
 					break;
 				}
 				else
 				{
-					//score -= (rightPenalty + leftPenalty) * (rightPenalty + leftPenalty);
+					score -= (rightPenalty + leftPenalty) * (rightPenalty + leftPenalty);
 				}
 
 				ret += score;
@@ -701,4 +700,3 @@ namespace Sibelia
 }
 
 #endif
-

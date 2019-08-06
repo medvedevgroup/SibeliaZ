@@ -212,7 +212,7 @@ namespace Sibelia
 				std::vector<uint32_t> count(finder.storage_.GetVerticesNumber() * 2 + 1, 0);
 				std::pair<int64_t, std::vector<Path::Instance> > goodInstance;
 				Path finalizer(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_, true);
-				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_);
+				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_, true);
 				for (size_t i = range.begin(); i != range.end(); i++)
 				{
 					if (finder.count_++ % finder.progressPortion_ == 0)
@@ -567,7 +567,7 @@ namespace Sibelia
 				int64_t currentBlock = ++blocksFound_;
 				for (auto jt : finalizer.AllInstances())
 				{
-					if (finalizer.IsReallyGoodInstance(*jt))
+					if (finalizer.IsGoodInstance(*jt))
 					{
 						if (jt->Front().IsPositiveStrand())
 						{

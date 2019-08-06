@@ -392,7 +392,9 @@ namespace Sibelia
 			tbb::task_scheduler_init init(static_cast<int>(threads));
 			//tbb::parallel_for(tbb::blocked_range<size_t>(0, bundle.size()), ProcessVertex(*this, bundle));
 			{
-				ProcessVertex(*this, bundle)(tbb::blocked_range<size_t>(0, bundle.size()));
+				ProcessVertex process(*this, bundle);
+				auto range = tbb::blocked_range<size_t>(size_t(0), bundle.size());
+				process(range);
 			}
 
 			std::cout << ']' << std::endl;
@@ -565,7 +567,7 @@ namespace Sibelia
 				int64_t currentBlock = ++blocksFound_;
 				for (auto jt : finalizer.AllInstances())
 				{
-					if (finalizer.IsGoodInstance(*jt))
+					if (finalizer.IsReallyGoodInstance(*jt))
 					{
 						if (jt->Front().IsPositiveStrand())
 						{

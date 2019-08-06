@@ -652,6 +652,21 @@ namespace Sibelia
 			return inst.RealLength() >= minBlockSize_;
 		}
 
+		bool IsReallyGoodInstance(const Instance & inst) const
+		{
+			int64_t rightPenalty = RightDistance() - inst.RightFlankDistance();
+			int64_t leftPenalty = LeftDistance() + inst.LeftFlankDistance();
+			assert(rightPenalty >= 0);
+			assert(leftPenalty >= 0);
+			if (leftPenalty >= maxFlankingSize_ || rightPenalty >= maxFlankingSize_)
+			{
+				return false;
+			}
+
+			return inst.RealLength() >= minBlockSize_;
+		}
+
+
 		void Clear()
 		{
 			for (auto pt : leftBody_)

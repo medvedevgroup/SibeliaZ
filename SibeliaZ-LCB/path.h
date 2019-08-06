@@ -608,26 +608,6 @@ namespace Sibelia
 		int64_t Score(bool final = false) const
 		{
 			int64_t ret = 0;
-			for (size_t i = 0; i < goodInstance_.size() && ret > -INT32_MAX; i++)
-			{
-				for (size_t j = i + 1; j < goodInstance_.size(); j++)
-				{
-        	                        int64_t rightPenalty = abs(goodInstance_[i]->RightFlankDistance() - goodInstance_[j]->RightFlankDistance());
-        	                        int64_t leftPenalty = abs(goodInstance_[i]->LeftFlankDistance() - goodInstance_[j]->LeftFlankDistance());
-					if (leftPenalty >= maxFlankingSize_  || rightPenalty >= maxFlankingSize_)
-	                                {
-                        	                ret = -INT32_MAX;
-        		              		break;
-                                	}
-
-					int64_t score = goodInstance_[i]->RealLength() + goodInstance_[j]->RealLength() - rightPenalty - leftPenalty;
-					ret += score;
-				}
-			}
-
-			return ret;
-
-/*
 			for (auto & instanceIt : goodInstance_)
 			{
 				int64_t score = instanceIt->RealLength();
@@ -647,7 +627,7 @@ namespace Sibelia
 
 				ret += score;
 			}
-*/
+
 			return ret;
 		}
 

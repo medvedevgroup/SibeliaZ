@@ -256,6 +256,7 @@ namespace Sibelia
 
 						if (bestRightSize == 1)
 						{
+							currentPath.Clear();
 							break;
 						}
 

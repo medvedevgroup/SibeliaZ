@@ -16,6 +16,7 @@
 #include <functional>
 #include <unordered_map>
 
+#include <tbb/tbb.h>
 #include <tbb/parallel_for.h>
 
 #include "path.h"
@@ -206,20 +207,27 @@ namespace Sibelia
 			{
 			}
 
-			void operator()(tbb::blocked_range<size_t> & range) const
+			void operator()()
 			{
 				std::vector<size_t> data;
 				std::vector<uint32_t> count(finder.storage_.GetVerticesNumber() * 2 + 1, 0);
 				std::pair<int64_t, std::vector<Path::Instance> > goodInstance;
 				Path finalizer(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_, true);
 				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_, true);
-				for (size_t i = range.begin(); i != range.end(); i++)
+				while(true)
 				{
 					if (finder.count_++ % finder.progressPortion_ == 0)
 					{
 						finder.progressMutex_.lock();
 						std::cout << '.' << std::flush;
 						finder.progressMutex_.unlock();
+					}
+
+					size_t i = finder.currentBundle_++;
+
+					if (i >= shuffle.size())
+					{
+						break;
 					}
 
 					int64_t score;
@@ -390,10 +398,21 @@ namespace Sibelia
 
 			std::sort(bundle.begin(), bundle.end());
 			tbb::task_scheduler_init init(static_cast<int>(threads));
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, bundle.size()), ProcessVertex(*this, bundle));
-			/*
+
+			currentBundle_ = 0;
+			std::vector<std::unique_ptr<tbb::tbb_thread> > workerThread(threads);
+			for (size_t i = 0; i < threads; i++)
 			{
 				ProcessVertex process(*this, bundle);
+				workerThread[i].reset(new tbb::tbb_thread(process));
+			}
+
+			for (auto & thread : workerThread)
+			{
+				thread->join();
+			}
+			/*
+			{
 				auto range = tbb::blocked_range<size_t>(size_t(0), bundle.size());
 				process(range);
 			}*/
@@ -555,14 +574,34 @@ namespace Sibelia
 		{
 			bool ret = false;
 			std::vector<Path::InstanceSet::const_iterator> lockInstance;
-		
+			for (auto it : currentPath.GoodInstancesList())
+			{
+				lockInstance.push_back(it);
+			}
+
+			std::sort(lockInstance.begin(), lockInstance.end(), Path::CmpInstance);
+			{
+				std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
+				for (auto & instance : lockInstance)
+				{
+					if (instance->Front().IsPositiveStrand())
+					{
+						storage_.LockRange(instance->Front(), instance->Back(), idx);
+					}
+					else
+					{
+						storage_.LockRange(instance->Back().Reverse(), instance->Front().Reverse(), idx);
+					}
+				}
+			}
+
 			finalizer.Init(currentPath.Origin(), initChar);
 			for (size_t i = 0; i < bestRightSize - 1 && finalizer.PointPushBack(currentPath.RightPoint(i).GetEdge()); i++);
 			for (size_t i = 0; i < bestLeftSize - 1 && finalizer.PointPushFront(currentPath.LeftPoint(i).GetEdge()); i++);
 
 			int64_t finalScore = finalizer.Score();
 			int64_t finalInstances = finalizer.GoodInstances();
-			if (finalInstances > 1)
+			if (finalScore > 0 && finalInstances > 1)
 			{
 				ret = true;
 				int64_t currentBlock = ++blocksFound_;
@@ -570,6 +609,7 @@ namespace Sibelia
 				{
 					if (finalizer.IsGoodInstance(*jt))
 					{
+						blocksMutex_.lock();
 						if (jt->Front().IsPositiveStrand())
 						{
 							blocksInstance_.push_back(BlockInstance(+currentBlock, jt->Front().GetChrId(), jt->Front().GetPosition(), jt->Back().GetPosition() + k_));
@@ -579,6 +619,7 @@ namespace Sibelia
 							blocksInstance_.push_back(BlockInstance(-currentBlock, jt->Front().GetChrId(), jt->Back().GetPosition() - k_, jt->Front().GetPosition()));
 						}
 
+						blocksMutex_.unlock();
 						for (auto it = jt->Front(); it != jt->Back(); ++it)
 						{
 							it.MarkUsed();
@@ -588,6 +629,19 @@ namespace Sibelia
 			}
 
 			finalizer.Clear();
+			std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
+			for (auto & instance : lockInstance)
+			{
+				if (instance->Front().IsPositiveStrand())
+				{
+					storage_.UnlockRange(instance->Front(), instance->Back(), idx);
+				}
+				else
+				{
+					storage_.UnlockRange(instance->Back().Reverse(), instance->Front().Reverse(), idx);
+				}
+			}
+
 			return ret;
 		}
 
@@ -772,6 +826,7 @@ namespace Sibelia
 		size_t progressCount_;
 		size_t progressPortion_;
 		std::atomic<int64_t> count_;
+		std::atomic<size_t> currentBundle_;
 		std::atomic<int64_t> blocksFound_;
 		int64_t sampleSize_;
 		int64_t scalingFactor_;

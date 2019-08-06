@@ -390,12 +390,13 @@ namespace Sibelia
 
 			std::sort(bundle.begin(), bundle.end());
 			tbb::task_scheduler_init init(static_cast<int>(threads));
-			//tbb::parallel_for(tbb::blocked_range<size_t>(0, bundle.size()), ProcessVertex(*this, bundle));
+			tbb::parallel_for(tbb::blocked_range<size_t>(0, bundle.size()), ProcessVertex(*this, bundle));
+			/*
 			{
 				ProcessVertex process(*this, bundle);
 				auto range = tbb::blocked_range<size_t>(size_t(0), bundle.size());
 				process(range);
-			}
+			}*/
 
 			std::cout << ']' << std::endl;
 			//storage_.DebugUsed();

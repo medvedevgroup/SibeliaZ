@@ -268,6 +268,7 @@ namespace Sibelia
 
 						if (bestRightSize == 1)
 						{
+							currentPath.Clear();
 							continue;
 						}
 
@@ -320,7 +321,6 @@ namespace Sibelia
 							finder.TryFinalizeBlock(currentPath, finalizer, bestRightSize, bestLeftSize, initChar);
 						}
 						
-
 						currentPath.Clear();
 					}
 				}
@@ -352,52 +352,30 @@ namespace Sibelia
 			maxBranchSize_ = maxBranchSize;
 			maxFlankingSize_ = maxFlankingSize;
 
-			std::vector<int64_t> shuffle;
-			for (int64_t v = -storage_.GetVerticesNumber() + 1; v < storage_.GetVerticesNumber(); v++)
-			{
-				for (JunctionStorage::JunctionIterator it(v); it.Valid(); ++it)
-				{
-					if (it.IsPositiveStrand())
-					{
-						shuffle.push_back(v);
-						break;
-					}
-				}
-			}
-
-			using namespace std::placeholders;
-			//std::random_shuffle(shuffle.begin(), shuffle.end());
-
-			time_t mark = time(0);
-			
-
 			std::vector<Bundle> bundle;
 			for (int64_t v = -storage_.GetVerticesNumber() + 1; v < storage_.GetVerticesNumber(); v++)
 			{
-				bool good = false;
+				std::set<char> good;
 				std::map<char, size_t> count;
 				for (JunctionStorage::JunctionIterator it(v); it.Valid(); ++it)
 				{
 					if (it.IsPositiveStrand())
 					{
-						good = true;
+						good.insert(it.GetChar());
 					}
 
 					count[it.GetChar()] += 1;
 				}
 
-				if (good)
+				for (auto p : count)
 				{
-					for (auto p : count)
+					Bundle b;
+					b.vid = v;
+					b.ch = p.first;
+					b.count = p.second;
+					if (b.count > 1 && good.count(b.ch))
 					{
-						Bundle b;
-						b.vid = v;
-						b.ch = p.first;
-						b.count = p.second;
-						if (b.count > 1)
-						{
-							bundle.push_back(b);
-						}
+						bundle.push_back(b);
 					}
 				}
 			}
@@ -412,7 +390,11 @@ namespace Sibelia
 
 			std::sort(bundle.begin(), bundle.end());
 			tbb::task_scheduler_init init(static_cast<int>(threads));
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, bundle.size()), ProcessVertex(*this, bundle));
+			//tbb::parallel_for(tbb::blocked_range<size_t>(0, bundle.size()), ProcessVertex(*this, bundle));
+			{
+				ProcessVertex(*this, bundle)(tbb::blocked_range<size_t>(0, bundle.size()));
+			}
+
 			std::cout << ']' << std::endl;
 			//storage_.DebugUsed();
 
@@ -570,34 +552,14 @@ namespace Sibelia
 		{
 			bool ret = false;
 			std::vector<Path::InstanceSet::const_iterator> lockInstance;
-			for (auto it : currentPath.GoodInstancesList())
-			{
-				lockInstance.push_back(it);
-			}
-
-			std::sort(lockInstance.begin(), lockInstance.end(), Path::CmpInstance);
-			{
-				std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
-				for (auto & instance : lockInstance)
-				{
-					if (instance->Front().IsPositiveStrand())
-					{
-						storage_.LockRange(instance->Front(), instance->Back(), idx);
-					}
-					else
-					{
-						storage_.LockRange(instance->Back().Reverse(), instance->Front().Reverse(), idx);
-					}
-				}
-			}
-
+		
 			finalizer.Init(currentPath.Origin(), initChar);
 			for (size_t i = 0; i < bestRightSize - 1 && finalizer.PointPushBack(currentPath.RightPoint(i).GetEdge()); i++);
 			for (size_t i = 0; i < bestLeftSize - 1 && finalizer.PointPushFront(currentPath.LeftPoint(i).GetEdge()); i++);
 
 			int64_t finalScore = finalizer.Score();
 			int64_t finalInstances = finalizer.GoodInstances();
-			if (finalScore > 0 && finalInstances > 1)
+			if (finalInstances > 1)
 			{
 				ret = true;
 				int64_t currentBlock = ++blocksFound_;
@@ -605,7 +567,6 @@ namespace Sibelia
 				{
 					if (finalizer.IsGoodInstance(*jt))
 					{
-						blocksMutex_.lock();
 						if (jt->Front().IsPositiveStrand())
 						{
 							blocksInstance_.push_back(BlockInstance(+currentBlock, jt->Front().GetChrId(), jt->Front().GetPosition(), jt->Back().GetPosition() + k_));
@@ -615,7 +576,6 @@ namespace Sibelia
 							blocksInstance_.push_back(BlockInstance(-currentBlock, jt->Front().GetChrId(), jt->Back().GetPosition() - k_, jt->Front().GetPosition()));
 						}
 
-						blocksMutex_.unlock();
 						for (auto it = jt->Front(); it != jt->Back(); ++it)
 						{
 							it.MarkUsed();
@@ -625,19 +585,6 @@ namespace Sibelia
 			}
 
 			finalizer.Clear();
-			std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
-			for (auto & instance : lockInstance)
-			{
-				if (instance->Front().IsPositiveStrand())
-				{
-					storage_.UnlockRange(instance->Front(), instance->Back(), idx);
-				}
-				else
-				{
-					storage_.UnlockRange(instance->Back().Reverse(), instance->Front().Reverse(), idx);
-				}
-			}
-
 			return ret;
 		}
 

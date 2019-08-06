@@ -394,7 +394,10 @@ namespace Sibelia
 						b.vid = v;
 						b.ch = p.first;
 						b.count = p.second;
-						bundle.push_back(b);
+						if (b.count > 1)
+						{
+							bundle.push_back(b);
+						}
 					}
 				}
 			}

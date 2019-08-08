@@ -436,7 +436,8 @@ namespace Sibelia
 			clock_t mark = clock();
 			std::vector<std::unique_ptr<tbb::tbb_thread> > workerThread(threads);
 
-			for (size_t task = 0; task < min(bundle_.size(), threads); task++)
+			size_t step = threads * 8;
+			for (size_t task = 0; task < (step < bundle_.size() ? step : bundle_.size()); task++)
 			{
 				taskQueue_.push(task);
 			}
@@ -517,7 +518,7 @@ namespace Sibelia
 						}
 					}
 
-					size_t nextTask = task + threads;
+					size_t nextTask = task + step;
 					if (nextTask < bundle_.size())
 					{
 						taskMutex_.lock();

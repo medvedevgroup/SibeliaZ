@@ -11,6 +11,8 @@ namespace Sibelia
 #include <direct.h>
 #endif
 
+	const size_t GAME_OVER = SIZE_MAX;
+
 	void CreateOutDirectory(const std::string & path)
 	{
 		int result = 0;

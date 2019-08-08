@@ -25,6 +25,7 @@ namespace Sibelia
 {
 	extern const std::string DELIMITER;
 	extern const std::string VERSION;
+	extern const size_t GAME_OVER;
 
 	class BlockInstance
 	{
@@ -191,6 +192,8 @@ namespace Sibelia
 			}
 		};
 
+		typedef std::vector<Path::Instance> * InstanceVectorPtr;
+
 		BlocksFinder(JunctionStorage & storage, size_t k) : storage_(storage), k_(k)
 		{
 			progressCount_ = 50;
@@ -201,38 +204,49 @@ namespace Sibelia
 		{
 		public:
 			BlocksFinder & finder;
-			std::vector<Bundle> & shuffle;
 
-			ProcessVertex(BlocksFinder & finder, std::vector<Bundle> & shuffle) : finder(finder), shuffle(shuffle)
+			ProcessVertex(BlocksFinder & finder) : finder(finder)
 			{
 			}
 
 			void operator()()
 			{
+				size_t i;
 				std::vector<size_t> data;
 				std::vector<uint32_t> count(finder.storage_.GetVerticesNumber() * 2 + 1, 0);
-				std::pair<int64_t, std::vector<Path::Instance> > goodInstance;
+				InstanceVectorPtr bestInstance;
 				Path finalizer(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_, true);
 				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_, true);
-				while(true)
+				for(bool run = true; run; )
 				{
-					if (finder.count_++ % finder.progressPortion_ == 0)
+					bool go = false;
+					finder.taskMutex_.lock();
+					if (finder.taskQueue_.size() > 0)
 					{
-						finder.progressMutex_.lock();
-						std::cout << '.' << std::flush;
-						finder.progressMutex_.unlock();
+						i = finder.taskQueue_.top();
+						if (i != GAME_OVER)
+						{
+							finder.taskQueue_.pop();
+							go = true;
+						}
+						else
+						{
+							run = false;
+						}
 					}
 
-					size_t i = finder.currentBundle_++;
+					finder.taskMutex_.unlock();
 
-					if (i >= shuffle.size())
+					if (!go)
 					{
-						break;
+						continue;
 					}
+
+					bestInstance = new std::vector<Path::Instance>();
 
 					int64_t score;
-					int64_t vid = shuffle[i].vid;
-					char initChar = shuffle[i].ch;
+					int64_t vid = finder.bundle_[i].vid;
+					char initChar = finder.bundle_[i].ch;
 #ifdef _DEBUG_OUT_
 					finder.debug_ = finder.missingVertex_.count(vid);
 					if (finder.debug_)
@@ -242,11 +256,6 @@ namespace Sibelia
 #endif
 					{
 						currentPath.Init(vid, initChar);
-						if (currentPath.AllInstances().size() < 2)
-						{
-							currentPath.Clear();
-							continue;
-						}
 
 						int64_t bestScore = 0;
 						size_t bestRightSize = currentPath.RightSize();
@@ -263,7 +272,7 @@ namespace Sibelia
 							bool ret = true;
 							bool positive = false;
 							int64_t prevLength = currentPath.MiddlePathLength();
-							while ((ret = finder.ExtendPathForward(currentPath, count, data, bestRightSize, bestScore, score)) && currentPath.MiddlePathLength() - prevLength <= minRun)
+							while ((ret = finder.ExtendPathForward(currentPath, count, data, bestRightSize, bestScore, score, *bestInstance)) && currentPath.MiddlePathLength() - prevLength <= minRun)
 							{
 								positive = positive || (score > 0);
 							}
@@ -272,12 +281,6 @@ namespace Sibelia
 							{
 								break;
 							}
-						}
-
-						if (bestRightSize == 1)
-						{
-							currentPath.Clear();
-							continue;
 						}
 
 						{
@@ -305,7 +308,7 @@ namespace Sibelia
 							bool ret = true;
 							bool positive = false;
 							int64_t prevLength = currentPath.MiddlePathLength();
-							while ((ret = finder.ExtendPathBackward(currentPath, count, data, bestLeftSize, bestScore, score)) && currentPath.MiddlePathLength() - prevLength <= minRun);
+							while ((ret = finder.ExtendPathBackward(currentPath, count, data, bestLeftSize, bestScore, score, *bestInstance)) && currentPath.MiddlePathLength() - prevLength <= minRun);
 							{
 								positive = positive || (score > 0);
 							}
@@ -316,23 +319,55 @@ namespace Sibelia
 							}
 						}
 
-						if (bestScore > 0)
-						{
-#ifdef _DEBUG_OUT_
-							if (finder.debug_)
-							{
-								std::cerr << "Setting a new block. Best score:" << bestScore << std::endl;
-								currentPath.DumpPath(std::cerr);
-								currentPath.DumpInstances(std::cerr);
-							}
-#endif
-							finder.TryFinalizeBlock(currentPath, finalizer, bestRightSize, bestLeftSize, initChar);
-						}
+						finder.resultMutex_.lock();
+						finder.resultQueue_.push(std::make_pair(i, bestInstance));
+						finder.resultMutex_.unlock();
 						
 						currentPath.Clear();
 					}
 				}
 			}
+
+			/*
+			void FinalizeBlock(const Path & currentPath, Path & finalizer, size_t bestRightSize, size_t bestLeftSize, char initChar)
+			{
+				bool ret = false;
+
+				finalizer.Init(currentPath.Origin(), initChar);
+				for (size_t i = 0; i < bestRightSize - 1 && finalizer.PointPushBack(currentPath.RightPoint(i).GetEdge()); i++);
+				for (size_t i = 0; i < bestLeftSize - 1 && finalizer.PointPushFront(currentPath.LeftPoint(i).GetEdge()); i++);
+
+				int64_t finalScore = finalizer.Score();
+				int64_t finalInstances = finalizer.GoodInstances();
+				if (finalScore > 0 && finalInstances > 1)
+				{
+					ret = true;
+					int64_t currentBlock = ++blocksFound_;
+					for (auto jt : finalizer.AllInstances())
+					{
+						if (finalizer.IsGoodInstance(*jt))
+						{
+							blocksMutex_.lock();
+							if (jt->Front().IsPositiveStrand())
+							{
+								blocksInstance_.push_back(BlockInstance(+currentBlock, jt->Front().GetChrId(), jt->Front().GetPosition(), jt->Back().GetPosition() + k_));
+							}
+							else
+							{
+								blocksInstance_.push_back(BlockInstance(-currentBlock, jt->Front().GetChrId(), jt->Back().GetPosition() - k_, jt->Front().GetPosition()));
+							}
+
+							blocksMutex_.unlock();
+							for (auto it = jt->Front(); it != jt->Back(); ++it)
+							{
+								it.MarkUsed();
+							}
+						}
+					}
+				}
+
+				finalizer.Clear();
+			}*/
 		};
 
 		static bool DegreeCompare(const JunctionStorage & storage, int64_t v1, int64_t v2)
@@ -353,14 +388,12 @@ namespace Sibelia
 
 		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t maxFlankingSize, int64_t lookingDepth, int64_t sampleSize, int64_t threads, const std::string & debugOut)
 		{
-			blocksFound_ = 0;
 			sampleSize_ = sampleSize;
 			lookingDepth_ = lookingDepth;
 			minBlockSize_ = minBlockSize;
 			maxBranchSize_ = maxBranchSize;
 			maxFlankingSize_ = maxFlankingSize;
 
-			std::vector<Bundle> bundle;
 			for (int64_t v = -storage_.GetVerticesNumber() + 1; v < storage_.GetVerticesNumber(); v++)
 			{
 				std::set<char> good;
@@ -383,44 +416,138 @@ namespace Sibelia
 					b.count = p.second;
 					if (b.count > 1 && good.count(b.ch))
 					{
-						bundle.push_back(b);
+						bundle_.push_back(b);
 					}
 				}
 			}
 
 			count_ = 0;
 			std::cout << '[' << std::flush;
-			progressPortion_ = bundle.size() / progressCount_;
+			progressPortion_ = bundle_.size() / progressCount_;
 			if (progressPortion_ == 0)
 			{
 				progressPortion_ = 1;
 			}
 
-			std::sort(bundle.begin(), bundle.end());
+			std::sort(bundle_.begin(), bundle_.end());
 			tbb::task_scheduler_init init(static_cast<int>(threads));
 
 			currentBundle_ = 0;
+			clock_t mark = clock();
 			std::vector<std::unique_ptr<tbb::tbb_thread> > workerThread(threads);
+
+			for (size_t task = 0; task < min(bundle_.size(), threads); task++)
+			{
+				taskQueue_.push(task);
+			}
+
 			for (size_t i = 0; i < threads; i++)
 			{
-				ProcessVertex process(*this, bundle);
+				ProcessVertex process(*this);
 				workerThread[i].reset(new tbb::tbb_thread(process));
 			}
+
+			size_t top;
+			blocksFound_ = 0;
+			for (size_t task = 0; task < bundle_.size(); )
+			{
+				bool skip = true;
+				InstanceVectorPtr instance = 0;
+				resultMutex_.lock();
+				if(resultQueue_.size() > 0 && (top = resultQueue_.top().first) == task)
+				{
+					skip = false;
+					instance = resultQueue_.top().second;
+					resultQueue_.pop();
+				}
+
+				resultMutex_.unlock();
+
+				if (skip)
+				{
+					continue;
+				}
+
+				bool isGood = true;
+				if (instance != 0)
+				{
+					for (auto inst : *instance)
+					{
+						for (auto it = inst.Front(); it != inst.Back(); ++it)
+						{
+							if (it.IsUsed())
+							{
+								isGood = false;
+								break;
+							}
+						}
+
+						if (!isGood)
+						{
+							break;
+						}
+					}
+				}
+
+				if (isGood)
+				{
+					if (count_++ % progressPortion_ == 0)
+					{
+						std::cout << '.' << std::flush;
+					}
+
+					if (instance->size() > 1)
+					{
+						int64_t currentBlock = ++blocksFound_;
+						for (auto jt : *instance)
+						{
+							if (jt.Front().IsPositiveStrand())
+							{
+								blocksInstance_.push_back(BlockInstance(+currentBlock, jt.Front().GetChrId(), jt.Front().GetPosition(), jt.Back().GetPosition() + k_));
+							}
+							else
+							{
+								blocksInstance_.push_back(BlockInstance(-currentBlock, jt.Front().GetChrId(), jt.Back().GetPosition() - k_, jt.Front().GetPosition()));
+							}
+
+							for (auto it = jt.Front(); it != jt.Back(); ++it)
+							{
+								it.MarkUsed();
+							}
+						}
+					}
+
+					size_t nextTask = task + threads;
+					if (nextTask < bundle_.size())
+					{
+						taskMutex_.lock();
+						taskQueue_.push(nextTask);
+						taskMutex_.unlock();
+					}
+
+					++task;
+				}
+				else
+				{
+					taskMutex_.lock();
+					taskQueue_.push(task);
+					taskMutex_.unlock();
+				}
+
+				delete instance;
+			}
+
+			taskMutex_.lock();
+			taskQueue_.push(GAME_OVER);
+			taskMutex_.unlock();
 
 			for (auto & thread : workerThread)
 			{
 				thread->join();
 			}
-			/*
-			{
-				auto range = tbb::blocked_range<size_t>(size_t(0), bundle.size());
-				process(range);
-			}*/
 
 			std::cout << ']' << std::endl;
-			//storage_.DebugUsed();
-
-			//std::cout << "Time: " << time(0) - mark << std::endl;
+			std::cout << "Time: " << clock() - mark << std::endl;
 		}
 
 
@@ -569,82 +696,6 @@ namespace Sibelia
 		void ListBlocksIndicesGFF(BlockList & blockList, const std::string & fileName);
 		void TryOpenFile(const std::string & fileName, std::ofstream & stream) const;
 
-	
-		bool TryFinalizeBlock(const Path & currentPath, Path & finalizer, size_t bestRightSize, size_t bestLeftSize, char initChar)
-		{
-			bool ret = false;
-			std::vector<Path::InstanceSet::const_iterator> lockInstance;
-			for (auto it : currentPath.GoodInstancesList())
-			{
-				lockInstance.push_back(it);
-			}
-
-			std::sort(lockInstance.begin(), lockInstance.end(), Path::CmpInstance);
-			{
-				std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
-				for (auto & instance : lockInstance)
-				{
-					if (instance->Front().IsPositiveStrand())
-					{
-						storage_.LockRange(instance->Front(), instance->Back(), idx);
-					}
-					else
-					{
-						storage_.LockRange(instance->Back().Reverse(), instance->Front().Reverse(), idx);
-					}
-				}
-			}
-
-			finalizer.Init(currentPath.Origin(), initChar);
-			for (size_t i = 0; i < bestRightSize - 1 && finalizer.PointPushBack(currentPath.RightPoint(i).GetEdge()); i++);
-			for (size_t i = 0; i < bestLeftSize - 1 && finalizer.PointPushFront(currentPath.LeftPoint(i).GetEdge()); i++);
-
-			int64_t finalScore = finalizer.Score();
-			int64_t finalInstances = finalizer.GoodInstances();
-			if (finalScore > 0 && finalInstances > 1)
-			{
-				ret = true;
-				int64_t currentBlock = ++blocksFound_;
-				for (auto jt : finalizer.AllInstances())
-				{
-					if (finalizer.IsGoodInstance(*jt))
-					{
-						blocksMutex_.lock();
-						if (jt->Front().IsPositiveStrand())
-						{
-							blocksInstance_.push_back(BlockInstance(+currentBlock, jt->Front().GetChrId(), jt->Front().GetPosition(), jt->Back().GetPosition() + k_));
-						}
-						else
-						{
-							blocksInstance_.push_back(BlockInstance(-currentBlock, jt->Front().GetChrId(), jt->Back().GetPosition() - k_, jt->Front().GetPosition()));
-						}
-
-						blocksMutex_.unlock();
-						for (auto it = jt->Front(); it != jt->Back(); ++it)
-						{
-							it.MarkUsed();
-						}
-					}
-				}
-			}
-
-			finalizer.Clear();
-			std::pair<size_t, size_t> idx(SIZE_MAX, SIZE_MAX);
-			for (auto & instance : lockInstance)
-			{
-				if (instance->Front().IsPositiveStrand())
-				{
-					storage_.UnlockRange(instance->Front(), instance->Back(), idx);
-				}
-				else
-				{
-					storage_.UnlockRange(instance->Back().Reverse(), instance->Front().Reverse(), idx);
-				}
-			}
-
-			return ret;
-		}
-
 		struct NextVertex
 		{
 			int64_t diff;
@@ -728,7 +779,8 @@ namespace Sibelia
 			std::vector<size_t> & data,
 			size_t & bestRightSize,
 			int64_t & bestScore,
-			int64_t & nowScore)
+			int64_t & nowScore,
+			std::vector<Path::Instance> & bestInstance)
 		{
 			bool success = false;
 			int64_t origin = currentPath.Origin();
@@ -765,6 +817,14 @@ namespace Sibelia
 						{
 							bestScore = nowScore;
 							bestRightSize = currentPath.RightSize();
+							if (nowScore > 0)
+							{
+								bestInstance.clear();
+								for (auto it : currentPath.GoodInstancesList())
+								{
+									bestInstance.push_back(*it);
+								}
+							}
 						}
 					}
 				}
@@ -778,7 +838,8 @@ namespace Sibelia
 			std::vector<size_t> & data,
 			size_t & bestLeftSize,
 			int64_t & bestScore,
-			int64_t & nowScore)
+			int64_t & nowScore,
+			std::vector<Path::Instance> & bestInstance)
 		{
 			bool success = false;
 			std::pair<int64_t, NextVertex> nextBackwardVid;
@@ -814,6 +875,14 @@ namespace Sibelia
 						{
 							bestScore = nowScore;
 							bestLeftSize = currentPath.LeftSize();
+							if (nowScore > 0)
+							{
+								bestInstance.clear();
+								for (auto it : currentPath.GoodInstancesList())
+								{
+									bestInstance.push_back(*it);
+								}
+							}
 						}
 					}
 				}
@@ -821,6 +890,14 @@ namespace Sibelia
 
 			return success;
 		}
+
+		std::vector<Bundle> bundle_;
+		tbb::spin_mutex taskMutex_;
+		std::priority_queue<size_t, std::vector<size_t>, std::greater<size_t> > taskQueue_;
+		tbb::spin_mutex resultMutex_;
+		typedef std::pair<size_t, InstanceVectorPtr> Pair;
+		std::priority_queue<Pair, std::vector<Pair>, std::greater<Pair> > resultQueue_;
+
 
 		int64_t k_;
 		size_t progressCount_;

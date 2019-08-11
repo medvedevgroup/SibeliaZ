@@ -132,6 +132,11 @@ namespace Sibelia
 			{
 
 			}
+
+			bool operator < (const Vertex & a) const
+			{
+				return std::make_pair(chr, idx) < std::make_pair(a.chr, a.idx);
+			}
 		};
 
 		struct Position
@@ -858,6 +863,11 @@ namespace Sibelia
 				mutex_[i].reset(new FlaggedMutex[int64_t(1) << mutexBits_]);
 				for (; size_t(int64_t(1) << chrSizeBits_[i]) <= chrSize_[i]; chrSizeBits_[i]++);
 				chrSizeBits_[i] = max(int64_t(0), chrSizeBits_[i] - mutexBits_);
+			}
+
+			for (auto & v : vertex_)
+			{
+				std::sort(v.begin(), v.end());
 			}
 		}
 

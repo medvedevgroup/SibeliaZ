@@ -16,9 +16,6 @@
 #include <functional>
 #include <unordered_map>
 
-#include <tbb/tbb.h>
-#include <tbb/parallel_for.h>
-
 #include "path.h"
 
 namespace Sibelia
@@ -209,7 +206,7 @@ namespace Sibelia
 			}
 		};
 
-		typedef std::vector<Path::Instance> * InstanceVectorPtr;
+		typedef std::vector<Path::Instance> InstanceVector;
 
 		BlocksFinder(JunctionStorage & storage, size_t k) : storage_(storage), k_(k)
 		{
@@ -226,14 +223,13 @@ namespace Sibelia
 			{
 			}
 
-			InstanceVectorPtr Process(Bundle bundle, Path & currentPath, std::vector<size_t> & data, std::vector<uint32_t> & count)
+			void Process(Bundle bundle, Path & currentPath, std::vector<size_t> & data, std::vector<uint32_t> & count, InstanceVector & bestInstance, std::vector<int64_t> & logPath, int64_t & bestScore)
 			{
-				auto bestInstance = new std::vector<Path::Instance>();
-
+				logPath.clear();
 				int64_t score;
+				bestInstance.clear();
 				int64_t vid = bundle.vid;
 				char initChar = bundle.ch;
-
 #ifdef _DEBUG_OUT_
 				finder.debug_ = finder.missingVertex_.count(vid);
 				if (finder.debug_)
@@ -244,7 +240,7 @@ namespace Sibelia
 				{
 					currentPath.Init(vid, initChar);
 
-					int64_t bestScore = 0;
+					bestScore = 0;
 					size_t bestRightSize = currentPath.RightSize();
 					size_t bestLeftSize = currentPath.LeftSize();
 #ifdef _DEBUG_OUT_
@@ -259,7 +255,7 @@ namespace Sibelia
 						bool ret = true;
 						bool positive = false;
 						int64_t prevLength = currentPath.MiddlePathLength();
-						while ((ret = finder.ExtendPathForward(currentPath, count, data, bestRightSize, bestScore, score, *bestInstance)) && currentPath.MiddlePathLength() - prevLength <= minRun)
+						while ((ret = finder.ExtendPathForward(currentPath, count, data, bestRightSize, bestScore, score, bestInstance)) && currentPath.MiddlePathLength() - prevLength <= minRun)
 						{
 							positive = positive || (score > 0);
 						}
@@ -282,6 +278,7 @@ namespace Sibelia
 						for (auto & e : bestEdge)
 						{
 							currentPath.PointPushBack(e);
+							logPath.push_back(e.GetEndVertex());
 						}
 					}
 #ifdef _DEBUG_OUT_
@@ -295,7 +292,7 @@ namespace Sibelia
 						bool ret = true;
 						bool positive = false;
 						int64_t prevLength = currentPath.MiddlePathLength();
-						while ((ret = finder.ExtendPathBackward(currentPath, count, data, bestLeftSize, bestScore, score, *bestInstance)) && currentPath.MiddlePathLength() - prevLength <= minRun);
+						while ((ret = finder.ExtendPathBackward(currentPath, count, data, bestLeftSize, bestScore, score, bestInstance)) && currentPath.MiddlePathLength() - prevLength <= minRun);
 						{
 							positive = positive || (score > 0);
 						}
@@ -308,14 +305,13 @@ namespace Sibelia
 
 					currentPath.Clear();
 				}
-
-				return bestInstance;
 			}
 
-			void Finalize(const InstanceVectorPtr & instance)
+			void Finalize(const InstanceVector & instance)
 			{
 				int64_t currentBlock = ++finder.blocksFound_;
-				for (auto jt : *instance)
+				//finder.log_ << '*' << currentBlock << std::endl;
+				for (auto jt : instance)
 				{
 					if (jt.Front().IsPositiveStrand())
 					{
@@ -326,6 +322,7 @@ namespace Sibelia
 						finder.blocksInstance_.push_back(BlockInstance(-currentBlock, jt.Front().GetChrId(), jt.Back().GetPosition() - finder.k_, jt.Front().GetPosition()));
 					}
 
+					//finder.log_ << jt.Front().GetChrId() << ' ' << jt.Front().GetPosition() << ' ' << jt.Back().GetPosition() << std::endl;
 					for (auto it = jt.Front(); it != jt.Back(); ++it)
 					{
 						it.MarkUsed();
@@ -335,9 +332,12 @@ namespace Sibelia
 
 			void operator()()
 			{
+				int64_t bestScore;
+				std::vector<int64_t> logPath;
+
 				size_t bundleIdx;
+				InstanceVector instance;
 				std::vector<size_t> data;
-				InstanceVectorPtr instance;
 				std::vector<uint32_t> count(finder.storage_.GetVerticesNumber() * 2 + 1, 0);
 				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_, true);
 				for (size_t myPhase = 0; myPhase < finder.totalPhases_; myPhase++)
@@ -345,18 +345,25 @@ namespace Sibelia
 					size_t bundleIdx = finder.currentBundleExplore_++;
 					if (bundleIdx < finder.bundle_.size())
 					{
-						instance = Process(finder.bundle_[bundleIdx], currentPath, data, count);
+						Process(finder.bundle_[bundleIdx], currentPath, data, count, instance, logPath, bestScore);
 					}
 
 					#pragma omp barrier
 					while (finder.currentBundleFinalize_ != bundleIdx);
 
+					//if (logPath.size() > 0)
+					{
+					//	finder.log_ << '&' << bundleIdx << ' ' << bestScore << std::endl;
+					//	std::copy(logPath.begin(), logPath.end(), std::ostream_iterator<int64_t>(finder.log_, " "));
+					//	finder.log_ << std::endl;
+					}
+
 					if (bundleIdx < finder.bundle_.size())
 					{
-						if (instance->size() > 1)
+						if (instance.size() > 1)
 						{
 							bool isGood = true;
-							for (auto inst : *instance)
+							for (auto inst : instance)
 							{
 								for (auto it = inst.Front(); it != inst.Back(); ++it)
 								{
@@ -375,19 +382,18 @@ namespace Sibelia
 
 							if (isGood)
 							{
+								//finder.log_ << bundleIdx << ' ' << finder.bundle_[bundleIdx].vid << ' ' << finder.bundle_[bundleIdx].ch << ' ' << std::endl;
 								Finalize(instance);
 							}
 							else
 							{
-								delete instance;
-								instance = Process(finder.bundle_[bundleIdx], currentPath, data, count);
-								if (instance->size() > 0)
+								Process(finder.bundle_[bundleIdx], currentPath, data, count, instance, logPath, bestScore);
+								if (instance.size() > 1)
 								{
+									//finder.log_ << bundleIdx << ' ' << finder.bundle_[bundleIdx].vid << ' ' << finder.bundle_[bundleIdx].ch << ' ' << std::endl;
 									Finalize(instance);
 								}
 							}
-
-							delete instance;
 						}
 
 						if (finder.count_++ % finder.progressPortion_ == 0)
@@ -479,22 +485,17 @@ namespace Sibelia
 
 			clock_t mark = clock();
 			std::sort(bundle_.begin(), bundle_.end());
-
+			log_.open("log.txt");
 			currentPhase_ = 0;
 			bundlesExplored_ = 0;
 			currentBundleExplore_ = 0;
 			currentBundleFinalize_ = 0;
 			totalPhases_ = bundle_.size() / threads_ + (bundle_.size() % threads_ > 0 ? 1 : 0);
-			std::vector<std::unique_ptr<tbb::tbb_thread> > workerThread(threads);
-			for (size_t i = 0; i < threads; i++)
+			//std::vector<std::unique_ptr<tbb::tbb_thread> > workerThread(threads);
+			#pragma omp parallel num_threads(threads)
 			{
 				ProcessVertex process(*this);
-				workerThread[i].reset(new tbb::tbb_thread(process));
-			}
-
-			for (auto & thread : workerThread)
-			{
-				thread->join();
+				process();
 			}
 
 			std::cout << ']' << std::endl;
@@ -731,7 +732,7 @@ namespace Sibelia
 			size_t & bestRightSize,
 			int64_t & bestScore,
 			int64_t & nowScore,
-			std::vector<Path::Instance> & bestInstance)
+			InstanceVector & bestInstance)
 		{
 			bool success = false;
 			int64_t origin = currentPath.Origin();
@@ -790,7 +791,7 @@ namespace Sibelia
 			size_t & bestLeftSize,
 			int64_t & bestScore,
 			int64_t & nowScore,
-			std::vector<Path::Instance> & bestInstance)
+			InstanceVector & bestInstance)
 		{
 			bool success = false;
 			std::pair<int64_t, NextVertex> nextBackwardVid;
@@ -843,11 +844,6 @@ namespace Sibelia
 		}
 
 		std::vector<Bundle> bundle_;
-		tbb::spin_mutex taskMutex_;
-		std::priority_queue<size_t, std::vector<size_t>, std::greater<size_t> > taskQueue_;
-		tbb::spin_mutex resultMutex_;
-		typedef std::pair<size_t, InstanceVectorPtr> Pair;
-		std::priority_queue<Pair, std::vector<Pair>, std::greater<Pair> > resultQueue_;
 
 
 		int64_t k_;
@@ -872,6 +868,7 @@ namespace Sibelia
 		tbb::mutex blocksMutex_;
 		std::ofstream debugOut_;
 		std::vector<BlockInstance> blocksInstance_;
+		std::ofstream log_;
 #ifdef _DEBUG_OUT_
 		bool debug_;
 		std::set<int64_t> missingVertex_;

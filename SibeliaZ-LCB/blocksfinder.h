@@ -3,6 +3,7 @@
 
 //#define _DEBUG_OUT_
 
+#include <omp.h>
 #include <set>
 #include <map>
 #include <list>
@@ -225,8 +226,8 @@ namespace Sibelia
 
 			void Process(Bundle bundle, Path & currentPath, std::vector<size_t> & data, std::vector<uint32_t> & count, InstanceVector & bestInstance, std::vector<int64_t> & logPath, int64_t & bestScore)
 			{
-				logPath.clear();
 				int64_t score;
+				logPath.clear();
 				bestInstance.clear();
 				int64_t vid = bundle.vid;
 				char initChar = bundle.ch;
@@ -278,9 +279,9 @@ namespace Sibelia
 						for (auto & e : bestEdge)
 						{
 							currentPath.PointPushBack(e);
-							logPath.push_back(e.GetEndVertex());
 						}
 					}
+					
 #ifdef _DEBUG_OUT_
 					if (finder.debug_)
 					{
@@ -336,75 +337,94 @@ namespace Sibelia
 				std::vector<int64_t> logPath;
 
 				size_t bundleIdx;
-				InstanceVector instance;
 				std::vector<size_t> data;
 				std::vector<uint32_t> count(finder.storage_.GetVerticesNumber() * 2 + 1, 0);
 				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_, true);
-				for (size_t myPhase = 0; myPhase < finder.totalPhases_; myPhase++)
+				for (; finder.go_; )
 				{
-					size_t bundleIdx = finder.currentBundleExplore_++;
-					if (bundleIdx < finder.bundle_.size())
+					for (bool inPhase = true; inPhase; )
 					{
-						Process(finder.bundle_[bundleIdx], currentPath, data, count, instance, logPath, bestScore);
+#pragma omp critical
+						{
+							if (finder.currentBundleExplore_ < finder.currentPhaseLimit_)
+							{
+								bundleIdx = finder.currentBundleExplore_++;
+							}
+							else
+							{
+								inPhase = false;
+							}
+						}
+
+						if (inPhase)
+						{
+							Process(finder.bundle_[bundleIdx], currentPath, data, count, finder.result_[bundleIdx - finder.currentPhase_], logPath, bestScore);
+							if (finder.count_++ % finder.progressPortion_ == 0)
+							{
+								std::cout << '.' << std::flush;
+							}
+						}
 					}
 
 					#pragma omp barrier
-					while (finder.currentBundleFinalize_ != bundleIdx);
-
-					//if (logPath.size() > 0)
+					if (omp_get_thread_num() == 0)
 					{
-					//	finder.log_ << '&' << bundleIdx << ' ' << bestScore << std::endl;
-					//	std::copy(logPath.begin(), logPath.end(), std::ostream_iterator<int64_t>(finder.log_, " "));
-					//	finder.log_ << std::endl;
-					}
-
-					if (bundleIdx < finder.bundle_.size())
-					{
-						if (instance.size() > 1)
+						for (size_t idx = finder.currentPhase_; idx < finder.currentPhaseLimit_; idx++)
 						{
-							bool isGood = true;
-							for (auto inst : instance)
+							auto & instance = finder.result_[idx - finder.currentPhase_];
+							if (instance.size() > 1)
 							{
-								for (auto it = inst.Front(); it != inst.Back(); ++it)
+								bool isGood = true;
+								for (auto inst : instance)
 								{
-									if (it.IsUsed())
+									for (auto it = inst.Front(); it != inst.Back(); ++it)
 									{
-										isGood = false;
+										if (it.IsUsed())
+										{
+											isGood = false;
+											break;
+										}
+									}
+
+									if (!isGood)
+									{
 										break;
 									}
 								}
 
-								if (!isGood)
-								{
-									break;
-								}
-							}
-
-							if (isGood)
-							{
-								//finder.log_ << bundleIdx << ' ' << finder.bundle_[bundleIdx].vid << ' ' << finder.bundle_[bundleIdx].ch << ' ' << std::endl;
-								Finalize(instance);
-							}
-							else
-							{
-								Process(finder.bundle_[bundleIdx], currentPath, data, count, instance, logPath, bestScore);
-								if (instance.size() > 1)
+								if (isGood)
 								{
 									//finder.log_ << bundleIdx << ' ' << finder.bundle_[bundleIdx].vid << ' ' << finder.bundle_[bundleIdx].ch << ' ' << std::endl;
 									Finalize(instance);
 								}
+								else
+								{
+									Process(finder.bundle_[idx], currentPath, data, count, instance, logPath, bestScore);
+									if (instance.size() > 1)
+									{
+										//finder.log_ << bundleIdx << ' ' << finder.bundle_[bundleIdx].vid << ' ' << finder.bundle_[bundleIdx].ch << ' ' << std::endl;
+										Finalize(instance);
+									}
+								}
 							}
 						}
 
-						if (finder.count_++ % finder.progressPortion_ == 0)
+						if (finder.currentPhaseLimit_ < finder.bundle_.size())
 						{
-							std::cout << '.' << std::flush;
+							finder.currentPhase_ = finder.currentPhaseLimit_;
+							finder.currentBundleExplore_ = finder.currentPhaseLimit_;
+							size_t nextPhase = finder.currentPhaseLimit_ + finder.phaseSize_;
+							finder.currentPhaseLimit_ = finder.bundle_.size() < nextPhase ? finder.bundle_.size() : nextPhase;
+						}
+						else
+						{
+							finder.go_ = false;
 						}
 					}
 
-					finder.currentBundleFinalize_++;
 					#pragma omp barrier
 				}
+
 			}
 			
 		};
@@ -458,7 +478,7 @@ namespace Sibelia
 							if (it.GetChar() == bundle.ch)
 							{
 								bundle.rank += it.GetPosition() * base;
-								base *= 27;
+								base *= 31;
 							}
 
 							std::pair<size_t, size_t> resolve(it.GetPosition(), it.GetChrId());
@@ -485,13 +505,12 @@ namespace Sibelia
 
 			clock_t mark = clock();
 			std::sort(bundle_.begin(), bundle_.end());
-			log_.open("log.txt");
 			currentPhase_ = 0;
-			bundlesExplored_ = 0;
+			phaseSize_ = 16;
+			currentPhaseLimit_ = phaseSize_;
+			result_.resize(phaseSize_);
 			currentBundleExplore_ = 0;
-			currentBundleFinalize_ = 0;
-			totalPhases_ = bundle_.size() / threads_ + (bundle_.size() % threads_ > 0 ? 1 : 0);
-			//std::vector<std::unique_ptr<tbb::tbb_thread> > workerThread(threads);
+			go_ = true;
 			#pragma omp parallel num_threads(threads)
 			{
 				ProcessVertex process(*this);
@@ -617,7 +636,7 @@ namespace Sibelia
 			std::cout.precision(2);
 			std::cout << "Blocks found: " << trimmedId - 1 << std::endl;
 			std::cout << "Coverage: " << CalculateCoverage(trimmedBlocks) << std::endl;
-
+			std::sort(trimmedBlocks.begin(), trimmedBlocks.end());
 			CreateOutDirectory(outDir);
 			std::string blocksDir = outDir + "/blocks";
 			ListBlocksIndicesGFF(trimmedBlocks, outDir + "/" + "blocks_coords.gff");
@@ -843,20 +862,21 @@ namespace Sibelia
 			return success;
 		}
 
+
 		std::vector<Bundle> bundle_;
 
 
 		int64_t k_;
 		size_t count_;
 		size_t threads_;
-		size_t blocksFound_;
+		std::atomic<bool> go_;
+		std::atomic<size_t> blocksFound_;
 		size_t progressCount_;
 		size_t progressPortion_;
-		std::atomic<size_t> totalPhases_;
-		std::atomic<size_t> currentPhase_;
-		std::atomic<size_t> bundlesExplored_;
-		std::atomic<size_t> currentBundleExplore_;
-		std::atomic<size_t> currentBundleFinalize_;
+		size_t phaseSize_;
+		size_t currentBundleExplore_;
+		size_t currentPhase_;
+		size_t currentPhaseLimit_;
 		int64_t scalingFactor_;
 		bool scoreFullChains_;
 		int64_t lookingDepth_;
@@ -868,6 +888,7 @@ namespace Sibelia
 		tbb::mutex blocksMutex_;
 		std::ofstream debugOut_;
 		std::vector<BlockInstance> blocksInstance_;
+		std::vector<InstanceVector> result_;
 		std::ofstream log_;
 #ifdef _DEBUG_OUT_
 		bool debug_;

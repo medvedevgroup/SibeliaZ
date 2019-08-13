@@ -250,7 +250,7 @@ namespace Sibelia
 						std::cerr << "Going forward:" << std::endl;
 					}
 #endif
-					int64_t minRun = max(finder.minBlockSize_, finder.maxBranchSize_) * 2;
+					int64_t minRun = finder.maxBranchSize_ * 2;
 					while (true)
 					{
 						bool ret = true;
@@ -394,7 +394,6 @@ namespace Sibelia
 
 								if (isGood)
 								{
-									//finder.log_ << bundleIdx << ' ' << finder.bundle_[bundleIdx].vid << ' ' << finder.bundle_[bundleIdx].ch << ' ' << std::endl;
 									Finalize(instance);
 								}
 								else
@@ -402,7 +401,6 @@ namespace Sibelia
 									Process(finder.bundle_[idx], currentPath, data, count, instance, logPath, bestScore);
 									if (instance.size() > 1)
 									{
-										//finder.log_ << bundleIdx << ' ' << finder.bundle_[bundleIdx].vid << ' ' << finder.bundle_[bundleIdx].ch << ' ' << std::endl;
 										Finalize(instance);
 									}
 								}

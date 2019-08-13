@@ -344,7 +344,7 @@ namespace Sibelia
 				{
 					for (bool inPhase = true; inPhase; )
 					{
-#pragma omp critical
+						#pragma omp critical
 						{
 							if (finder.currentBundleExplore_ < finder.currentPhaseLimit_)
 							{

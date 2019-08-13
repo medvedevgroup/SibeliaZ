@@ -477,12 +477,15 @@ namespace Sibelia
 							{
 								bundle.rank += it.GetPosition() * base;
 								base *= 31;
-							}
 
-							std::pair<size_t, size_t> resolve(it.GetPosition(), it.GetChrId());
-							if (resolve < bundle.resolve)
-							{
-								bundle.resolve = resolve;
+								if (it.IsPositiveStrand())
+								{
+									std::pair<size_t, size_t> resolve(it.GetPosition(), it.GetChrId());
+									if (resolve < bundle.resolve)
+									{
+										bundle.resolve = resolve;
+									}
+								}
 							}
 						}
 

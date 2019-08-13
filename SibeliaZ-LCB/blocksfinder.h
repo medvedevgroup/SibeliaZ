@@ -882,8 +882,6 @@ namespace Sibelia
 		int64_t maxBranchSize_;
 		int64_t maxFlankingSize_;
 		JunctionStorage & storage_;
-		tbb::mutex progressMutex_;
-		tbb::mutex blocksMutex_;
 		std::ofstream debugOut_;
 		std::vector<BlockInstance> blocksInstance_;
 		std::vector<InstanceVector> result_;

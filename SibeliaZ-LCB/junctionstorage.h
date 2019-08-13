@@ -10,8 +10,6 @@
 #include <stdexcept>
 #include <algorithm>
 
-#include <tbb/mutex.h>
-
 #include <streamfastaparser.h>
 #include <junctionapi.h>
 

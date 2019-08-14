@@ -1,7 +1,7 @@
-SibeliaZ 1.1.0
+SibeliaZ 1.2.0
 ===============
 
-Release date: 30th April 2019
+Release date: 21th August 2019
 =================
 
 Authors
@@ -32,6 +32,15 @@ To compile the code, you need the following (Linux only):
 * A GCC compiler supporting C++11
 * Intel TBB library properly installed on your system. In other words, G++
   should be able to find TBB libs (future releases will not depend on TBB)
+* GNU Parallel
+
+The easiest way to install the dependencies is to use a package management
+system, for APT on Debian systems they correspond to the following packages:
+
+* git
+* cmake
+* libtbb-dev
+* parallel
 
 Once you installed the things above, do the following:
 
@@ -41,25 +50,22 @@ running:
 	git clone https://github.com/medvedevgroup/SibeliaZ 
 
 Go to the root directory of the project and create the "build" folder by
-executing
+executing:
 
 	cd SibeliaZ
 	mkdir build
 
-Initialize dependencies by executing
+Initialize dependencies by executing:
 
 	git submodule update --init --recursive
 
-Go to the "build" directory
+Go to the "build" directory and compile and install the project by running:
 	
-	cd build 
-
-Compile and install the project by running
-	
+	cd build 	
 	cmake .. -DCMAKE_INSTALL_PREFIX=<path to install the binaries>
 	make install
 
-The make run will produce and installs the executables of twopaco, sibeliaz-lcb,
+The make run will produce and install the executables of twopaco, sibeliaz-lcb,
 spoa and a wrapper script sibeliaz which implements the pipeline.
 
 SibeliaZ usage
@@ -67,11 +73,11 @@ SibeliaZ usage
 SibeliaZ takes a collection of FASTA file as an input. The simplest way to run
 SibeliaZ is to run the following command:
 
-	sibeliaz -f <memory amount in GB>  <input FASTA files>
+	sibeliaz <input FASTA files>
 
 For example:
 
-	sibeliaz -f 16 genome1.fa genome2.fa 
+	sibeliaz genome1.fa genome2.fa 
 
 The alignment will be reported relative to the sequence ids, so all the input
 sequences should have a unique id in the fasta header. By default, the output
@@ -80,12 +86,7 @@ directory. It will contain a GFF file "blocks_coords.gff" containing
 coordinates of the found blocks, and file "alignment.maf" with the actual
 alignment. The subdirectory "examples" contains an example of running
 SibeliaZ and the output it produces. SibeliaZ has several parameters that
-affect the accuracy and output, which are described below.
-
-The memory amount specified by switch -f is used for memory preallocation for
-the initial step of the alignment pipeline as well as final global alignment.
-For small datasets, it at least should be several times of the input file size,
-for large genomes it is best to use as much memory as possible.
+affect the accuracy and performance, they are described below.
 
 Output description
 ==================
@@ -129,7 +130,7 @@ genomes k=25. The default is 25.
 Vertices frequency threshold
 ----------------------------
 Mammalian genomes contain many repeated elements that make the graph large and
-convoluted. To deal with this issue, SibeliaZ removes all k-mers with frequence
+convoluted. To deal with this issue, SibeliaZ removes all k-mers with frequency
 more than a threshold, which is controlled by the option:
 
 	-a <integer>
@@ -181,20 +182,16 @@ The maximum number of thread for SibeliaZ to use. This parameter is set by
 By default SibeliaZ tries to use as much threads as possible. You can limit
 this number by using the above switch. Note that different stages of the
 pipeline have different scalabilities. TwoPaCo will not use more than
-16 threads, graph analyzer sibeliaz-lcb will not use more than 4, while
+16 threads, graph analyzer sibeliaz-lcb will not use more than 8, while
 the global aligner will use as much as possible.
 
 Memory allocation
 -----------------
-Some prgorams in the pipeline require an amount of memory specified beforehand.
-For example, the graph constructor TwoPaCo uses it for Bloom filter, and the
-global aligner requires a memory limit to be set to work correctly. This can
-be set using the option:
+The graph constructor TwoPaCo preallocates memory for Bloom filter. By default,
+the Bloom filter size is thrice of the size of the input files. The Bloom
+filter size can be set manually with the option:
 
 	-f <memory amount in GB>
-
-If SibeliaZ runs out of memory, try increasing this amount, see "Troubleshooting"
-section for more details.
 
 Output directory
 ----------------
@@ -237,7 +234,7 @@ include:
 * TwoPaCo having the Bloom filter too small. To increase its size, use the -f switch
 
 * SibeliaZ-LCB running out of memory. You can try to reduce the abundance parameter
--a to prune the internal data structure and reduce its size.
+-a to prune the internal data structure and reduce its size
 
 Citation
 ========

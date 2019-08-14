@@ -1,3 +1,14 @@
+SibeliaZ 1.2.0
+==============
+* The results are now reproducible regardless to the number of threads
+being used
+* Changed behavior of "-f" flag: now it is optional and only controls size of
+the Bloom filter allocated by TwoPaCo. By default, it is now thrice of the
+total input file size
+* Fixed a bug in the input parsing
+* Slightly improved accuracy
+* The global step now relies on GNU parallel to control the jobs
+                                                                  
 SibeliaZ 1.1.0
 ==============
 * Added a script for converting MAF alignment to GFA1 (maf_to_gf1.py)

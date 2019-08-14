@@ -519,7 +519,6 @@ namespace Sibelia
 			}
 
 			std::cout << ']' << std::endl;
-			std::cout << "Time: " << clock() - mark << std::endl;
 		}
 
 

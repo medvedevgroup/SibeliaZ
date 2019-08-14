@@ -1,14 +1,14 @@
 #!/bin/bash
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+export DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 k=25
 b=200
 m=50
 a=150
 f=
-threads=`nproc`
+export threads=`nproc`
 infile=
-outdir="./sibeliaz_out"
+export outdir="./sibeliaz_out"
 align="True"
 noseq=""
 
@@ -47,64 +47,85 @@ then
 	exit 1
 fi
 
-if [ -z "$f" ]
-then
-	echo "You must set the memory pre-allocaiton size" >&2
-	exit 1
-fi
-
 min() {
    [ "$1" -lt "$2" ] && echo $1 || echo $2
 }
 
+max() {
+   [ "$1" -lt "$2" ] && echo $2 || echo $1
+}
+
+export outdir
+export outfile="$outdir/alignment.maf"
+
 align()
 {
-        output="$($3/spoa $1 -l 1 -r 1 2> /dev/null | tail -n +2)"
+        output="$($DIR/spoa $1 -l 1 -r 1 2> /dev/null | tail -n +2)"
         rcode="${PIPESTATUS[0]}"
         if [[ -z "${output// }" ]]
         then
                 return
         fi
 
+	filename=$(basename -- "$1")
+	alignment_output="$outdir/alignment/$filename"
         if [ $? -eq 0 ]
         then
 		lines=`echo -n "$output" | grep -c '^'`
                 header="$(sed -n -e '/^>/p' $1 | cut -d' ' -f2- | sed  's/;/ /g' | sed -e 's/^/s /' | head -n $lines)"
-                (
-                        flock 200
-                        echo "" >> "$2"
-                        echo "a" >> "$2"
-                        paste <(echo "$header") <(echo "$output") --delimiters ' ' >> "$2"
-                ) 200>> "$2"
+		echo "" >> "$alignment_output"
+		echo "a" >> "$alignment_output"
+		paste <(echo "$header") <(echo "$output") --delimiters ' ' >> "$alignment_output"
 		rm $1
         fi
 }
 
 export -f align
-
-
 infile="$@"
+
+if [ -z "$f" ]
+then
+	memory_avail=`free -g -w | head -2 | tail -1 | awk '{print $2}'`
+	total_size=0
+	IFS=' ' read -ra ADDR <<< "$infile"
+	for i in "${ADDR[@]}"; do
+        	total_size=$((total_size + `stat -c "%s" $i`))
+	done
+
+	total_size=$((total_size * 3 / 1000000000))
+	f=$( min $total_size $memory_avail )
+	f=$( max $f 4 )
+fi
+
+global_alignment()
+{
+	echo "Performing global alignment.."
+        echo "##maf version=1" > "$outfile"
+        mkdir $outdir/alignment
+        find $outdir/blocks -name "*.fa" -printf "$PWD/%p\n" | parallel --will-cite -j $threads --memfree 4G -I @ align @
+        find $outdir/blocks -name "*.fa" -printf "$PWD/%p\n" | parallel --will-cite -j 1 -I @ align @
+        find $outdir/alignment/ -name "*.fa" -exec cat {} + >> "$outfile"
+        rm -rf $outdir/alignment
+}
+
+export -f global_alignment
+
 twopaco_threads=$( min $threads 16 )
-lcb_threads=$( min $threads 4 )
+lcb_threads=$( min $threads 8 )
 dbg_file=$outdir/de_bruijn_graph.dbg
+
 
 mkdir -p $outdir
 echo "Constructing the graph..."
-$DIR/twopaco --tmpdir $outdir -t $twopaco_threads -k $k --filtermemory $f -o $dbg_file $infile
-$DIR/sibeliaz-lcb --graph $dbg_file $infile -k $k -b $b -o $outdir -m $m -t $lcb_threads --abundance $a $noseq
+/usr/bin/time -f "TwoPaco: %e seconds elapsed, %M KB memory used" $DIR/twopaco --tmpdir $outdir -t $twopaco_threads -k $k --filtermemory $f -o $dbg_file $infile
+/usr/bin/time -f "SibeliaZ-LCB: %e seconds elapsed, %M KB memory used" $DIR/sibeliaz-lcb --graph $dbg_file $infile -k $k -b $b -o $outdir -m $m -t $lcb_threads --abundance $a $noseq
 
 rm $dbg_file
-
 if [ "$align" = "True" ]
 then
-	echo "Performing global alignment.."
-	outfile=$outdir/alignment.maf
-	echo "##maf version=1" > "$outfile"
-	ulimit -v $(($f * 1000000))
-	ulimit -m $(($f * 1000000))
-	find $outdir/blocks -name "*.fa" -printf "$PWD/%p\n" | xargs -I @ -P "$threads" bash -c "align @ '$outfile' '$DIR'"
-	find $outdir/blocks -name "*.fa" -printf "$PWD/%p\n" | xargs -I @ -P 1 bash -c "align @ '$outfile' '$DIR'"
+	 /usr/bin/time -f "Alignment: %e seconds elapsed, %M memory used" bash -c "global_alignment"
 fi
+
 
 
 

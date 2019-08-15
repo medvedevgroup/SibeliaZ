@@ -398,6 +398,7 @@ namespace Sibelia
 								}
 								else
 								{
+									finder.failure_++;
 									Process(finder.bundle_[idx], currentPath, data, count, instance, logPath, bestScore);
 									if (instance.size() > 1)
 									{
@@ -445,6 +446,7 @@ namespace Sibelia
 
 		void FindBlocks(int64_t minBlockSize, int64_t maxBranchSize, int64_t maxFlankingSize, int64_t lookingDepth, int64_t sampleSize, int64_t threads, const std::string & debugOut)
 		{
+			failure_ = 0;
 			threads_ = threads;
 			lookingDepth_ = lookingDepth;
 			minBlockSize_ = minBlockSize;
@@ -475,7 +477,7 @@ namespace Sibelia
 						{
 							if (it.GetChar() == bundle.ch)
 							{
-								bundle.rank += it.GetPosition() * base;
+								bundle.rank += it.GetChrId() * base;
 								base *= 31;
 
 								if (it.IsPositiveStrand())
@@ -504,14 +506,14 @@ namespace Sibelia
 				progressPortion_ = 1;
 			}
 
+			go_ = true;
 			clock_t mark = clock();
 			std::sort(bundle_.begin(), bundle_.end());
 			currentPhase_ = 0;
-			phaseSize_ = 16;
+			phaseSize_ = 1024;
 			currentPhaseLimit_ = phaseSize_;
 			result_.resize(phaseSize_);
 			currentBundleExplore_ = 0;
-			go_ = true;
 			#pragma omp parallel num_threads(threads)
 			{
 				ProcessVertex process(*this);
@@ -519,6 +521,7 @@ namespace Sibelia
 			}
 
 			std::cout << ']' << std::endl;
+			std::cout << "Failure: " << failure_ << std::endl;
 		}
 
 
@@ -869,6 +872,7 @@ namespace Sibelia
 		int64_t k_;
 		size_t count_;
 		size_t threads_;
+		size_t failure_;
 		std::atomic<bool> go_;
 		std::atomic<size_t> blocksFound_;
 		size_t progressCount_;
@@ -895,4 +899,4 @@ namespace Sibelia
 	};
 }
 
-#endif
+#endif	

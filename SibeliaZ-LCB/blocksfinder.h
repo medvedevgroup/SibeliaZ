@@ -16,6 +16,7 @@
 #include <iostream>
 #include <functional>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "path.h"
 
@@ -314,6 +315,8 @@ namespace Sibelia
 				//finder.log_ << '*' << currentBlock << std::endl;
 				for (auto jt : instance)
 				{
+					finder.invalidChr_.insert(jt.Front().GetChrId());
+
 					if (jt.Front().IsPositiveStrand())
 					{
 						finder.blocksInstance_.push_back(BlockInstance(+currentBlock, jt.Front().GetChrId(), jt.Front().GetPosition(), jt.Back().GetPosition() + finder.k_));
@@ -377,6 +380,11 @@ namespace Sibelia
 								bool isGood = true;
 								for (auto inst : instance)
 								{
+									if (finder.invalidChr_.count(inst.Front().GetChrId()) == 0)
+									{
+										continue;
+									}
+
 									for (auto it = inst.Front(); it != inst.Back(); ++it)
 									{
 										if (it.IsUsed())
@@ -408,6 +416,7 @@ namespace Sibelia
 							}
 						}
 
+						finder.invalidChr_.clear();
 						if (finder.currentPhaseLimit_ < finder.bundle_.size())
 						{
 							finder.currentPhase_ = finder.currentPhaseLimit_;
@@ -510,7 +519,7 @@ namespace Sibelia
 			clock_t mark = clock();
 			std::sort(bundle_.begin(), bundle_.end());
 			currentPhase_ = 0;
-			phaseSize_ = 1024;
+			phaseSize_ = 256;
 			currentPhaseLimit_ = phaseSize_;
 			result_.resize(phaseSize_);
 			currentBundleExplore_ = 0;
@@ -891,6 +900,7 @@ namespace Sibelia
 		std::ofstream debugOut_;
 		std::vector<BlockInstance> blocksInstance_;
 		std::vector<InstanceVector> result_;
+		std::unordered_set<size_t> invalidChr_;
 		std::ofstream log_;
 #ifdef _DEBUG_OUT_
 		bool debug_;

@@ -195,7 +195,8 @@ namespace Sibelia
 			tbb::parallel_for(tbb::blocked_range<size_t>(0, storage_.GetChrNumber()), ChrSweep(*this));
 			std::sort(template_.begin(), template_.end());
 			RunTemplate runner(*this);
-			runner(tbb::blocked_range<size_t>(0, template_.size()));
+			auto rng = tbb::blocked_range<size_t>(0, template_.size());
+			runner(rng);
 			std::cout << double(clock() - start) / CLOCKS_PER_SEC << std::endl;
 		}
 
@@ -269,10 +270,12 @@ namespace Sibelia
 				Path currentPath(finder.storage_, finder.maxBranchSize_, finder.minBlockSize_, finder.minBlockSize_, finder.maxFlankingSize_, true);
 				for (size_t i = range.begin(); i < range.end(); i++)
 				{
-					std::cout << i << ' ' << range.end() << std::endl;
+					//std::cout << i << ' ' << range.end() << std::endl;
 					auto run = finder.template_[i];
 					while (run.first < run.second)
 					{
+						//std::cout << run.second.GetPosition() - run.first.GetPosition() << std::endl;
+
 						for (; run.first.IsUsed() && run.first < run.second; ++run.first);
 						auto end = run.first;
 						for (; !end.IsUsed() && end < run.second; ++end);
@@ -334,36 +337,86 @@ namespace Sibelia
 			}
 		}
 
+		struct SortByMultiplicity
+		{
+			SortByMultiplicity(const std::vector<int> & multiplicityOrigin) : multiplicity(multiplicityOrigin)
+			{
+			}
+
+			bool operator () (const BlockInstance & a, const BlockInstance & b) const
+			{
+				auto mlp1 = multiplicity[a.GetBlockId()];
+				auto mlp2 = multiplicity[b.GetBlockId()];
+				if (mlp1 != mlp2)
+				{
+					return mlp1 > mlp2;
+				}
+
+				return a.GetBlockId() < b.GetBlockId();
+			}
+
+			const std::vector<int> & multiplicity;
+		};
+
+
 		void GenerateOutput(const std::string & outDir, bool genSeq)
 		{
-			const auto & trimmedBlocks = blocksInstance_;
 			std::vector<std::vector<bool> > covered(storage_.GetChrNumber());
 			for (size_t i = 0; i < covered.size(); i++)
 			{
 				covered[i].assign(storage_.GetChrSequence(i).size() + 1, false);
 			}
-			
-			for (auto & b : blocksInstance_)
+
+			int64_t trimmedId = 1;
+			std::vector<IndexPair> group;
+			std::vector<BlockInstance> buffer;
+			std::vector<BlockInstance> trimmedBlocks;
+			std::vector<int> copiesCount_(blocksFound_ + 1, 0);
+			for (auto b : blocksInstance_)
 			{
-				for (size_t i = b.GetStart(); i < b.GetEnd(); i++)
-				{
-					covered[b.GetChrId()][i] = true;
-				}
+				copiesCount_[b.GetBlockId()]++;
 			}
-			
-			size_t total = 0;
-			size_t totalCovered = 0;
-			for (auto & chr : covered)
+
+			GroupBy(blocksInstance_, SortByMultiplicity(copiesCount_), std::back_inserter(group));
+			for (auto g : group)
 			{
-				total += chr.size();
-				totalCovered += std::count(chr.begin(), chr.end(), true);
+				buffer.clear();
+				for (size_t i = g.first; i < g.second; i++)
+				{
+					size_t chr = blocksInstance_[i].GetChrId();
+					size_t start = blocksInstance_[i].GetStart();
+					size_t end = blocksInstance_[i].GetEnd();
+					for (; covered[chr][start] && start < end; start++);
+					for (; covered[chr][end] && end > start; end--);
+					if (end - start >= minBlockSize_)
+					{
+						buffer.push_back(BlockInstance(blocksInstance_[i].GetSign() * trimmedId, chr, start, end));
+						std::fill(covered[chr].begin() + start, covered[chr].begin() + end, true);
+					}
+				}
+
+				if (buffer.size() > 1)
+				{
+					trimmedId++;
+					for (const auto & it : buffer)
+					{
+						trimmedBlocks.push_back(it);
+					}
+				}
+				else
+				{
+					for (const auto & it : buffer)
+					{
+						std::fill(covered[it.GetChrId()].begin() + it.GetStart(), covered[it.GetChrId()].begin() + it.GetEnd(), false);
+					}
+				}
 			}
 
 			std::cout.setf(std::cout.fixed);
 			std::cout.precision(2);
-			std::cout << "Blocks found: " << blocksFound_ << std::endl;
-			std::cout << "Coverage: " << double(totalCovered) / total << std::endl;
-
+			std::cout << "Blocks found: " << trimmedId - 1 << std::endl;
+			//std::cout << "Coverage: " << CalculateCoverage(trimmedBlocks) << std::endl;
+			std::sort(trimmedBlocks.begin(), trimmedBlocks.end());
 			CreateOutDirectory(outDir);
 			std::string blocksDir = outDir + "/blocks";
 			ListBlocksIndicesGFF(trimmedBlocks, outDir + "/" + "blocks_coords.gff");
@@ -372,9 +425,8 @@ namespace Sibelia
 				CreateOutDirectory(blocksDir);
 				ListBlocksSequences(trimmedBlocks, blocksDir);
 			}
-
-			ListBlocksIndices(trimmedBlocks, outDir + "/" + "blocks_coords.txt");
 		}
+
 
 	private:
 

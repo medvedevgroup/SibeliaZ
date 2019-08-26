@@ -13,8 +13,8 @@ namespace Sibelia
 
 	bool operator < (const Template & a, const Template & b)
 	{
-		int64_t dist1 = a.second.GetPosition() < a.first.GetPosition();
-		int64_t dist2 = b.second.GetPosition() < b.first.GetPosition();
+		int64_t dist1 = a.second.GetPosition() - a.first.GetPosition();
+		int64_t dist2 = b.second.GetPosition() - b.first.GetPosition();
 		return dist1 < dist2;
 	}
 

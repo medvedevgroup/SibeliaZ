@@ -234,35 +234,6 @@ namespace Sibelia
 
 			}
 
-			void Finalize(Path & currentPath) const
-			{
-				int64_t currentBlock = ++finder.blocksFound_;
-				//finder.log_ << '*' << currentBlock << std::endl;
-				if (currentPath.GoodInstancesList().size() > 1)
-				{
-					std::cout << "g" << std::endl;
-					for (auto it : currentPath.GoodInstancesList())
-					{
-						auto & jt = *it;
-						if (jt.Front().IsPositiveStrand())
-						{
-							finder.blocksInstance_.push_back(BlockInstance(+currentBlock, jt.Front().GetChrId(), jt.Front().GetPosition(), jt.Back().GetPosition() + finder.k_));
-						}
-						else
-						{
-							finder.blocksInstance_.push_back(BlockInstance(-currentBlock, jt.Front().GetChrId(), jt.Back().GetPosition() - finder.k_, jt.Front().GetPosition()));
-						}
-
-						//finder.log_ << jt.Front().GetChrId() << ' ' << jt.Front().GetPosition() << ' ' << jt.Back().GetPosition() << std::endl;
-						for (auto it = jt.Front(); it != jt.Back(); ++it)
-						{
-							it.MarkUsed();
-						}
-					}
-				}
-				
-			}
-
 			void operator()(tbb::blocked_range<size_t> & range) const
 			{
 				std::vector<size_t> data;
@@ -274,20 +245,44 @@ namespace Sibelia
 					auto run = finder.template_[i];
 					while (run.first < run.second)
 					{
-						//std::cout << run.second.GetPosition() - run.first.GetPosition() << std::endl;
-
 						for (; run.first.IsUsed() && run.first < run.second; ++run.first);
 						auto end = run.first;
 						for (; !end.IsUsed() && end < run.second; ++end);
 						if (end.GetPosition() - run.first.GetPosition() >= finder.minBlockSize_)
 						{
+							auto init = run.first;
+							auto length = end.GetPosition() - run.first.GetPosition();
 							currentPath.Init(run.first.GetVertexId(), 'N');
 							for (; run.first != end; ++run.first)
 							{
-								currentPath.PointPushBack(run.first.OutgoingEdge());
+								currentPath.PointPushBack(run.first.OutgoingEdge(), (run.first.GetPosition() - init.GetPosition()) <= finder.maxBranchSize_);
 							}
 							
-							Finalize(currentPath);
+							//currentPath.DumpInstances(std::cerr);
+							if (currentPath.GoodInstancesList().size() > 1)
+							{
+								int64_t currentBlock = ++finder.blocksFound_;
+							//	std::cerr << "g " << length << std::endl;
+								for (auto it : currentPath.GoodInstancesList())
+								{
+									auto & jt = *it;
+									if (jt.Front().IsPositiveStrand())
+									{
+										finder.blocksInstance_.push_back(BlockInstance(+currentBlock, jt.Front().GetChrId(), jt.Front().GetPosition(), jt.Back().GetPosition() + finder.k_));
+									}
+									else
+									{
+										finder.blocksInstance_.push_back(BlockInstance(-currentBlock, jt.Front().GetChrId(), jt.Back().GetPosition() - finder.k_, jt.Front().GetPosition()));
+									}
+
+							//		std::cerr << jt.RealLength() << std::endl;
+									for (auto it = jt.Front(); it != jt.Back(); ++it)
+									{
+										it.MarkUsed();
+									}
+								}
+							}
+
 							currentPath.Clear();
 						}
 

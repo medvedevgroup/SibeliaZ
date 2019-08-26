@@ -1,284 +1,13 @@
-#ifndef _SWEEPER_H_
-#define _SWEEPER_H_
+#ifndef _PATH_H_
+#define _PATH_H_
 
 #include <set>
 #include <cassert>
 #include <algorithm>
-
-#include <tbb/mutex.h>
-#include <tbb/parallel_for.h>
-#include <tbb/blocked_range.h>
-#include <tbb/task_scheduler_init.h>
-
-#include "path.h"
+#include "distancekeeper.h"
 
 namespace Sibelia
 {
-	typedef std::pair<JunctionStorage::JunctionSequentialIterator, JunctionStorage::JunctionSequentialIterator> Template;
-
-	bool operator < (const Template & a, const Template & b);
-	
-
-	class BlockInstance
-	{
-	public:
-		BlockInstance() {}
-		BlockInstance(int id, const size_t chr, size_t start, size_t end) : id_(id), chr_(chr), start_(start), end_(end) {}
-		void Reverse();
-		int GetSignedBlockId() const;
-		bool GetDirection() const;
-		int GetBlockId() const;
-		int GetSign() const;
-		size_t GetChrId() const;
-		size_t GetStart() const;
-		size_t GetEnd() const;
-		size_t GetLength() const;
-		size_t GetConventionalStart() const;
-		size_t GetConventionalEnd() const;
-		std::pair<size_t, size_t> CalculateOverlap(const BlockInstance & instance) const;
-		bool operator < (const BlockInstance & toCompare) const;
-		bool operator == (const BlockInstance & toCompare) const;
-		bool operator != (const BlockInstance & toCompare) const;
-	private:
-		int id_;
-		size_t start_;
-		size_t end_;
-		size_t chr_;
-	};
-
-	class Sweeper
-	{
-	public:
-
-		struct Instance
-		{
-			JunctionStorage::JunctionSequentialIterator start[2];
-			JunctionStorage::JunctionSequentialIterator end[2];
-
-			Instance()
-			{
-
-			}
-
-			bool Valid(int64_t minBlockSize) const
-			{
-				for (size_t i = 0; i < 2; i++)
-				{
-					if (abs(end[i].GetPosition() - start[i].GetPosition()) < minBlockSize)
-					{
-						return false;
-					}
-				}
-
-				return true;
-			}
-
-			Instance(JunctionStorage::JunctionSequentialIterator dummy)
-			{
-				end[1] = dummy;
-			}
-
-			bool operator < (const Instance & cmp) const
-			{
-				if (end[1].GetChrId() != cmp.end[1].GetChrId())
-				{
-					return end[1].GetChrId() < cmp.end[1].GetChrId();
-				}
-
-				if (end[1].IsPositiveStrand() != cmp.end[1].IsPositiveStrand())
-				{
-					return end[1].IsPositiveStrand() < cmp.end[1].IsPositiveStrand();
-				}
-
-				int64_t idx1 = end[1].GetIndex();
-				int64_t idx2 = cmp.end[1].GetIndex();
-
-				if (end[1].IsPositiveStrand())
-				{
-					return idx1 < idx2;
-				}
-
-				return idx1 > idx2;
-			}
-		};
-
-		Sweeper(JunctionStorage::JunctionSequentialIterator start) : start_(start)
-		{
-
-		}
-
-		void Sweep(int64_t minBlockSize, int64_t maxBranchSize, int64_t k, std::atomic<int64_t> & blocksFound, std::vector<Template> & templateInstance , tbb::mutex & outMutex)
-		{
-			JunctionStorage::JunctionSequentialIterator successor[2];
-			for (auto it = start_; it.Valid(); ++it)
-			{
-				for (JunctionStorage::JunctionIterator vit(it.GetVertexId()); vit.Valid(); ++vit)
-				{
-					bool found = false;
-					auto jt = vit.SequentialIterator();
-					if (jt != it && jt.GetChrId() >= it.GetChrId())
-					{
-						auto kt = instance_.upper_bound(Instance(jt));
-						if (kt != instance_.begin())
-						{
-							--kt;
-							if (kt->end[1].GetChrId() == jt.GetChrId() && kt->end[1].IsPositiveStrand() == jt.IsPositiveStrand())
-							{
-								successor[0] = it;
-								successor[1] = jt;
-								if (Compatible(*kt, successor, maxBranchSize))
-								{
-									found = true;
-									Instance update(*kt);
-									update.end[0] = it;
-									update.end[1] = jt;
-									instance_.erase(kt);
-									instance_.insert(update);
-								}
-							}
-						}
-
-						if (!found)
-						{
-							Instance novel;
-							novel.start[0] = novel.end[0] = it;
-							novel.start[1] = novel.end[1] = jt;
-							instance_.insert(novel);
-						}
-					}
-				}
-
-				for (auto inst = instance_.begin(); inst != instance_.end(); )
-				{
-					if (it.GetPosition() - inst->end[0].GetPosition() >= maxBranchSize)
-					{
-						if (inst->Valid(minBlockSize))
-						{
-							ReportBlock(templateInstance, outMutex, k, blocksFound, *inst);
-						}
-
-						inst = instance_.erase(inst);
-					}
-					else
-					{
-						++inst;
-					}
-				}
-			}
-
-			for (auto inst = instance_.begin(); inst != instance_.end(); ++inst)
-			{
-				if (inst->Valid(minBlockSize))
-				{
-					ReportBlock(templateInstance, outMutex, k, blocksFound, *inst);
-				}
-			}
-		}
-
-	private:
-
-		std::multiset<Instance> instance_;
-		JunctionStorage::JunctionSequentialIterator start_;
-
-		bool Compatible(const Instance & inst, const JunctionStorage::JunctionSequentialIterator succ[2], int64_t maxBranchSize) const
-		{
-			bool withinBubble = true;
-			bool validSuccessor = inst.end[0].GetChar() == inst.end[1].GetChar();
-			for (size_t i = 0; i < 2; i++)
-			{
-				if (inst.end[i] + 1 != succ[i])
-				{
-					validSuccessor = false;
-				}
-
-				if (abs(inst.end[i].GetPosition() - succ[i].GetPosition()) >= maxBranchSize)
-				{
-					withinBubble = false;
-				}
-			}
-
-			if (withinBubble || validSuccessor)
-			{
-				if(inst.start[0].GetChrId() == inst.start[1].GetChrId())
-				{
-					size_t startIdx1 = inst.start[0].GetIndex();
-					size_t endIdx1 = succ[0].GetIndex();
-					size_t startIdx2 = min(inst.start[1].GetIndex(), succ[1].GetIndex());
-					size_t endIdx2 = max(inst.start[1].GetIndex(), succ[1].GetIndex());
-					if ((startIdx2 >= startIdx1 && startIdx2 <= endIdx1) || (startIdx1 >= startIdx2 && startIdx1 <= endIdx2))
-					{
-						return false;
-					}
-				}
-
-				return true;
-			}
-
-			return false;
-		}
-
-		
-		void ReportBlock(std::vector<Template> & templateInstance, tbb::mutex & outMutex, int64_t k, std::atomic<int64_t> & blocksFound, const Instance & inst)
-		{
-			int64_t currentBlock = ++blocksFound;
-			tbb::mutex::scoped_lock lock(outMutex);
-			for (size_t l = 0; l < 2; l++)
-			{
-				auto it = inst.start[l];
-				auto jt = inst.end[l];
-				if (jt.IsPositiveStrand())
-				{
-					templateInstance.push_back(std::make_pair(inst.start[l], inst.end[l]));
-				}
-			}
-		}
-		
-
-		/*
-		void ReportBlock(std::vector<BlockInstance> & blocksInstance, tbb::mutex & outMutex, int64_t k, std::atomic<int64_t> & blocksFound, const Instance & inst)
-		{
-			int64_t currentBlock = ++blocksFound;
-			tbb::mutex::scoped_lock lock(outMutex);
-			for (size_t l = 0; l < 2; l++)
-			{
-				auto it = inst.start[l];
-				auto jt = inst.end[l];
-				if (jt.IsPositiveStrand())
-				{
-					blocksInstance.push_back(BlockInstance(+currentBlock, jt.GetChrId(), it.GetPosition(), jt.GetPosition() + k));
-				}
-				else
-				{
-					blocksInstance.push_back(BlockInstance(-currentBlock, jt.GetChrId(), jt.GetPosition() - k, it.GetPosition()));
-				}
-			}
-		}
-		*/
-	};
-}
-
-#endif
-
-/*
-namespace Sibelia
-{
-	struct Assignment
-	{
-		int32_t block;
-		int32_t instance;
-		Assignment()
-		{
-
-		}
-
-		bool operator == (const Assignment & assignment) const
-		{
-			return block == assignment.block && instance == assignment.instance;
-		}
-	};
-
-	struct BestPath;
-
 	struct Path
 	{
 	public:
@@ -286,28 +15,31 @@ namespace Sibelia
 			int64_t maxBranchSize,
 			int64_t minBlockSize,
 			int64_t minScoringUnit,
-			int64_t maxFlankingSize) :
+			int64_t maxFlankingSize,
+			bool complete = false) :
 			maxBranchSize_(maxBranchSize),
 			minBlockSize_(minBlockSize),
 			minScoringUnit_(minScoringUnit),
 			maxFlankingSize_(maxFlankingSize),
 			storage_(&storage),
 			distanceKeeper_(storage.GetVerticesNumber()),
-			instance_(storage.GetChrNumber())
+			instance_(storage.GetChrNumber()),
+			complete_(complete)
 		{
 
 		}
 
-		void Init(int64_t vid)
+		void Init(int64_t vid, char ch)
 		{
 			origin_ = vid;
 			distanceKeeper_.Set(vid, 0);
 			leftBodyFlank_ = rightBodyFlank_ = 0;
 			for (JunctionStorage::JunctionIterator it(vid); it.Valid(); ++it)
 			{
-				if (!it.SequentialIterator().IsUsed())
+				auto seqIt = it.SequentialIterator();
+				if (!seqIt.IsUsed())
 				{
-					allInstance_.push_back(instance_[it.GetChrId()].insert(Instance(it.SequentialIterator(), 0)));
+					allInstance_.push_back(instance_[it.GetChrId()].insert(Instance(seqIt, 0)));
 				}
 			}
 		}
@@ -320,6 +52,8 @@ namespace Sibelia
 		struct Instance
 		{
 		private:
+			bool backFinished_;
+			bool frontFinished_;
 			int64_t compareIdx_;
 			int64_t frontDistance_;
 			int64_t backDistance_;
@@ -348,9 +82,31 @@ namespace Sibelia
 				back_(it),
 				frontDistance_(distance),
 				backDistance_(distance),
-				compareIdx_(it.GetIndex())
+				compareIdx_(it.GetIndex()),
+				backFinished_(false),
+				frontFinished_(false)
 			{
 
+			}
+
+			void FinishBack()
+			{
+				backFinished_ = true;
+			}
+
+			void FinishFront()
+			{
+				frontFinished_ = true;
+			}
+
+			bool IsFinishedBack() const
+			{
+				return backFinished_;
+			}
+
+			bool IsFinishedFront() const
+			{
+				return frontFinished_;
 			}
 
 			void ChangeFront(const JunctionStorage::JunctionSequentialIterator & it, int64_t distance)
@@ -595,9 +351,8 @@ namespace Sibelia
 				{
 					int64_t middlePath = MiddlePathLength();
 					int64_t length = inst.UtilityLength();
-
-					int64_t start = inst.Front().GetPosition();
-					int64_t end = inst.Back().GetPosition();
+					int64_t start = inst.Front().GetIndex();
+					int64_t end = inst.Back().GetIndex();
 					out << "(" << (inst.Front().IsPositiveStrand() ? '+' : '-') <<
 						inst.Front().GetChrId() << ' ' << start << ' ' << end << ' ' << end - start << ';' <<
 						inst.LeftFlankDistance() << ' ' << inst.RightFlankDistance() << ')' << std::endl;
@@ -628,9 +383,19 @@ namespace Sibelia
 				return false;
 			}
 
+			for (auto it = start; it != end; ++it)
+			{
+				if (it.IsUsed())
+				{
+					return false;
+				}
+			}
+
 			int64_t realDiff = end.GetPosition() - start.GetPosition();
+			int64_t v1 = end.GetVertexId();
+			int64_t v2 = start.GetVertexId();
 			int64_t ancestralDiff = distanceKeeper_.Get(end.GetVertexId()) - distanceKeeper_.Get(start.GetVertexId());
-			assert(ancestralDiff > 0);
+			assert(ancestralDiff >= 0);
 			if (start.IsPositiveStrand())
 			{
 				if (realDiff < 0)
@@ -680,43 +445,50 @@ namespace Sibelia
 				for (JunctionStorage::JunctionIterator nowIt(vertex); nowIt.Valid() && !failFlag; nowIt++)
 				{
 					bool newInstance = true;
-					if (!nowIt.SequentialIterator().IsUsed())
+					auto seqIt = nowIt.SequentialIterator();
+					auto & instanceSet = path->instance_[nowIt.GetChrId()];
+					auto inst = instanceSet.upper_bound(Instance(seqIt, 0));
+					if (inst != instanceSet.end() && inst->Within(nowIt))
 					{
-						auto & instanceSet = path->instance_[nowIt.GetChrId()];
-						auto inst = instanceSet.upper_bound(Instance(nowIt.SequentialIterator(), 0));
-						if (inst != instanceSet.end() && inst->Within(nowIt))
-						{
-							continue;
-						}
+						continue;
+					}
 
-						if (nowIt.IsPositiveStrand())
+					if (nowIt.IsPositiveStrand())
+					{
+						if (inst != instanceSet.end() && path->Compatible(seqIt, inst->Front(), e))
 						{
-							if (inst != instanceSet.end() && path->Compatible(nowIt.SequentialIterator(), inst->Front(), e))
-							{
-								newInstance = false;
-							}
+							newInstance = false;
 						}
-						else
+					}
+					else
+					{
+						if (inst != instanceSet.begin() && path->Compatible(seqIt, (--inst)->Front(), e))
 						{
-							if (inst != instanceSet.begin() && path->Compatible(nowIt.SequentialIterator(), (--inst)->Front(), e))
-							{
-								newInstance = false;
-							}
+							newInstance = false;
 						}
+					}
 
-						if (!newInstance && inst->Front().GetVertexId() != vertex)
+					if (!newInstance && inst->Front().GetVertexId() != vertex)
+					{
+						if (!inst->IsFinishedFront())
 						{
 							bool prevGoodInstance = path->IsGoodInstance(*inst);
-							const_cast<Instance&>(*inst).ChangeFront(nowIt.SequentialIterator(), distance);
+							auto & cinst = const_cast<Instance&>(*inst);
+							cinst.ChangeFront(seqIt, distance);
 							if (!prevGoodInstance && path->IsGoodInstance(*inst))
 							{
 								path->goodInstance_.push_back(inst);
 							}
+
+							if (seqIt.IsUsed())
+							{
+								cinst.FinishFront();
+							}
 						}
-						else
-						{
-							path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
-						}
+					}
+					else if (!seqIt.IsUsed() && path->complete_)
+					{
+						path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
 					}
 				}
 			}
@@ -742,43 +514,50 @@ namespace Sibelia
 				for (JunctionStorage::JunctionIterator nowIt(vertex); nowIt.Valid() && !failFlag; nowIt++)
 				{
 					bool newInstance = true;
-					if (!nowIt.SequentialIterator().IsUsed())
+					auto seqIt = nowIt.SequentialIterator();
+					auto & instanceSet = path->instance_[nowIt.GetChrId()];
+					auto inst = instanceSet.upper_bound(Instance(seqIt, 0));
+					if (inst != instanceSet.end() && inst->Within(nowIt))
 					{
-						auto & instanceSet = path->instance_[nowIt.GetChrId()];
-						auto inst = instanceSet.upper_bound(Instance(nowIt.SequentialIterator(), 0));
-						if (inst != instanceSet.end() && inst->Within(nowIt))
-						{
-							continue;
-						}
+						continue;
+					}
 
-						if (nowIt.IsPositiveStrand())
+					if (nowIt.IsPositiveStrand())
+					{
+						if (inst != instanceSet.begin() && path->Compatible((--inst)->Back(), seqIt, e))
 						{
-							if (inst != instanceSet.begin() && path->Compatible((--inst)->Back(), nowIt.SequentialIterator(), e))
-							{
-								newInstance = false;
-							}
+							newInstance = false;
 						}
-						else
+					}
+					else
+					{
+						if (inst != instanceSet.end() && path->Compatible(inst->Back(), seqIt, e))
 						{
-							if (inst != instanceSet.end() && path->Compatible(inst->Back(), nowIt.SequentialIterator(), e))
-							{
-								newInstance = false;
-							}
+							newInstance = false;
 						}
+					}
 
-						if (!newInstance && inst->Back().GetVertexId() != vertex)
+					if (!newInstance && inst->Back().GetVertexId() != vertex)
+					{
+						if (!inst->IsFinishedBack())
 						{
 							bool prevGoodInstance = path->IsGoodInstance(*inst);
-							const_cast<Instance&>(*inst).ChangeBack(nowIt.SequentialIterator(), distance);
+							auto & cinst = const_cast<Instance&>(*inst);
+							cinst.ChangeBack(nowIt.SequentialIterator(), distance);
 							if (!prevGoodInstance && path->IsGoodInstance(*inst))
 							{
 								path->goodInstance_.push_back(inst);
 							}
+
+							if (seqIt.IsUsed())
+							{
+								cinst.FinishBack();
+							}
 						}
-						else
-						{
-							path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
-						}
+					}
+					else if (!seqIt.IsUsed() && path->complete_)
+					{
+						path->allInstance_.push_back(instanceSet.insert(Instance(nowIt.SequentialIterator(), distance)));
 					}
 				}
 			}
@@ -803,7 +582,6 @@ namespace Sibelia
 			return !failFlag;
 		}
 
-
 		bool PointPushFront(const Edge & e)
 		{
 			int64_t vertex = e.GetStartVertex();
@@ -825,7 +603,6 @@ namespace Sibelia
 		int64_t Score(bool final = false) const
 		{
 			int64_t ret = 0;
-			int64_t multiplier = goodInstance_.size();
 			for (auto & instanceIt : goodInstance_)
 			{
 				int64_t score = instanceIt->RealLength();
@@ -906,6 +683,7 @@ namespace Sibelia
 		std::vector<InstanceSet::iterator> allInstance_;
 		std::vector<InstanceSet::iterator> goodInstance_;
 
+		bool complete_;
 		int64_t origin_;
 		int64_t minBlockSize_;
 		int64_t minScoringUnit_;
@@ -915,66 +693,7 @@ namespace Sibelia
 		int64_t maxFlankingSize_;
 		DistanceKeeper distanceKeeper_;
 		const JunctionStorage * storage_;
-		friend struct BestPath;
-	};
-
-	struct BestPath
-	{
-		int64_t score_;
-		int64_t leftFlank_;
-		int64_t rightFlank_;
-		std::vector<Path::Point> newLeftBody_;
-		std::vector<Path::Point> newRightBody_;
-
-		void FixForward(Path & path)
-		{
-			for (auto & pt : newRightBody_)
-			{
-				bool ret = path.PointPushBack(pt.GetEdge());
-				assert(ret);
-			}
-
-			newRightBody_.clear();
-			rightFlank_ = path.rightBody_.size();
-		}
-
-		void FixBackward(Path & path)
-		{
-			for (auto & pt : newLeftBody_)
-			{
-				bool ret = path.PointPushFront(pt.GetEdge());
-				assert(ret);
-			}
-
-			newLeftBody_.clear();
-			leftFlank_ = path.leftBody_.size();
-		}
-
-		void UpdateForward(const Path & path, int64_t newScore)
-		{
-			score_ = newScore;
-			newRightBody_.clear();
-			std::copy(path.rightBody_.begin() + rightFlank_, path.rightBody_.end(), std::back_inserter(newRightBody_));
-		}
-
-		void UpdateBackward(const Path & path, int64_t newScore)
-		{
-			score_ = newScore;
-			newLeftBody_.clear();
-			std::copy(path.leftBody_.begin() + leftFlank_, path.leftBody_.end(), std::back_inserter(newLeftBody_));
-		}
-
-		BestPath()
-		{
-			Init();
-		}
-
-		void Init()
-		{
-			score_ = leftFlank_ = rightFlank_ = 0;
-		}
 	};
 }
 
 #endif
-*/

@@ -180,8 +180,8 @@ The maximum number of thread for SibeliaZ to use. This parameter is set by
 By default SibeliaZ tries to use as much threads as possible. You can limit
 this number by using the above switch. Note that different stages of the
 pipeline have different scalabilities. TwoPaCo will not use more than
-16 threads, graph analyzer sibeliaz-lcb will not use more than 8, while
-the global aligner will use as much as possible.
+16 threads, while graph analyzer sibeliaz-lcb and the global aligner will use
+as much as possible.
 
 Memory allocation
 -----------------

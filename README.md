@@ -1,7 +1,7 @@
 SibeliaZ 1.2.0
 ===============
 
-Release date: 21th August 2019
+Release date: 28th August 2019
 =================
 
 Authors
@@ -32,7 +32,6 @@ To compile the code, you need the following (Linux only):
 * A GCC compiler supporting C++11
 * Intel TBB library properly installed on your system. In other words, G++
   should be able to find TBB libs (future releases will not depend on TBB)
-* GNU Parallel
 
 The easiest way to install the dependencies is to use a package management
 system, for APT on Debian systems they correspond to the following packages:
@@ -40,7 +39,6 @@ system, for APT on Debian systems they correspond to the following packages:
 * git
 * cmake
 * libtbb-dev
-* parallel
 
 Once you installed the things above, do the following:
 
@@ -61,7 +59,7 @@ Initialize dependencies by executing:
 
 Go to the "build" directory and compile and install the project by running:
 	
-	cd build 	
+	cd build
 	cmake .. -DCMAKE_INSTALL_PREFIX=<path to install the binaries>
 	make install
 
@@ -219,12 +217,20 @@ is much faster and can handle longer genomes.
 
 Export to GFA1 (experimental)
 =============================
-A script located at Sibeliaz-LCB/maf_to_gfa1.py lets you to conver the MAF file
+The script located at Sibeliaz-LCB/maf_to_gfa1.py lets you convert a MAF file
 produced by SibeliaZ to a GFA1 file representing a graph induced by the alignment.
 The GFA1 file then can be imported into vg (https://github.com/vgteam/vg) or
 visualized. Usage:
 
 	python maf_to_gfa1.py <MAF alignment file> <input FASTA files>
+
+Conversion to XMFA
+==================
+The script located at Sibeliaz-LCB/maf_to_gfa1.py lets you convert a MAF file
+to XMFA format. Requires BioPython of version > 1.6.9. Usage:
+
+        python maf_to_xmfa.py < <MAF alignment file>
+
 
 Troubleshooting
 ===============

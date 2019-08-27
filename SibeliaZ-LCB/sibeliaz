@@ -60,7 +60,7 @@ export outfile="$outdir/alignment.maf"
 
 align()
 {
-        output="$($DIR/spoa $1 -l 1 -r 1 2> /dev/null | tail -n +2)"
+        output="$($DIR/spoa $1 -l 1 -r 1 -e -8 2> /dev/null | tail -n +2)"
         rcode="${PIPESTATUS[0]}"
         if [[ -z "${output// }" ]]
         then
@@ -85,7 +85,7 @@ infile="$@"
 
 if [ -z "$f" ]
 then
-	memory_avail=`free -g -w | head -2 | tail -1 | awk '{print $2}'`
+	export memory_avail=`free -g -w | head -2 | tail -1 | awk '{print $2}'`
 	total_size=0
 	IFS=' ' read -ra ADDR <<< "$infile"
 	for i in "${ADDR[@]}"; do
@@ -102,8 +102,10 @@ global_alignment()
 	echo "Performing global alignment.."
         echo "##maf version=1" > "$outfile"
         mkdir $outdir/alignment
-        find $outdir/blocks -name "*.fa" -printf "$PWD/%p\n" | parallel --will-cite -j $threads --memfree 4G -I @ align @
-        find $outdir/blocks -name "*.fa" -printf "$PWD/%p\n" | parallel --will-cite -j 1 -I @ align @
+	memory_min=`free -k -w | head -2 | tail -1 | awk '{print $2}'`
+	ulimit $memory_min
+        find $outdir/blocks -name "*.fa" -printf "$PWD/%p\n" | xargs -I @ -P $threads bash -c "align @ '$outfile' '$DIR'"
+        find $outdir/blocks -name "*.fa" -printf "$PWD/%p\n" | xargs -I @ -P 1 bash -c "align @ '$outfile' '$DIR'"
         find $outdir/alignment/ -name "*.fa" -exec cat {} + >> "$outfile"
         rm -rf $outdir/alignment
 }
@@ -111,9 +113,8 @@ global_alignment()
 export -f global_alignment
 
 twopaco_threads=$( min $threads 16 )
-lcb_threads=$( min $threads 8 )
+lcb_threads=$( min $threads 32 )
 dbg_file=$outdir/de_bruijn_graph.dbg
-
 
 mkdir -p $outdir
 echo "Constructing the graph..."
@@ -123,7 +124,7 @@ echo "Constructing the graph..."
 rm $dbg_file
 if [ "$align" = "True" ]
 then
-	 /usr/bin/time -f "Alignment: %e seconds elapsed, %M memory used" bash -c "global_alignment"
+	/usr/bin/time -f "Alignment: %e seconds elapsed, %M memory used" bash -c "global_alignment"
 fi
 
 

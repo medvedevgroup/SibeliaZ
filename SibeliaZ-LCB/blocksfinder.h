@@ -530,7 +530,6 @@ namespace Sibelia
 			}
 
 			std::cout << ']' << std::endl;
-			std::cout << "Failure: " << failure_ << std::endl;
 		}
 
 

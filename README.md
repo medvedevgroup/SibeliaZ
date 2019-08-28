@@ -25,7 +25,8 @@ Currently SibeliaZ does not support chromosomes in the input longer than
 
 Compilation and installation
 ============================
-To compile the code, you need the following (Linux only):
+To compile the code, you need recent installations of the following software
+(Linux only):
 
 * Git
 * CMake 

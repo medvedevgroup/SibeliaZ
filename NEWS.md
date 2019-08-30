@@ -1,7 +1,6 @@
 SibeliaZ 1.2.0
 ==============
-* The results are now reproducible regardless to the number of threads
-being used
+* The results are now deterministic and do not depend on the number of threads
 * Changed behavior of "-f" flag: now it is optional and only controls size of
 the Bloom filter allocated by TwoPaCo. By default, it is now thrice of the
 total input file size

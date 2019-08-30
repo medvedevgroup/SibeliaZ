@@ -37,7 +37,7 @@ To compile the code, you need recent installations of the following software
 The easiest way to install the dependencies is to use a package management
 system, for APT on Debian systems they can be installed by the following:
 
-	apt-get install git cmake g++ libtbb-dev
+	sudo apt-get install git cmake g++ libtbb-dev
 
 Once you installed the things above, do the following:
 

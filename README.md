@@ -25,7 +25,8 @@ Currently SibeliaZ does not support chromosomes in the input longer than
 
 Compilation and installation
 ============================
-To compile the code, you need the following (Linux only):
+To compile the code, you need recent installations of the following software
+(Linux only):
 
 * Git
 * CMake 
@@ -34,11 +35,9 @@ To compile the code, you need the following (Linux only):
   should be able to find TBB libs (future releases will not depend on TBB)
 
 The easiest way to install the dependencies is to use a package management
-system, for APT on Debian systems they correspond to the following packages:
+system, for APT on Debian systems they can be installed by the following:
 
-* git
-* cmake
-* libtbb-dev
+	sudo apt-get install git cmake g++ libtbb-dev
 
 Once you installed the things above, do the following:
 
@@ -227,7 +226,7 @@ visualized. Usage:
 Conversion to XMFA
 ==================
 The script located at Sibeliaz-LCB/maf_to_gfa1.py lets you convert a MAF file
-to XMFA format. Requires BioPython of version > 1.6.9. Usage:
+to XMFA format. Requires BioPython of version >= 1.6.9. Usage:
 
         python maf_to_xmfa.py < <MAF alignment file>
 

@@ -257,6 +257,6 @@ Contacts
 ========
 E-mail your feedback at ivminkin@gmail.com.
 
-Datasets used of analyses in the paper
+Datasets used for analyses in the paper
 ======================================
 See: https://github.com/medvedevgroup/SibeliaZ/blob/master/DATA.txt

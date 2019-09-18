@@ -699,7 +699,7 @@ namespace Sibelia
 			NextVertex ret;
 			int64_t bestVid = 0;
 			int64_t startVid = forward ? currentPath.RightVertex() : currentPath.LeftVertex();
-			const auto & instList = currentPath.GoodInstancesList().size() >= 2 ? currentPath.GoodInstancesList() : currentPath.AllInstances();
+			const auto & instList = currentPath.InitialInstances();
 			for (auto & inst : instList)
 			{
 				int64_t nowVid = forward ? inst->Back().GetVertexId() : inst->Front().GetVertexId();
@@ -801,11 +801,7 @@ namespace Sibelia
 							bestRightSize = currentPath.RightSize();
 							if (nowScore > 0)
 							{
-								bestInstance.clear();
-								for (auto it : currentPath.GoodInstancesList())
-								{
-									bestInstance.push_back(*it);
-								}
+								currentPath.GoodInstancesList(bestInstance);
 							}
 						}
 					}
@@ -860,10 +856,7 @@ namespace Sibelia
 							if (nowScore > 0)
 							{
 								bestInstance.clear();
-								for (auto it : currentPath.GoodInstancesList())
-								{
-									bestInstance.push_back(*it);
-								}
+								currentPath.GoodInstancesList(bestInstance);
 							}
 						}
 					}

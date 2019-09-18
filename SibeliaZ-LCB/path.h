@@ -43,7 +43,11 @@ namespace Sibelia
 					allInstance_.push_back(instance_[it.GetChrId()].insert(Instance(seqIt, 0)));
 				}
 			}
+
+			initialInstance_ = allInstance_;
 		}
+
+
 
 		bool IsInPath(int64_t vertex) const
 		{
@@ -227,6 +231,11 @@ namespace Sibelia
 			return instance_;
 		}
 
+		const std::vector<InstanceSet::iterator> & InitialInstances() const
+		{
+			return initialInstance_;
+		}
+
 		const std::vector<InstanceSet::iterator> & AllInstances() const
 		{
 			return allInstance_;
@@ -393,8 +402,6 @@ namespace Sibelia
 			}
 
 			int64_t realDiff = end.GetPosition() - start.GetPosition();
-			int64_t v1 = end.GetVertexId();
-			int64_t v2 = start.GetVertexId();
 			int64_t ancestralDiff = distanceKeeper_.Get(end.GetVertexId()) - distanceKeeper_.Get(start.GetVertexId());
 			assert(ancestralDiff >= 0);
 			if (start.IsPositiveStrand())
@@ -473,14 +480,8 @@ namespace Sibelia
 					{
 						if (!inst->IsFinishedFront())
 						{
-							bool prevGoodInstance = path->IsGoodInstance(*inst);
 							auto & cinst = const_cast<Instance&>(*inst);
 							cinst.ChangeFront(seqIt, distance);
-							if (!prevGoodInstance && path->IsGoodInstance(*inst))
-							{
-								path->goodInstance_.push_back(inst);
-							}
-
 							if (seqIt.IsUsed())
 							{
 								cinst.FinishFront();
@@ -542,13 +543,8 @@ namespace Sibelia
 					{
 						if (!inst->IsFinishedBack())
 						{
-							bool prevGoodInstance = path->IsGoodInstance(*inst);
 							auto & cinst = const_cast<Instance&>(*inst);
 							cinst.ChangeBack(nowIt.SequentialIterator(), distance);
-							if (!prevGoodInstance && path->IsGoodInstance(*inst))
-							{
-								path->goodInstance_.push_back(inst);
-							}
 
 							if (seqIt.IsUsed())
 							{
@@ -604,9 +600,14 @@ namespace Sibelia
 		int64_t Score(bool final = false) const
 		{
 			int64_t ret = 0;
-			for (auto & instanceIt : goodInstance_)
+			for (auto & instanceIt : initialInstance_)
 			{
 				int64_t score = instanceIt->RealLength();
+				if (score < minBlockSize_)
+				{
+					continue;
+				}
+
 				int64_t rightPenalty = RightDistance() - instanceIt->RightFlankDistance();
 				int64_t leftPenalty = LeftDistance() + instanceIt->LeftFlankDistance();
 				assert(rightPenalty >= 0);
@@ -627,25 +628,26 @@ namespace Sibelia
 			return ret;
 		}
 
-		int64_t GoodInstances() const
-		{
-			return goodInstance_.size();
-		}
-
 		static bool CmpInstance(const InstanceSet::iterator & a, const InstanceSet::iterator & b)
 		{
 			return Path::Instance::OldComparator(*a, *b);
 		}
 
-		const std::vector<InstanceSet::iterator> & GoodInstancesList() const
+		void GoodInstancesList(std::vector<Instance> & ret) const
 		{
-			return goodInstance_;
+			ret.clear();
+			for (auto & instanceIt : allInstance_)
+			{
+				int64_t score = instanceIt->RealLength();
+				int64_t rightPenalty = RightDistance() - instanceIt->RightFlankDistance();
+				int64_t leftPenalty = LeftDistance() + instanceIt->LeftFlankDistance();
+				if (score >= minBlockSize_ && leftPenalty < maxFlankingSize_ && rightPenalty < maxFlankingSize_)
+				{
+					ret.push_back(*instanceIt);
+				}
+			}
 		}
 
-		bool IsGoodInstance(const Instance & inst) const
-		{
-			return inst.RealLength() >= minBlockSize_;
-		}
 
 		void Clear()
 		{
@@ -683,6 +685,8 @@ namespace Sibelia
 		std::vector<InstanceSet> instance_;
 		std::vector<InstanceSet::iterator> allInstance_;
 		std::vector<InstanceSet::iterator> goodInstance_;
+		std::vector<InstanceSet::iterator> initialInstance_;
+
 
 		bool complete_;
 		int64_t origin_;

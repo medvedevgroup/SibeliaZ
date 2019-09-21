@@ -282,7 +282,7 @@ namespace Sibelia
 							currentPath.PointPushBack(e);
 						}
 					}
-					
+
 #ifdef _DEBUG_OUT_
 					if (finder.debug_)
 					{
@@ -347,7 +347,7 @@ namespace Sibelia
 				{
 					for (bool inPhase = true; inPhase; )
 					{
-						#pragma omp critical
+#pragma omp critical
 						{
 							if (finder.currentBundleExplore_ < finder.currentPhaseLimit_)
 							{
@@ -369,7 +369,7 @@ namespace Sibelia
 						}
 					}
 
-					#pragma omp barrier
+#pragma omp barrier
 					if (omp_get_thread_num() == 0)
 					{
 						for (size_t idx = finder.currentPhase_; idx < finder.currentPhaseLimit_; idx++)
@@ -430,11 +430,11 @@ namespace Sibelia
 						}
 					}
 
-					#pragma omp barrier
+#pragma omp barrier
 				}
 
 			}
-			
+
 		};
 
 		static bool DegreeCompare(const JunctionStorage & storage, int64_t v1, int64_t v2)
@@ -523,7 +523,7 @@ namespace Sibelia
 			currentPhaseLimit_ = phaseSize_;
 			result_.resize(phaseSize_);
 			currentBundleExplore_ = 0;
-			#pragma omp parallel num_threads(threads)
+#pragma omp parallel num_threads(threads)
 			{
 				ProcessVertex process(*this);
 				process();
@@ -699,7 +699,7 @@ namespace Sibelia
 			NextVertex ret;
 			int64_t bestVid = 0;
 			int64_t startVid = forward ? currentPath.RightVertex() : currentPath.LeftVertex();
-			const auto & instList = currentPath.InitialInstances();
+			const auto & instList = currentPath.GoodInstancesList().size() >= 2 ? currentPath.GoodInstancesList() : currentPath.AllInstances();
 			for (auto & inst : instList)
 			{
 				int64_t nowVid = forward ? inst->Back().GetVertexId() : inst->Front().GetVertexId();
@@ -801,7 +801,11 @@ namespace Sibelia
 							bestRightSize = currentPath.RightSize();
 							if (nowScore > 0)
 							{
-								currentPath.GoodInstancesList(bestInstance);
+								bestInstance.clear();
+								for (auto it : currentPath.GoodInstancesList())
+								{
+									bestInstance.push_back(*it);
+								}
 							}
 						}
 					}
@@ -856,7 +860,10 @@ namespace Sibelia
 							if (nowScore > 0)
 							{
 								bestInstance.clear();
-								currentPath.GoodInstancesList(bestInstance);
+								for (auto it : currentPath.GoodInstancesList())
+								{
+									bestInstance.push_back(*it);
+								}
 							}
 						}
 					}

@@ -231,6 +231,7 @@ namespace Sibelia
 				logPath.clear();
 				bestInstance.clear();
 				int64_t vid = bundle.vid;
+
 				char initChar = bundle.ch;
 #ifdef _DEBUG_OUT_
 				finder.debug_ = finder.missingVertex_.count(vid);
@@ -241,7 +242,6 @@ namespace Sibelia
 #endif
 				{
 					currentPath.Init(vid, initChar);
-
 					bestScore = 0;
 					size_t bestRightSize = currentPath.RightSize();
 					size_t bestLeftSize = currentPath.LeftSize();
@@ -505,7 +505,7 @@ namespace Sibelia
 				}
 			}
 
-			blocksFound_ = 0;
+ 			blocksFound_ = 0;
 
 			count_ = 0;
 			std::cout << '[' << std::flush;
@@ -520,7 +520,7 @@ namespace Sibelia
 			std::sort(bundle_.begin(), bundle_.end());
 			currentPhase_ = 0;
 			phaseSize_ = 256;
-			currentPhaseLimit_ = phaseSize_;
+			currentPhaseLimit_ = bundle_.size() < phaseSize_ ? bundle_.size() : phaseSize_;
 			result_.resize(phaseSize_);
 			currentBundleExplore_ = 0;
 			#pragma omp parallel num_threads(threads)

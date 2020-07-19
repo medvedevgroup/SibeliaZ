@@ -1,3 +1,4 @@
 Simulated bacterial dataset: http://www.bx.psu.edu/medvedev_lab/sibeliaz/bacteria_sim.tar.gz
 Alignment of mice genes retrieved from Ensembl: http://www.bx.psu.edu/medvedev_lab/sibeliaz/mice_gene_annotation.tar.gz
 Alignment of mice produced by SibeliaZ: http://www.bx.psu.edu/medvedev_lab/sibeliaz/sibeliaz_mice_alignment.tar.gz
+Alignment of mice chromosomes 1 produced by LASTZ: http://www.bx.psu.edu/medvedev_lab/sibeliaz/chr1_lastz.tar.gz 

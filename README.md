@@ -18,7 +18,7 @@ in MAF.
 SibeliaZ was designed for the inputs consisting of multiple similar genomes,
 like different strains of the same species. The tool works best for the datasets
 with the distance from a leaf to the most recent common ancestor not exceeding
-0.085 substitutions per site, or 9 PAM units.
+0.09 substitutions per site, or 9 PAM units.
 
 Currently SibeliaZ does not support chromosomes in the input longer than
 4294967296 bp, this will be fixed in the future releases.

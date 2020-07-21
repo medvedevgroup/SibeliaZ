@@ -34,8 +34,10 @@ To compile the code, you need recent installations of the following software
 * Intel TBB library properly installed on your system. In other words, G++
   should be able to find TBB libs (future releases will not depend on TBB)
 
+SibeliaZ was tested with CMake 3.5.1, gcc 5.4.0 and TBB 4.4.
 The easiest way to install the dependencies is to use a package management
-system, for APT on Debian systems they can be installed by the following:
+system. For APT on Debian systems they can be installed by the following, 
+which should take only a couple of minutes:
 
 	sudo apt-get install git cmake g++ libtbb-dev
 
@@ -82,8 +84,9 @@ will be written in the directory "sibeliaz_out" in the current working
 directory. It will contain a GFF file "blocks_coords.gff" containing
 coordinates of the found blocks, and file "alignment.maf" with the actual
 alignment. The subdirectory "examples" contains an example of running
-SibeliaZ and the output it produces. SibeliaZ has several parameters that
-affect the accuracy and performance, they are described below.
+SibeliaZ and the output it produces. Running SibeliaZ on this example should
+require less than 5 minutes on a typical machine. SibeliaZ has several
+parameters that affect the accuracy and performance, they are described below.
 
 Output description
 ==================

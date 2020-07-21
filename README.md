@@ -36,8 +36,8 @@ To compile the code, you need recent installations of the following software
 
 SibeliaZ was tested with CMake 3.5.1, gcc 5.4.0 and TBB 4.4.
 The easiest way to install the dependencies is to use a package management
-system. For APT on Debian systems they can be installed by the following, 
-which should take only a couple of minutes:
+system. For APT on Debian systems they can be installed by the following
+command, which should take only a couple of minutes:
 
 	sudo apt-get install git cmake g++ libtbb-dev
 

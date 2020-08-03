@@ -694,7 +694,7 @@ namespace Sibelia
 			}
 		};
 
-		std::pair<int64_t, NextVertex> MostPopularVertex(const Path & currentPath, bool forward, std::vector<uint32_t> & count, std::vector<size_t> & data)
+		std::pair<int64_t, NextVertex> MostPopularVertex(const Path & currentPath, bool forward, std::vector<uint32_t> & count, std::vector<size_t> & data, bool tryUsed = false)
 		{
 			NextVertex ret;
 			int64_t bestVid = 0;
@@ -711,7 +711,7 @@ namespace Sibelia
 					for (size_t d = 1; it.Valid() && (d < size_t(lookingDepth_) || abs(it.GetPosition() - origin.GetPosition()) <= maxBranchSize_); d++)
 					{
 						int64_t vid = it.GetVertexId();
-						if (!currentPath.IsInPath(vid) && !it.IsUsed())
+						if (!currentPath.IsInPath(vid) && (!it.IsUsed() || tryUsed))
 						{
 							auto adjVid = vid + storage_.GetVerticesNumber();
 							if (count[adjVid] == 0)
@@ -768,6 +768,11 @@ namespace Sibelia
 			int64_t origin = currentPath.Origin();
 			std::pair<int64_t, NextVertex> nextForwardVid;
 			nextForwardVid = MostPopularVertex(currentPath, true, count, data);
+			if (nextForwardVid.first == 0)
+			{
+				nextForwardVid = MostPopularVertex(currentPath, true, count, data, true);
+			}
+
 			if (nextForwardVid.first != 0)
 			{
 				for (auto it = nextForwardVid.second.origin; it.GetVertexId() != nextForwardVid.first; ++it)
@@ -826,6 +831,11 @@ namespace Sibelia
 			bool success = false;
 			std::pair<int64_t, NextVertex> nextBackwardVid;
 			nextBackwardVid = MostPopularVertex(currentPath, false, count, data);
+			if (nextBackwardVid.first == 0)
+			{
+//				nextBackwardVid = MostPopularVertex(currentPath, true, count, data, true);
+			}
+
 			if (nextBackwardVid.first != 0)
 			{
 				for (auto it = nextBackwardVid.second.origin; it.GetVertexId() != nextBackwardVid.first; --it)

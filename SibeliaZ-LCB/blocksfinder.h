@@ -321,14 +321,18 @@ namespace Sibelia
 					{
 						auto before = jt.Front() - 1;
 						auto start = jt.Front().GetPosition() + ((before.Valid() && before.IsUsed()) ?  finder.k_ : 0);
-						auto end = jt.Back().GetPosition() + (jt.Back().IsUsed() ? 0 : finder.k_);
+						auto end = jt.Back().GetPosition() + (!jt.Back().IsUsed() ? 0 : finder.k_);
 						finder.blocksInstance_.push_back(BlockInstance(+currentBlock, jt.Front().GetChrId(), start, end));
 					}
 					else
 					{
 						auto before = jt.Front() - 1;
 						auto start = jt.Back().GetPosition() - (jt.Back().IsUsed() ? 0 : finder.k_);
-						auto end = jt.Front().GetPosition() + (before.Valid() && before.IsUsed() ? 0 : finder.k_);
+						auto end = jt.Front().GetPosition() - (before.Valid() && before.IsUsed() ? 0 : finder.k_);
+						if (start < 0)
+						{
+							std::cout << start;
+						}
 						finder.blocksInstance_.push_back(BlockInstance(-currentBlock, jt.Front().GetChrId(), start, end));
 
 //						finder.blocksInstance_.push_back(BlockInstance(-currentBlock, jt.Front().GetChrId(), jt.Back().GetPosition() - finder.k_, jt.Front().GetPosition()));

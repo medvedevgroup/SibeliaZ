@@ -312,33 +312,18 @@ namespace Sibelia
 			void Finalize(const InstanceVector & instance)
 			{
 				int64_t currentBlock = ++finder.blocksFound_;
-				//finder.log_ << '*' << currentBlock << std::endl;
 				for (auto jt : instance)
 				{
 					finder.invalidChr_.insert(jt.Front().GetChrId());
-
 					if (jt.Front().IsPositiveStrand())
 					{
-						auto before = jt.Front() - 1;
-						auto start = jt.Front().GetPosition() + ((before.Valid() && before.IsUsed()) ?  finder.k_ : 0);
-						auto end = jt.Back().GetPosition() + (!jt.Back().IsUsed() ? 0 : finder.k_);
-						finder.blocksInstance_.push_back(BlockInstance(+currentBlock, jt.Front().GetChrId(), start, end));
+						finder.blocksInstance_.push_back(BlockInstance(+currentBlock, jt.Front().GetChrId(), jt.Front().GetPosition(), jt.Back().GetPosition() + finder.k_));
 					}
 					else
 					{
-						auto before = jt.Front() - 1;
-						auto start = jt.Back().GetPosition() - (jt.Back().IsUsed() ? 0 : finder.k_);
-						auto end = jt.Front().GetPosition() - (before.Valid() && before.IsUsed() ? 0 : finder.k_);
-						if (start < 0)
-						{
-							std::cout << start;
-						}
-						finder.blocksInstance_.push_back(BlockInstance(-currentBlock, jt.Front().GetChrId(), start, end));
-
-//						finder.blocksInstance_.push_back(BlockInstance(-currentBlock, jt.Front().GetChrId(), jt.Back().GetPosition() - finder.k_, jt.Front().GetPosition()));
+						finder.blocksInstance_.push_back(BlockInstance(-currentBlock, jt.Front().GetChrId(), jt.Back().GetPosition() - finder.k_, jt.Front().GetPosition()));
 					}
 
-					//finder.log_ << jt.Front().GetChrId() << ' ' << jt.Front().GetPosition() << ' ' << jt.Back().GetPosition() << std::endl;
 					for (auto it = jt.Front(); it != jt.Back(); ++it)
 					{
 						it.MarkUsed();

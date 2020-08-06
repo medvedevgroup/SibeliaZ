@@ -12,6 +12,10 @@ export outdir="./sibeliaz_out"
 align="True"
 noseq=""
 
+args=("$@")
+args=$(printf " %s" "${args[@]}")
+args=${args:1}
+
 usage () { echo "Usage: [-k <odd integer>] [-b <integer>] [-m <integer>] [-a <integer>] [-t <integer>] [-f <integer>] [-o <output_directory>] [-n] <input file> " ;}
 
 options='t:k:b:a:m:o:f:nh'
@@ -101,6 +105,9 @@ global_alignment()
 {
 	echo "Performing global alignment.."
         echo "##maf version=1" > "$outfile"
+	echo "# sibeliaz v.1.2.1 " >> "$outfile"
+	echo "# cmd=$1" >> "$outfile"
+
         mkdir $outdir/alignment
 	memory_min=`free -k -w | head -2 | tail -1 | awk '{print $2}'`
 	ulimit $memory_min
@@ -125,7 +132,7 @@ echo "Constructing the graph..."
 rm $dbg_file
 if [ "$align" = "True" ]
 then
-	/usr/bin/time -f "Alignment: %e seconds elapsed, %M memory used" bash -c "global_alignment"
+	/usr/bin/time -f "Alignment: %e seconds elapsed, %M memory used" bash -c "global_alignment '$args'"
 fi
 
 

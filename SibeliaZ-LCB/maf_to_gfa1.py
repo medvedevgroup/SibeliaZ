@@ -92,7 +92,7 @@ def split_maf_blocks(maf_file):
 		for record in maf:
 			if record.seq_name not in sequence:
 				sequence[record.seq_name] = []
-	        pos = [record.start for record in maf]
+		pos = [record.start for record in maf]
         	prev_profile = profile(maf, 0)
 	        prev_column = 0
         	while prev_column < len(maf[0].body):

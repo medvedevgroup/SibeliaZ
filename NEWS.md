@@ -1,3 +1,12 @@
+SibeliaZ 1.2.1
+==============
+* Updated the version of TwoPaCo
+* Fixed a bug resulting in missing of some collinear blocks
+* Added script "glue_gfa1.py" that glues back GFA1 produced by "maf_to_gfa1.py"
+to the original genomes
+* Fixed inconsistent use of spaces and tabs in "maf_to_gfa1.py"
+* MAF file now contains the version number and the arguments used
+
 SibeliaZ 1.2.0
 ==============
 * The results are now deterministic and do not depend on the number of threads

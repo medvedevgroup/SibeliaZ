@@ -1,3 +1,6 @@
+SibeliaZ 1.2.2
+==============
+
 SibeliaZ 1.2.1
 ==============
 * Updated the version of TwoPaCo

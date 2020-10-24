@@ -1,7 +1,7 @@
-SibeliaZ 1.2.1
+SibeliaZ 1.2.2
 ===============
 
-Release date: 8th August 2020
+Release date: TBD
 =================
 
 Authors
@@ -25,8 +25,13 @@ Currently SibeliaZ does not support chromosomes in the input longer than
 
 Compilation and installation
 ============================
-To compile the code, you need recent installations of the following software
-(Linux only):
+The easiest way to install SibeliaZ is to use [bioconda](bioconda.github.io).
+If it is properly installed and configured, you can run:
+
+	conda install sibeliaz
+
+Alternatively, you can compile the code yourself. To do s, you need recent
+installations of the following software (Linux only):
 
 * Git
 * CMake 
@@ -87,6 +92,17 @@ alignment. The subdirectory "examples" contains an example of running
 SibeliaZ and the output it produces. Running SibeliaZ on this example should
 require less than 5 minutes on a typical machine. SibeliaZ has several
 parameters that affect the accuracy and performance, they are described below.
+
+Building synteny blocks
+=======================
+You can also construct longer synteny blocks required for certain analyses. By
+default, sibeliaz also installs program (maf2synteny)[https://github.com/fenderglass/maf2synteny].
+To construct the blocks, run
+
+	maf2synteny <MAF file output by sibeliaz>
+
+For further information on synteny blocks construction, please refer to the 
+documentation of maf2synteny.
 
 Output description
 ==================
@@ -251,6 +267,8 @@ If you use SibeliaZ in your research, please cite:
 	Scalable multiple whole-genome alignment and locally collinear block construction with SibeliaZ
 	Ilia Minkin, Paul Medvedev
 	bioRxiv 548123; doi: https://doi.org/10.1101/548123
+
+If you also used maf2synteny, please cite the Ragout (paper)[https://github.com/fenderglass/Ragout#publications].
 
 License
 =======

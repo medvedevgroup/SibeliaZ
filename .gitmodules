@@ -5,3 +5,6 @@
 	path = TwoPaCo
 	url = https://github.com/medvedevgroup/TwoPaCo
 	branch = 0.9.4
+[submodule "maf2synteny"]
+	path = maf2synteny
+	url = https://github.com/fenderglass/maf2synteny

@@ -1,5 +1,8 @@
 SibeliaZ 1.2.2
 ==============
+* Deposited the project to bioconda
+* Added maf2synteny as a submodule
+* Updated the version of spoa
 
 SibeliaZ 1.2.1
 ==============

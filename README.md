@@ -25,7 +25,7 @@ Currently SibeliaZ does not support chromosomes in the input longer than
 
 Compilation and installation
 ============================
-The easiest way to install SibeliaZ is to use [bioconda](bioconda.github.io).
+The easiest way to install SibeliaZ is to use [bioconda](https://bioconda.github.io/).
 If it is properly installed and configured, you can run:
 
 	conda install sibeliaz
@@ -96,8 +96,8 @@ parameters that affect the accuracy and performance, they are described below.
 Building synteny blocks
 =======================
 You can also construct longer synteny blocks required for certain analyses. By
-default, sibeliaz also installs program (maf2synteny)[https://github.com/fenderglass/maf2synteny].
-To construct the blocks, run
+default, sibeliaz also installs program [maf2synteny](https://github.com/fenderglass/maf2synteny)
+written by [Mikhail Kolmogorov](https://github.com/fenderglass). To construct the blocks, run:
 
 	maf2synteny <MAF file output by sibeliaz>
 

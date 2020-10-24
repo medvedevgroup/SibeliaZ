@@ -48,8 +48,7 @@ command, which should take only a couple of minutes:
 
 Once you installed the things above, do the following:
 
-Clone the repository https://github.com/medvedevgroup/SibeliaZ by
-running:
+Clone the repository by running:
 
 	git clone https://github.com/medvedevgroup/SibeliaZ 
 
@@ -237,8 +236,7 @@ Export to GFA1 (experimental)
 =============================
 The script located at Sibeliaz-LCB/maf_to_gfa1.py lets you convert a MAF file
 produced by SibeliaZ to a GFA1 file representing a graph induced by the alignment.
-The GFA1 file then can be imported into vg (https://github.com/vgteam/vg) or
-visualized. Usage:
+The GFA1 file then can be imported into [vg](https://github.com/vgteam/vg) or visualized. Usage:
 
 	python maf_to_gfa1.py <MAF alignment file> <input FASTA files>
 
@@ -268,7 +266,7 @@ If you use SibeliaZ in your research, please cite:
 	Ilia Minkin, Paul Medvedev
 	bioRxiv 548123; doi: https://doi.org/10.1101/548123
 
-If you also used maf2synteny, please cite the Ragout (paper)[https://github.com/fenderglass/Ragout#publications].
+If you also used maf2synteny, please cite the Ragout [paper](https://github.com/fenderglass/Ragout#publications).
 
 License
 =======

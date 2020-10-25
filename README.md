@@ -97,8 +97,9 @@ Building synteny blocks
 You can also construct longer synteny blocks required for certain analyses. By
 default, sibeliaz also installs program [maf2synteny](https://github.com/fenderglass/maf2synteny)
 written by [Mikhail Kolmogorov](https://github.com/fenderglass). To construct the blocks, run:
-
-	maf2synteny <MAF file output by sibeliaz>
+	
+	sibeliaz -n <output_directory>
+	maf2synteny <output_directory>/blocks_coords.gff
 
 For further information on synteny blocks construction, please refer to the 
 documentation of maf2synteny.
@@ -266,7 +267,7 @@ If you use SibeliaZ in your research, please cite:
 	Ilia Minkin, Paul Medvedev
 	bioRxiv 548123; doi: https://doi.org/10.1101/548123
 
-If you also used maf2synteny, please cite the Ragout [paper](https://github.com/fenderglass/Ragout#publications).
+If you also used maf2synteny, please cite the Ragout [paper](https://github.com/fenderglass/maf2synteny#citation).
 
 License
 =======

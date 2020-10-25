@@ -1,7 +1,8 @@
 SibeliaZ 1.2.2
 ==============
 * Deposited the project to bioconda
-* Added maf2synteny as a submodule
+* Added submodule maf2synteny, a program for constructing synteny blocks from
+the output of Sibeliaz
 * Updated the version of spoa
 
 SibeliaZ 1.2.1

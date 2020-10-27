@@ -61,7 +61,7 @@ export outfile="$outdir/alignment.maf"
 
 align()
 {
-        output="$(${DIR}spoa $1 -l 1 -r 1 -e -8 2> /dev/null | tail -n +2)"
+        output="$(${DIR}spoa $1 -l 1 -r 1 -e -8 2> /dev/null | sed -e '/>/d')"
         rcode="${PIPESTATUS[0]}"
         if [[ -z "${output// }" ]]
         then

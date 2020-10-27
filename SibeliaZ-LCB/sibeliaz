@@ -13,6 +13,10 @@ export outdir="./sibeliaz_out"
 align="True"
 noseq=""
 
+args=("$@")
+args=$(printf " %s" "${args[@]}")
+args=${args:1}
+
 usage () { echo "Usage: [-k <odd integer>] [-b <integer>] [-m <integer>] [-a <integer>] [-t <integer>] [-f <integer>] [-o <output_directory>] [-n] <input file> " ;}
 
 options='t:k:b:a:m:o:f:nh'
@@ -73,7 +77,7 @@ align()
         if [ $? -eq 0 ]
         then
 		lines=`echo -n "$output" | grep -c '^'`
-                header="$(sed -n -e '/^>/p' $1 | cut -d' ' -f2- | sed  's/;/ /g' | sed -e 's/^/s /' | head -n $lines)"
+		header="$(sed -n -e '/^>/p' $1 | cut -d' ' -f2- | sed  's/;/ /g' | sed -e 's/^/s /' | head -n $lines)"
 		echo "" >> "$alignment_output"
 		echo "a" >> "$alignment_output"
 		paste <(echo "$header") <(echo "$output") --delimiters ' ' >> "$alignment_output"
@@ -102,6 +106,9 @@ global_alignment()
 {
 	echo "Performing global alignment.."
         echo "##maf version=1" > "$outfile"
+	echo "# sibeliaz v.1.2.2 " >> "$outfile"
+	echo "# cmd=$1" >> "$outfile"
+
         mkdir $outdir/alignment
 	memory_min=`free -k -w | head -2 | tail -1 | awk '{print $2}'`
 	ulimit $memory_min
@@ -120,13 +127,14 @@ dbg_file=$outdir/de_bruijn_graph.dbg
 
 mkdir -p $outdir
 echo "Constructing the graph..."
+
 /usr/bin/time -f "TwoPaco: %e seconds elapsed, %M KB memory used" ${DIR}twopaco --tmpdir $outdir -t $twopaco_threads -k $k --filtermemory $f -o $dbg_file $infile
 /usr/bin/time -f "SibeliaZ-LCB: %e seconds elapsed, %M KB memory used" ${DIR}sibeliaz-lcb --graph $dbg_file $infile -k $k -b $b -o $outdir -m $m -t $lcb_threads --abundance $a $noseq
 
 rm $dbg_file
 if [ "$align" = "True" ]
 then
-	/usr/bin/time -f "Alignment: %e seconds elapsed, %M memory used" bash -c "global_alignment"
+	/usr/bin/time -f "Alignment: %e seconds elapsed, %M memory used" bash -c "global_alignment '$args'"
 fi
 
 

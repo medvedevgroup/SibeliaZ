@@ -25,13 +25,8 @@ Currently SibeliaZ does not support chromosomes in the input longer than
 
 Compilation and installation
 ============================
-The easiest way to install SibeliaZ is to use [bioconda](https://bioconda.github.io/).
-If it is properly installed and configured, you can run:
-
-	conda install sibeliaz
-
-Alternatively, you can compile the code yourself. To do s, you need recent
-installations of the following software (Linux only):
+To compile the code, you need recent installations of the following
+software (Linux only):
 
 * Git
 * CMake 

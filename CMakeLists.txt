@@ -1,7 +1,10 @@
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 2.8)
+set(CMAKE_POLICY_DEFAULT_CMP0048 NEW)
+
 include(ExternalProject)
 
-project(SibeliaZ)
+
+set(CMAKE_POLICY_WARNING_CMP0048 OFF)
 set(CMAKE_BUILD_TYPE RELEASE)
 set(CMAKE_CXX_STANDARD 11)
 

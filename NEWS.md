@@ -4,6 +4,8 @@ SibeliaZ 1.2.2
 * Added submodule maf2synteny, a program for constructing synteny blocks from
 the output of Sibeliaz
 * Updated the version of spoa
+* Fixed a bug in SibeliaZ script resulting in failed global alignment calls in
+certain cases
 
 SibeliaZ 1.2.1
 ==============

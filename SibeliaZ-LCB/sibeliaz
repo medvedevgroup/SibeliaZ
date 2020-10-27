@@ -106,14 +106,14 @@ global_alignment()
 {
 	echo "Performing global alignment.."
         echo "##maf version=1" > "$outfile"
-	echo "# sibeliaz v.1.2.2 " >> "$outfile"
+	echo "# sibeliaz v1.2.2 " >> "$outfile"
 	echo "# cmd=$1" >> "$outfile"
 
         mkdir $outdir/alignment
 	memory_min=`free -k -w | head -2 | tail -1 | awk '{print $2}'`
 	ulimit $memory_min
-        find $outdir/blocks -name "*.fa" -printf "$PWD/%p\n" | xargs -I @ -P $threads bash -c "align @ '$outfile' '$DIR'"
-        find $outdir/blocks -name "*.fa" -printf "$PWD/%p\n" | xargs -I @ -P 1 bash -c "align @ '$outfile' '$DIR'"
+        find $outdir/blocks -name "*.fa" -printf "%p\n" | xargs -I @ -P $threads bash -c "align @ '$outfile' '$DIR'"
+        find $outdir/blocks -name "*.fa" -printf "%p\n" | xargs -I @ -P 1 bash -c "align @ '$outfile' '$DIR'"
 	export LC_ALL=C
 	find $outdir/alignment/ -name "*.fa"  -print0 | sort -z | xargs -0 cat >> "$outfile"
         rm -rf $outdir/alignment

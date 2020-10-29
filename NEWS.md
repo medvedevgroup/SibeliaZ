@@ -1,9 +1,8 @@
 SibeliaZ 1.2.2
 ==============
-* Deposited the project to bioconda
+* Updated the version of spoa
 * Added submodule maf2synteny, a program for constructing synteny blocks from
 the output of Sibeliaz
-* Updated the version of spoa
 * Fixed a bug in SibeliaZ script resulting in failed global alignment calls in
 certain cases
 

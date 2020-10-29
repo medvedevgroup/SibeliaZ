@@ -1,7 +1,7 @@
 SibeliaZ 1.2.2
 ===============
 
-Release date: TBD
+Release date: 29th October 2020
 =================
 
 Authors
@@ -91,7 +91,13 @@ Building synteny blocks
 =======================
 You can also construct longer synteny blocks required for certain analyses. By
 default, sibeliaz also installs program [maf2synteny](https://github.com/fenderglass/maf2synteny)
-written by [Mikhail Kolmogorov](https://github.com/fenderglass). To construct the blocks, run:
+written by [Mikhail Kolmogorov](https://github.com/fenderglass). If you already
+have output of SibeliaZ, you can run maf2synteny on it:
+
+	maf2synteny <GFF or MAF file created by SibeliaZ>
+
+Otherwise, it is best to run sibeliaz without the alignment step saving time
+and memory:
 	
 	sibeliaz -n <output_directory>
 	maf2synteny <output_directory>/blocks_coords.gff

@@ -9,4 +9,3 @@ AlignIO.write(alignments, output_handle, "mauve")
 
 output_handle.close()
 input_handle.close()
-

@@ -530,20 +530,29 @@ namespace Sibelia
 		}
 
 
-		void ListBlocksSequences(const BlockList & block, const std::string & file) const
+		void ListBlocksSequences(const BlockList & block, const std::string & file, size_t chunks) const
 		{
 			std::vector<IndexPair> group;
 			BlockList blockList = block;
-			std::ofstream out;
-			TryOpenFile(file.c_str(), out);
+			std::vector<std::ofstream> chunkOut(chunks);
+			for (size_t i = 0; i < chunks; i++)
+			{
+				std::stringstream ss;
+				ss << file << "_" << i << ".tmp";
+				TryOpenFile(ss.str(), chunkOut[i]);
+			}
+
+			size_t nowChunk = 0;
 			GroupBy(blockList, compareById, std::back_inserter(group));
 			for (std::vector<IndexPair>::iterator it = group.begin(); it != group.end(); ++it)
 			{
+				std::ofstream& out = chunkOut[nowChunk];
 				for (size_t block = it->first; block < it->second; block++)
 				{
 					size_t length = blockList[block].GetLength();
 					size_t chr = blockList[block].GetChrId();
 					size_t chrSize = storage_.GetChrSequence(chr).size();
+					
 					out << ">";
 					out << storage_.GetChrDescription(chr) << ";";
 					if (blockList[block].GetSignedBlockId() > 0)
@@ -566,7 +575,8 @@ namespace Sibelia
 					}
 				}
 
-				out << '\0';
+				out << std::endl;
+				nowChunk = (nowChunk + 1) % chunks;
 			}
 		}
 
@@ -591,7 +601,7 @@ namespace Sibelia
 			const std::vector<int> & multiplicity;
 		};
 
-		void GenerateOutput(const std::string & outDir, bool genSeq)
+		void GenerateOutput(const std::string & outDir, bool genSeq, size_t chunks)
 		{
 			std::vector<std::vector<bool> > covered(storage_.GetChrNumber());
 			for (size_t i = 0; i < covered.size(); i++)
@@ -608,7 +618,7 @@ namespace Sibelia
 			{
 				copiesCount_[b.GetBlockId()]++;
 			}
-
+			
 			GroupBy(blocksInstance_, SortByMultiplicity(copiesCount_), std::back_inserter(group));
 			for (auto g : group)
 			{
@@ -650,11 +660,11 @@ namespace Sibelia
 			std::cout << "Coverage: " << CalculateCoverage(trimmedBlocks) << std::endl;
 			std::sort(trimmedBlocks.begin(), trimmedBlocks.end());
 			CreateOutDirectory(outDir);
-			std::string blocksFile = outDir + "/blocks.tmp";
+			std::string blocksFile = outDir + "/blocks";
 			ListBlocksIndicesGFF(trimmedBlocks, outDir + "/" + "blocks_coords.gff");
 			if (genSeq)
 			{
-				ListBlocksSequences(trimmedBlocks, blocksFile);
+				ListBlocksSequences(trimmedBlocks, blocksFile, chunks);
 			}
 		}
 

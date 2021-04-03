@@ -73,7 +73,7 @@ align()
         fi
 
 	filename=$(basename -- "$1")
-	alignment_output="$outdir/alignment/$filename"
+	alignment_output="$4"
         if [ $? -eq 0 ]
         then
 		lines=`echo -n "$output" | grep -c '^'`
@@ -85,7 +85,20 @@ align()
         fi
 }
 
+block_align()
+{
+	out="$outdir/$(basename $1 | cut -f 1 -d '.').msa"
+	while read p; do
+		input=${p//@/'\n'}
+		fasta=$(mktemp --suffix=.fa $outdir/block.XXXXX)
+		echo -e $input > $fasta
+		align $fasta $2 $3 $out
+	done < $1
+}
+
 export -f align
+export -f block_align
+
 infile="$@"
 
 if [ -z "$f" ]
@@ -109,14 +122,14 @@ global_alignment()
 	echo "# sibeliaz v1.2.2 " >> "$outfile"
 	echo "# cmd=$1" >> "$outfile"
 
-        mkdir $outdir/alignment
 	memory_min=`free -k -w | head -2 | tail -1 | awk '{print $2}'`
 	ulimit $memory_min
-        find $outdir/blocks -name "*.fa" -printf "%p\n" | xargs -I @ -P $threads bash -c "align @ '$outfile' '$DIR'"
-        find $outdir/blocks -name "*.fa" -printf "%p\n" | xargs -I @ -P 1 bash -c "align @ '$outfile' '$DIR'"
+        find $outdir -name "*.tmp" -printf "%p\n" | xargs -I @ -P $threads bash -c "block_align @ '$outfile' '$DIR'"
+
 	export LC_ALL=C
-	find $outdir/alignment/ -name "*.fa"  -print0 | sort -z | xargs -0 cat >> "$outfile"
-        rm -rf $outdir/alignment
+	find $outdir -name "*.msa"  -print0 | sort -z | xargs -0 cat >> "$outfile"
+        rm -rf $outdir/*.msa
+        rm -rf $outdir/*.tmp
 }
 
 export -f global_alignment
@@ -129,7 +142,7 @@ mkdir -p $outdir
 echo "Constructing the graph..."
 
 /usr/bin/time -f "TwoPaco: %e seconds elapsed, %M KB memory used" ${DIR}twopaco --tmpdir $outdir -t $twopaco_threads -k $k --filtermemory $f -o $dbg_file $infile
-/usr/bin/time -f "SibeliaZ-LCB: %e seconds elapsed, %M KB memory used" ${DIR}sibeliaz-lcb --graph $dbg_file $infile -k $k -b $b -o $outdir -m $m -t $lcb_threads --abundance $a $noseq
+/usr/bin/time -f "SibeliaZ-LCB: %e seconds elapsed, %M KB memory used" ${DIR}sibeliaz-lcb --graph $dbg_file $infile -k $k -b $b -o $outdir -m $m -t $lcb_threads --abundance $a $noseq --chunks $lcb_threads
 
 rm $dbg_file
 if [ "$align" = "True" ]

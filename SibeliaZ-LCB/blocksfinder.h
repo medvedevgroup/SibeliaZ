@@ -538,7 +538,7 @@ namespace Sibelia
 			for (size_t i = 0; i < chunks; i++)
 			{
 				std::stringstream ss;
-				ss << file << "_" << i << ".tmp";
+				ss << file << i << ".tmp";
 				TryOpenFile(ss.str(), chunkOut[i]);
 			}
 
@@ -552,19 +552,18 @@ namespace Sibelia
 					size_t length = blockList[block].GetLength();
 					size_t chr = blockList[block].GetChrId();
 					size_t chrSize = storage_.GetChrSequence(chr).size();
-					
-					out << ">";
-					out << storage_.GetChrDescription(chr) << ";";
+
+					out << "> " << storage_.GetChrDescription(chr) << ";";
 					if (blockList[block].GetSignedBlockId() > 0)
 					{
-						out << blockList[block].GetStart() << ";" << length << ";" << "+;" << chrSize << ';';
+						out << blockList[block].GetStart() << ";" << length << ";" << "+;" << chrSize  << '@';
 						auto it = storage_.GetChrSequence(chr).begin() + blockList[block].GetStart();
 						std::copy(it, it + length, std::ostream_iterator<char>(out));
 					}
 					else
 					{
 						size_t start = chrSize - blockList[block].GetEnd();
-						out << start << ";" << length << ";" << "-;" << chrSize << ';';
+						out << start << ";" << length << ";" << "-;" << chrSize << '@';
 						std::string::const_reverse_iterator it(storage_.GetChrSequence(chr).begin() + blockList[block].GetEnd());
 						auto jt = CFancyIterator(it, TwoPaCo::DnaChar::ReverseChar, ' ');
 						for (size_t i = 0; i < length; i++)
@@ -573,6 +572,8 @@ namespace Sibelia
 							++jt;
 						}
 					}
+
+					out << '@';
 				}
 
 				out << std::endl;
@@ -660,7 +661,7 @@ namespace Sibelia
 			std::cout << "Coverage: " << CalculateCoverage(trimmedBlocks) << std::endl;
 			std::sort(trimmedBlocks.begin(), trimmedBlocks.end());
 			CreateOutDirectory(outDir);
-			std::string blocksFile = outDir + "/blocks";
+			std::string blocksFile = outDir + "/";
 			ListBlocksIndicesGFF(trimmedBlocks, outDir + "/" + "blocks_coords.gff");
 			if (genSeq)
 			{

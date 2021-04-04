@@ -1,3 +1,7 @@
+SibeliaZ 1.2.3
+==============
+* Reduced the number of temporary files created during the global alignment phase
+
 SibeliaZ 1.2.2
 ==============
 * Updated the version of spoa

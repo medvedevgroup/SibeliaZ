@@ -69,6 +69,7 @@ align()
         rcode="${PIPESTATUS[0]}"
         if [[ -z "${output// }" ]]
         then
+		rm $1
                 return
         fi
 
@@ -81,8 +82,9 @@ align()
 		echo "" >> "$alignment_output"
 		echo "a" >> "$alignment_output"
 		paste <(echo "$header") <(echo "$output") --delimiters ' ' >> "$alignment_output"
-		rm $1
         fi
+
+	rm $1
 }
 
 block_align()
@@ -119,7 +121,7 @@ global_alignment()
 {
 	echo "Performing global alignment.."
         echo "##maf version=1" > "$outfile"
-	echo "# sibeliaz v1.2.2 " >> "$outfile"
+	echo "# sibeliaz v1.2.3 " >> "$outfile"
 	echo "# cmd=$1" >> "$outfile"
 
 	memory_min=`free -k -w | head -2 | tail -1 | awk '{print $2}'`
@@ -142,7 +144,7 @@ mkdir -p $outdir
 echo "Constructing the graph..."
 
 /usr/bin/time -f "TwoPaco: %e seconds elapsed, %M KB memory used" ${DIR}twopaco --tmpdir $outdir -t $twopaco_threads -k $k --filtermemory $f -o $dbg_file $infile
-/usr/bin/time -f "SibeliaZ-LCB: %e seconds elapsed, %M KB memory used" ${DIR}sibeliaz-lcb --graph $dbg_file $infile -k $k -b $b -o $outdir -m $m -t $lcb_threads --abundance $a $noseq --chunks $lcb_threads
+/usr/bin/time -f "SibeliaZ-LCB: %e seconds elapsed, %M KB memory used" ${DIR}sibeliaz-lcb --graph $dbg_file $infile -k $k -b $b -o $outdir -m $m -t $lcb_threads --abundance $a $noseq --chunks 256
 
 rm $dbg_file
 if [ "$align" = "True" ]

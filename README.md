@@ -271,9 +271,8 @@ Citation
 ========
 If you use SibeliaZ in your research, please cite:
 
-	Scalable multiple whole-genome alignment and locally collinear block construction with SibeliaZ
-	Ilia Minkin, Paul Medvedev
-	bioRxiv 548123; doi: https://doi.org/10.1101/548123
+	Minkin, I., Medvedev, P. Scalable multiple whole-genome alignment and locally collinear block construction with SibeliaZ.
+	Nat Commun 11, 6327 (2020). https://doi.org/10.1038/s41467-020-19777-8
 
 If you also used maf2synteny, please cite the Ragout [paper](https://github.com/fenderglass/maf2synteny#citation).
 

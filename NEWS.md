@@ -1,6 +1,7 @@
 SibeliaZ 1.2.3
 ==============
 * Reduced the number of temporary files created during the global alignment phase
+* Removed dependency on GNU time from the main SibeliaZ script
 
 SibeliaZ 1.2.2
 ==============

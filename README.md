@@ -3,7 +3,7 @@
 SibeliaZ 1.2.3
 ===============
 
-Release date: TBD
+Release date: 23th May 2021
 =================
 
 Authors

@@ -530,39 +530,54 @@ namespace Sibelia
 		}
 
 
-		void ListBlocksSequences(const BlockList & block, const std::string & directory) const
+		void ListBlocksSequences(const BlockList & block, const std::string & file, size_t chunks) const
 		{
 			std::vector<IndexPair> group;
 			BlockList blockList = block;
+			std::vector<std::ofstream> chunkOut(chunks);
+			for (size_t i = 0; i < chunks; i++)
+			{
+				std::stringstream ss;
+				ss << file << i << ".tmp";
+				TryOpenFile(ss.str(), chunkOut[i]);
+			}
+
+			size_t nowChunk = 0;
 			GroupBy(blockList, compareById, std::back_inserter(group));
 			for (std::vector<IndexPair>::iterator it = group.begin(); it != group.end(); ++it)
 			{
-				std::ofstream out;
-				std::stringstream ss;
-				ss << directory << "/" << blockList[it->first].GetBlockId() << ".fa";
-				TryOpenFile(ss.str(), out);
+				std::ofstream& out = chunkOut[nowChunk];
 				for (size_t block = it->first; block < it->second; block++)
 				{
 					size_t length = blockList[block].GetLength();
 					size_t chr = blockList[block].GetChrId();
 					size_t chrSize = storage_.GetChrSequence(chr).size();
-					out << ">" << blockList[block].GetBlockId() << "_" << block - it->first << " ";
-					out << storage_.GetChrDescription(chr) << ";";
+
+					out << "> " << storage_.GetChrDescription(chr) << ";";
 					if (blockList[block].GetSignedBlockId() > 0)
 					{
-						out << blockList[block].GetStart() << ";" << length << ";" << "+;" << chrSize << std::endl;
-						OutputLines(storage_.GetChrSequence(chr).begin() + blockList[block].GetStart(), length, out);
+						out << blockList[block].GetStart() << ";" << length << ";" << "+;" << chrSize  << '@';
+						auto it = storage_.GetChrSequence(chr).begin() + blockList[block].GetStart();
+						std::copy(it, it + length, std::ostream_iterator<char>(out));
 					}
 					else
 					{
 						size_t start = chrSize - blockList[block].GetEnd();
-						out << start << ";" << length << ";" << "-;" << chrSize << std::endl;
+						out << start << ";" << length << ";" << "-;" << chrSize << '@';
 						std::string::const_reverse_iterator it(storage_.GetChrSequence(chr).begin() + blockList[block].GetEnd());
-						OutputLines(CFancyIterator(it, TwoPaCo::DnaChar::ReverseChar, ' '), length, out);
+						auto jt = CFancyIterator(it, TwoPaCo::DnaChar::ReverseChar, ' ');
+						for (size_t i = 0; i < length; i++)
+						{
+							out << *jt;
+							++jt;
+						}
 					}
 
-					out << std::endl;
+					out << '@';
 				}
+
+				out << std::endl;
+				nowChunk = (nowChunk + 1) % chunks;
 			}
 		}
 
@@ -587,7 +602,7 @@ namespace Sibelia
 			const std::vector<int> & multiplicity;
 		};
 
-		void GenerateOutput(const std::string & outDir, bool genSeq)
+		void GenerateOutput(const std::string & outDir, bool genSeq, size_t chunks)
 		{
 			std::vector<std::vector<bool> > covered(storage_.GetChrNumber());
 			for (size_t i = 0; i < covered.size(); i++)
@@ -604,7 +619,7 @@ namespace Sibelia
 			{
 				copiesCount_[b.GetBlockId()]++;
 			}
-
+			
 			GroupBy(blocksInstance_, SortByMultiplicity(copiesCount_), std::back_inserter(group));
 			for (auto g : group)
 			{
@@ -646,12 +661,11 @@ namespace Sibelia
 			std::cout << "Coverage: " << CalculateCoverage(trimmedBlocks) << std::endl;
 			std::sort(trimmedBlocks.begin(), trimmedBlocks.end());
 			CreateOutDirectory(outDir);
-			std::string blocksDir = outDir + "/blocks";
+			std::string blocksFile = outDir + "/";
 			ListBlocksIndicesGFF(trimmedBlocks, outDir + "/" + "blocks_coords.gff");
 			if (genSeq)
 			{
-				CreateOutDirectory(blocksDir);
-				ListBlocksSequences(trimmedBlocks, blocksDir);
+				ListBlocksSequences(trimmedBlocks, blocksFile, chunks);
 			}
 		}
 

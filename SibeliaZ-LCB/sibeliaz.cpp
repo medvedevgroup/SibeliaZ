@@ -104,6 +104,15 @@ int main(int argc, char * argv[])
 			cmd,
 			false);
 
+		TCLAP::ValueArg<unsigned int> chunks("",
+			"chunks",
+			"Split blocks for alignment into a number of chunks",
+			false,
+			0,
+			"integer",
+			cmd);
+
+
 		TCLAP::UnlabeledMultiArg<std::string> genomesFileName("filenames",
 			"FASTA file(s) with nucleotide sequences.",
 			true,
@@ -131,7 +140,7 @@ int main(int argc, char * argv[])
 			outDirName.getValue() + "/paths.txt");
 
 		std::cout << "Generating the output..." << std::endl;
-		finder.GenerateOutput(outDirName.getValue(), !noSeq.getValue());
+		finder.GenerateOutput(outDirName.getValue(), !noSeq.getValue(), chunks.getValue());
 	}
 	catch (TCLAP::ArgException & e)
 	{

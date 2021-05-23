@@ -69,11 +69,12 @@ align()
         rcode="${PIPESTATUS[0]}"
         if [[ -z "${output// }" ]]
         then
+		rm $1
                 return
         fi
 
 	filename=$(basename -- "$1")
-	alignment_output="$outdir/alignment/$filename"
+	alignment_output="$4"
         if [ $? -eq 0 ]
         then
 		lines=`echo -n "$output" | grep -c '^'`
@@ -81,11 +82,25 @@ align()
 		echo "" >> "$alignment_output"
 		echo "a" >> "$alignment_output"
 		paste <(echo "$header") <(echo "$output") --delimiters ' ' >> "$alignment_output"
-		rm $1
         fi
+
+	rm $1
+}
+
+block_align()
+{
+	out="$outdir/$(basename $1 | cut -f 1 -d '.').msa"
+	while read p; do
+		input=${p//@/'\n'}
+		fasta=$(mktemp --suffix=.fa $outdir/block.XXXXX)
+		echo -e $input > $fasta
+		align $fasta $2 $3 $out
+	done < $1
 }
 
 export -f align
+export -f block_align
+
 infile="$@"
 
 if [ -z "$f" ]
@@ -106,17 +121,17 @@ global_alignment()
 {
 	echo "Performing global alignment.."
         echo "##maf version=1" > "$outfile"
-	echo "# sibeliaz v1.2.2 " >> "$outfile"
+	echo "# sibeliaz v1.2.3 " >> "$outfile"
 	echo "# cmd=$1" >> "$outfile"
 
-        mkdir $outdir/alignment
 	memory_min=`free -k -w | head -2 | tail -1 | awk '{print $2}'`
 	ulimit $memory_min
-        find $outdir/blocks -name "*.fa" -printf "%p\n" | xargs -I @ -P $threads bash -c "align @ '$outfile' '$DIR'"
-        find $outdir/blocks -name "*.fa" -printf "%p\n" | xargs -I @ -P 1 bash -c "align @ '$outfile' '$DIR'"
+        find $outdir -name "*.tmp" -printf "%p\n" | xargs -I @ -P $threads bash -c "block_align @ '$outfile' '$DIR'"
+
 	export LC_ALL=C
-	find $outdir/alignment/ -name "*.fa"  -print0 | sort -z | xargs -0 cat >> "$outfile"
-        rm -rf $outdir/alignment
+	find $outdir -name "*.msa"  -print0 | sort -z | xargs -0 cat >> "$outfile"
+        rm -rf $outdir/*.msa
+        rm -rf $outdir/*.tmp
 }
 
 export -f global_alignment
@@ -128,13 +143,13 @@ dbg_file=$outdir/de_bruijn_graph.dbg
 mkdir -p $outdir
 echo "Constructing the graph..."
 
-/usr/bin/time -f "TwoPaco: %e seconds elapsed, %M KB memory used" ${DIR}twopaco --tmpdir $outdir -t $twopaco_threads -k $k --filtermemory $f -o $dbg_file $infile
-/usr/bin/time -f "SibeliaZ-LCB: %e seconds elapsed, %M KB memory used" ${DIR}sibeliaz-lcb --graph $dbg_file $infile -k $k -b $b -o $outdir -m $m -t $lcb_threads --abundance $a $noseq
+${DIR}twopaco --tmpdir $outdir -t $twopaco_threads -k $k --filtermemory $f -o $dbg_file $infile
+${DIR}sibeliaz-lcb --graph $dbg_file $infile -k $k -b $b -o $outdir -m $m -t $lcb_threads --abundance $a $noseq --chunks 256
 
 rm $dbg_file
 if [ "$align" = "True" ]
 then
-	/usr/bin/time -f "Alignment: %e seconds elapsed, %M memory used" bash -c "global_alignment '$args'"
+	bash -c "global_alignment '$args'"
 fi
 
 

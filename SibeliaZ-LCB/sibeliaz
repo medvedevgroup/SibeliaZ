@@ -1,6 +1,5 @@
 #!/bin/bash
 
-export DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )/"
 
 k=25
 b=200
@@ -65,7 +64,7 @@ export outfile="$outdir/alignment.maf"
 
 align()
 {
-        output="$(${DIR}spoa $1 -l 1 -r 1 -e -8 2> /dev/null | sed -e '/>/d')"
+        output="$(spoa $1 -l 1 -r 1 -e -8 2> /dev/null | sed -e '/>/d')"
         rcode="${PIPESTATUS[0]}"
         if [[ -z "${output// }" ]]
         then
@@ -74,7 +73,7 @@ align()
         fi
 
 	filename=$(basename -- "$1")
-	alignment_output="$4"
+	alignment_output="$3"
         if [ $? -eq 0 ]
         then
 		lines=`echo -n "$output" | grep -c '^'`
@@ -94,7 +93,7 @@ block_align()
 		input=${p//@/'\n'}
 		fasta=$(mktemp --suffix=.fa $outdir/block.XXXXX)
 		echo -e $input > $fasta
-		align $fasta $2 $3 $out
+		align $fasta $2 $out
 	done < $1
 }
 
@@ -121,12 +120,12 @@ global_alignment()
 {
 	echo "Performing global alignment.."
         echo "##maf version=1" > "$outfile"
-	echo "# sibeliaz v1.2.3 " >> "$outfile"
+	echo "# sibeliaz v1.2.4 " >> "$outfile"
 	echo "# cmd=$1" >> "$outfile"
 
 	memory_min=`free -k -w | head -2 | tail -1 | awk '{print $2}'`
 	ulimit $memory_min
-        find $outdir -name "*.tmp" -printf "%p\n" | xargs -I @ -P $threads bash -c "block_align @ '$outfile' '$DIR'"
+        find $outdir -name "*.tmp" -printf "%p\n" | xargs -I @ -P $threads bash -c "block_align @ '$outfile'"
 
 	export LC_ALL=C
 	find $outdir -name "*.msa"  -print0 | sort -z | xargs -0 cat >> "$outfile"
@@ -143,8 +142,8 @@ dbg_file=$outdir/de_bruijn_graph.dbg
 mkdir -p $outdir
 echo "Constructing the graph..."
 
-${DIR}twopaco --tmpdir $outdir -t $twopaco_threads -k $k --filtermemory $f -o $dbg_file $infile
-${DIR}sibeliaz-lcb --graph $dbg_file $infile -k $k -b $b -o $outdir -m $m -t $lcb_threads --abundance $a $noseq --chunks 256
+twopaco --tmpdir $outdir -t $twopaco_threads -k $k --filtermemory $f -o $dbg_file $infile
+sibeliaz-lcb --graph $dbg_file $infile -k $k -b $b -o $outdir -m $m -t $lcb_threads --abundance $a $noseq --chunks 256
 
 rm $dbg_file
 if [ "$align" = "True" ]

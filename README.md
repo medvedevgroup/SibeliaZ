@@ -1,10 +1,10 @@
 [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/sibeliaz/README.html)
 
-SibeliaZ 1.2.3
+SibeliaZ 1.2.4
 ===============
 
-Release date: 23th May 2021
-=================
+Release date: 6th September 2021
+================================
 
 Authors
 =======

@@ -1,3 +1,8 @@
+SibeliaZ 1.2.4
+==============
+* Added a pragma to GFF output showing length of input sequences
+* Fixed incorrect path to spoa on bioconda version
+
 SibeliaZ 1.2.3
 ==============
 * Reduced the number of temporary files created during the global alignment phase

@@ -144,29 +144,29 @@ namespace Sibelia
 		TryOpenFile(fileName, out);
 		BlockList block(blockList);
 		std::sort(block.begin(), block.end(), compareById);
-		const std::string header[] =
-		{
-			"##gff-version 2",
-			std::string("##source-version SibeliaZ ") + VERSION,
-			"##Type DNA"
-		};
 
-		out << Join(header, header + 3, "\n") << std::endl;
+		out << "##gff-version 3.1.26" << std::endl;
+
+		for (int64_t i = 0; i < storage_.GetChrNumber(); i++)
+		{
+			out << "##sequence-region " << storage_.GetChrDescription(i) << " 1 " << storage_.GetChrSequence(i).size() << "\n";
+		}
+
 		for (BlockList::const_iterator it = block.begin(); it != block.end(); ++it)
 		{
 			size_t start = it->GetStart() + 1;
 			size_t end = it->GetEnd();
 			const std::string record[] =
 			{
-				storage_.GetChrDescription(it->GetChrId()), 
+				storage_.GetChrDescription(it->GetChrId()),
 				"SibeliaZ",
-				"LCB_copy",
+				"SO:0000856",
 				IntToStr(start),
 				IntToStr(end),
 				".",
 				(it->GetDirection() ? "+" : "-"),
 				".",
-				"id=" + IntToStr(static_cast<size_t>(it->GetBlockId()))
+				"ID=" + IntToStr(static_cast<size_t>(it->GetBlockId()))
 			};
 
 			out << Join(record, record + sizeof(record) / sizeof(record[0]), "\t") << std::endl;

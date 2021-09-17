@@ -1,6 +1,6 @@
 SibeliaZ 1.2.4
 ==============
-* Made GFF output compliant with the [GFF3 specification](https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md).
+* Made GFF output compliant with the [GFF3 specification](https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md)
 * Added a pragma to GFF output showing the lengths of input sequences
 * Fixed the incorrect path to spoa in bioconda version
 

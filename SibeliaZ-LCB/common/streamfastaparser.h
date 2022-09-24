@@ -5,9 +5,9 @@
 #include <fstream>
 #include <stdexcept>
 #include <algorithm>
-#include <tbb/mutex.h>
 #include <iostream>
 #include <memory>
+#include <mutex>
 
 #include "dnachar.h"
 
@@ -131,7 +131,7 @@ namespace TwoPaCo
 		size_t seqId_;
 		size_t start_;
 		size_t pieceId_;
-		tbb::mutex mutex_;
+		std::mutex mutex_;
 		size_t overlapSize_;
 		std::ifstream in_;
 		std::string overlapBuffer_;

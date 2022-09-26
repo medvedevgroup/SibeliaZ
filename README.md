@@ -153,16 +153,32 @@ genomes k=25. The default is 25.
 
 Vertices frequency threshold
 ----------------------------
-Mammalian genomes contain many repeated elements that make the graph large and
+Input genomes often contain repeated elements that make the graph large and
 convoluted. To deal with this issue, SibeliaZ removes all k-mers with frequency
 more than a threshold, which is controlled by the option:
 
 	-a <integer>
 
-We recommend to set it to the twice of the maximum number of copies a homologous
-block in the input genomes has. For example, if the largest gene family of the input
-genomes has N members, set -a to at least N * 2. However, increasing this value may
-significantly slow down the computation. The default value is 150.
+We recommend setting it to twice the maximum number of copies of a homologous
+block the underlying input genome collection has. For example, assume a single 
+input genome in the collection of the input genomes has a genomic element that
+is duplicated **D** times and the user is interested in this element being properly
+aligned across the input. This element could be a gene that was duplicated multiple
+times or a transposon; we assume that **D** is the maximum frequency of occurrence
+across all such genomic elements of interest in a single genome.
+
+If there are **N** input genomes containing the genomic element,
+then the parameter -a should be set to at least **D * N * 2**, otherwise,
+the genomic element will likely be missing in the resulting alignment. 
+If the resources allow, this parameter could be set to a higher value, but setting
+it too high could significantly delay the computation.
+For example, suppose we align 10 genomes, and each genome has a gene that is duplicated 4 times.
+Hence, the parameter -a should be set to at least 10 * 4 * 2 = 80 or higher.
+
+The default parameter value is 150 and is optimized for a collection of mammalian genomes.
+This parameter must be adjusted accordingly in case the input contains hundreds
+of short genomes like bacteria or viruses. 
+
 
 Bubble size threshold
 ---------------------

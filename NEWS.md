@@ -1,3 +1,9 @@
+SibeliaZ 1.2.5
+==============
+* Necessary updates to keep up with changes in TBB
+* Updated the readme: added more detailed clarification for the
+parameter -a (vertex frequency threshold)
+
 SibeliaZ 1.2.4
 ==============
 * Made GFF output compliant with the [GFF3 specification](https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md)

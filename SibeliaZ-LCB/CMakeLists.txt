@@ -1,5 +1,4 @@
 project(SibeliaZ-LCB CXX)
-cmake_minimum_required(VERSION 2.8)
 set(CMAKE_BUILD_TYPE RELEASE)
 set(CMAKE_PROJECT_NAME sibeliaz)
 

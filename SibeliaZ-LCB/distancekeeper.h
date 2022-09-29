@@ -2,6 +2,7 @@
 #define _DISTANCE_KEEPER_H_
 
 #include "junctionstorage.h"
+#include <climits>
 
 namespace Sibelia
 {

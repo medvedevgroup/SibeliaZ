@@ -1,9 +1,9 @@
 [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/sibeliaz/README.html)
 
-SibeliaZ 1.2.5
+SibeliaZ 1.2.6
 ===============
 
-Release date: 29th September 2022
+Release date: 1st February 2025
 ================================
 
 Authors
@@ -38,15 +38,13 @@ software (Linux only):
 * Git
 * CMake 
 * A GCC compiler supporting C++11
-* Intel TBB library properly installed on your system. In other words, G++
-  should be able to find TBB libs (future releases will not depend on TBB)
 
-SibeliaZ was tested with CMake 3.5.1, gcc 5.4.0 and TBB 4.4.
+SibeliaZ was tested with CMake 3.5.1 and gcc 5.4.0.
 The easiest way to install the dependencies is to use a package management
 system. For APT on Debian systems they can be installed by the following
 command, which should take only a couple of minutes:
 
-	sudo apt-get install git cmake g++ libtbb-dev
+	sudo apt-get install git cmake g++
 
 Once you installed the things above, do the following:
 

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(SibeliaZ VERSION 1.2.5)
+project(SibeliaZ VERSION 1.2.6)
 set(CMAKE_POLICY_DEFAULT_CMP0048 NEW)
 
 include(ExternalProject)

@@ -1,3 +1,8 @@
+SibeliaZ 1.2.6
+==============
+* Updated submodules: TwoPaCo (and SibeliaZ!) does not depend on
+ TBB anymore
+
 SibeliaZ 1.2.5
 ==============
 * Necessary updates to keep up with changes in TBB

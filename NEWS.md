@@ -1,3 +1,7 @@
+SibeliaZ 1.2.7
+==============
+* Fixed the out-of-source installation
+
 SibeliaZ 1.2.6
 ==============
 * Updated submodules: TwoPaCo (and SibeliaZ!) does not depend on

@@ -27,7 +27,7 @@ namespace Sibelia
 	}
 
 	JunctionStorage * JunctionStorage::this_;
-	extern const std::string VERSION = "1.2.6";
+	extern const std::string VERSION = "1.2.7";
 
 	bool compareById(const BlockInstance & a, const BlockInstance & b)
 	{

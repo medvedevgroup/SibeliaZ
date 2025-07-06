@@ -120,7 +120,7 @@ global_alignment()
 {
 	echo "Performing global alignment.."
         echo "##maf version=1" > "$outfile"
-	echo "# sibeliaz v1.2.6 " >> "$outfile"
+	echo "# sibeliaz v1.2.7 " >> "$outfile"
 	echo "# cmd=$1" >> "$outfile"
 
 	memory_min=`free -k -w | head -2 | tail -1 | awk '{print $2}'`
